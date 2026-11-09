@@ -1,0 +1,15 @@
+# 依赖与构建产物 / Dependencies and build output
+node_modules/
+dist/
+.next/
+coverage/
+*.tsbuildinfo
+
+# 环境与密钥（不得提交）/ Environment and secrets (never commit)
+.env
+.env.*
+!.env.example
+
+# 本地数据（嵌入式 PostgreSQL 等）/ Local data
+.data/
+*.log
