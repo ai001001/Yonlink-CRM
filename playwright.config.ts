@@ -18,9 +18,9 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${PORT}`,
     locale: 'zh-CN',
     trace: 'retain-on-failure',
-    // ARM64 Ubuntu 上使用系统 Chromium（Playwright 自带浏览器不支持该平台）
-    // use the system Chromium on ARM64 Ubuntu
-    launchOptions: { executablePath: process.env.CHROMIUM_PATH ?? '/usr/bin/chromium' },
+    // 本机 ARM64 Ubuntu 使用系统 Chromium；CI 使用 Playwright 自带浏览器
+    // system Chromium on the ARM64 Ubuntu server; bundled browser in CI
+    launchOptions: { executablePath: process.env.CI ? undefined : (process.env.CHROMIUM_PATH ?? '/usr/bin/chromium') },
   },
   webServer: {
     command: `npx next start -p ${PORT} -H 127.0.0.1`,
