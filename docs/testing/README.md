@@ -17,3 +17,7 @@
 | Deals 商机 | ✅ | ✅ | ✅ | [deals.md](deals.md) |
 | Activities 跟进 | ✅ | ✅ | ✅ | [activities.md](activities.md) |
 | Dashboard 工作台（含全局搜索） | ✅ | ✅ | ✅ | [dashboard.md](dashboard.md) |
+
+## 整体回归（全部模块完成后）
+命令：`scripts/regression.sh final-mvp` → **PASS**（lint、typecheck、11 文件 181/181、静态导出、生产构建、E2E 6/6）。原始输出：[results/final-mvp-r3-regression.txt](results/final-mvp-r3-regression.txt)
+GitHub Pages 实际访问：https://ai001001.github.io/Yonlink-CRM/ 跳转至登录页，显示“静态前端预览，尚未接入真实后端”，直接访问业务页同样跳转登录，控制台无错误。
