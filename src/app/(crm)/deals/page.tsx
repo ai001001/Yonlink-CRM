@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { App, Button, Card, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Statistic, Table, Tabs, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
@@ -13,7 +13,7 @@ import { RelatedActivities } from '@/components/RelatedActivities';
 import { t, tEnum } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
-import { toFormErrors, useOwners, usePagedList, type PageResult } from '@/lib/hooks';
+import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, type PageResult } from '@/lib/hooks';
 import type { Deal } from '@/lib/types';
 
 const DEAL_STAGES = ['QUALIFICATION', 'NEEDS_ANALYSIS', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST'] as const;
@@ -44,6 +44,17 @@ export default function DealsPage() {
   const [editing, setEditing] = useState<Deal | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<Deal | null>(null);
+
+  useOpenFromUrl(
+    useCallback(
+      (id: string) => {
+        api<Deal>(`/api/deals/${id}`)
+          .then(setDetail)
+          .catch((err: Error) => message.error(err.message));
+      },
+      [message],
+    ),
+  );
 
   const openForm = (deal: Deal | 'new') => {
     form.resetFields();

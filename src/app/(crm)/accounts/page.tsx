@@ -13,7 +13,7 @@ import { RelatedActivities } from '@/components/RelatedActivities';
 import { t, tEnum } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
-import { toFormErrors, useOwners, usePagedList } from '@/lib/hooks';
+import { toFormErrors, useOpenFromUrl, useOwners, usePagedList } from '@/lib/hooks';
 import type { Account } from '@/lib/types';
 
 const INDUSTRIES = ['MANUFACTURING', 'IT', 'FINANCE', 'RETAIL', 'EDUCATION', 'HEALTHCARE', 'CONSTRUCTION', 'LOGISTICS', 'GOVERNMENT', 'OTHER'];
@@ -41,6 +41,8 @@ export default function AccountsPage() {
     },
     [message],
   );
+
+  useOpenFromUrl(openDetail);
 
   const openForm = (account: Account | 'new') => {
     form.resetFields();

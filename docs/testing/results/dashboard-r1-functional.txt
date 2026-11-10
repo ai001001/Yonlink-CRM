@@ -1,0 +1,11 @@
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM/.claude/worktrees/yonlink-crm-mvp-f11420
+ ✓ tests/dashboard/dashboard.r1-functional.test.ts > dashboard R1 functional > 空组织：全部为 0 / empty organization shows zeros 475ms
+ ✓ tests/dashboard/dashboard.r1-functional.test.ts > dashboard R1 functional > 客户、线索、商机数量随增删实时变化 / counts follow creates and deletes 220ms
+ ✓ tests/dashboard/dashboard.r1-functional.test.ts > dashboard R1 functional > 商机金额汇总：全部 / 进行中 / 赢单，按币种精确合计 / exact amount totals per currency 172ms
+ ✓ tests/dashboard/dashboard.r1-functional.test.ts > dashboard R1 functional > 最近跟进记录：最新 10 条，最新在前，含关联名称 / recent activities: latest 10, newest first 189ms
+ ✓ tests/dashboard/dashboard.r1-functional.test.ts > dashboard R1 functional > 我的待办：只含本人未完成事项，按截止时间排序，统计逾期 / my to-dos: mine, pending, sorted, overdue counted 232ms
+ ✓ tests/dashboard/dashboard.r1-functional.test.ts > global search R1 functional > 跨线索、客户（含联系人）、商机搜索 / search across leads, accounts (incl. contacts) and deals 118ms
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  15:57:13
+   Duration  3.58s (tests 81%, import 11%, transform 8%, setup 1%)

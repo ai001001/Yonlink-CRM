@@ -12,3 +12,8 @@ export async function signIn(page: Page): Promise<void> {
   await page.getByRole('button', { name: /登\s*录/ }).click();
   await expect(page.getByTestId('user-menu')).toBeVisible();
 }
+
+/** 点击左侧导航 / Click a side-navigation entry */
+export async function nav(page: Page, name: '工作台' | '线索' | '客户' | '商机' | '跟进'): Promise<void> {
+  await page.getByRole('menu').getByRole('link', { name, exact: true }).click();
+}

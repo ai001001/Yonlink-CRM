@@ -1,5 +1,5 @@
 /**
- * 顶部全局搜索（Dashboard 阶段实现跨模块搜索，当前跳转到线索搜索）。
+ * 顶部全局搜索：跳转到跨线索/客户/商机的搜索结果页。
  * Header global search.
  */
 'use client';

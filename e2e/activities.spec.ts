@@ -3,7 +3,7 @@
  * Activities round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
-import { signIn } from './helpers';
+import { nav, signIn } from './helpers';
 
 const SAVE = /保\s*存/;
 
@@ -11,7 +11,7 @@ test('跟进管理完整业务流程 / full activities flow', async ({ page }) =
   await signIn(page);
 
   // 准备线索 / prepare a lead
-  await page.getByRole('link', { name: '线索' }).click();
+  await nav(page, '线索');
   await page.getByRole('button', { name: '新增线索' }).click();
   let dialog = page.getByRole('dialog', { name: '新增线索' });
   await dialog.getByLabel('姓名').fill('E2E 跟进线索');
@@ -19,7 +19,7 @@ test('跟进管理完整业务流程 / full activities flow', async ({ page }) =
   await expect(page.getByRole('row', { name: /E2E 跟进线索/ })).toBeVisible();
 
   // 新增任务并关联线索 / create a task linked to the lead
-  await page.getByRole('link', { name: '跟进' }).click();
+  await nav(page, '跟进');
   await expect(page.getByText('跟进管理')).toBeVisible();
   await page.getByRole('button', { name: '新增跟进' }).click();
   dialog = page.getByRole('dialog', { name: '新增跟进' });
@@ -69,14 +69,14 @@ test('跟进管理完整业务流程 / full activities flow', async ({ page }) =
   await drawer.getByRole('button', { name: '关闭' }).first().click();
 
   // 线索详情中可见该跟进 / visible in the lead timeline
-  await page.getByRole('link', { name: '线索' }).click();
+  await nav(page, '线索');
   await page.getByRole('button', { name: 'E2E 跟进线索' }).click();
   const leadDrawer = page.getByRole('dialog', { name: '线索详情' });
   await expect(leadDrawer.getByTestId('related-activities')).toContainText('E2E 发送报价单');
   await leadDrawer.getByRole('button', { name: '关闭' }).first().click();
 
   // 删除跟进 / delete activity
-  await page.getByRole('link', { name: '跟进' }).click();
+  await nav(page, '跟进');
   await page.getByText('全部', { exact: true }).click();
   await page.getByRole('row', { name: /E2E 电话回访/ }).getByRole('button', { name: /删\s*除/ }).click();
   await page.getByRole('button', { name: /确\s*定|OK/ }).click();

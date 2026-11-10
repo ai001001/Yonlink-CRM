@@ -16,3 +16,4 @@
 | Accounts 客户（含联系人） | ✅ | ✅ | ✅ | [accounts.md](accounts.md) |
 | Deals 商机 | ✅ | ✅ | ✅ | [deals.md](deals.md) |
 | Activities 跟进 | ✅ | ✅ | ✅ | [activities.md](activities.md) |
+| Dashboard 工作台（含全局搜索） | ✅ | ✅ | ✅ | [dashboard.md](dashboard.md) |

@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { App } from 'antd';
 import { api, qs } from './api';
 
@@ -92,4 +92,19 @@ export function useOwners(): UserOption[] {
  */
 export function toFormErrors(details: Record<string, string[]> | undefined) {
   return Object.entries(details ?? {}).map(([name, errors]) => ({ name, errors }));
+}
+
+/**
+ * 页面加载时若 URL 带 ?id=，打开对应记录详情（用于全局搜索跳转）。
+ * Open a record's detail when the URL carries ?id= on load (used by global search links).
+ * @param open 打开详情的回调 / callback that opens the detail
+ */
+export function useOpenFromUrl(open: (id: string) => void): void {
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current) return;
+    opened.current = true;
+    const id = new URLSearchParams(window.location.search).get('id');
+    if (id) open(id);
+  }, [open]);
 }

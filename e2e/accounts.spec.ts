@@ -3,13 +3,13 @@
  * Accounts round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
-import { signIn } from './helpers';
+import { nav, signIn } from './helpers';
 
 const SAVE = /保\s*存/;
 
 test('客户完整业务流程 / full accounts flow', async ({ page }) => {
   await signIn(page);
-  await page.getByRole('link', { name: '客户' }).click();
+  await nav(page, '客户');
   await expect(page.getByText('客户管理')).toBeVisible();
 
   // 新增客户 / create account

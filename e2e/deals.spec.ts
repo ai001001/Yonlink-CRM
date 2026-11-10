@@ -3,7 +3,7 @@
  * Deals round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
-import { signIn } from './helpers';
+import { nav, signIn } from './helpers';
 
 const SAVE = /保\s*存/;
 
@@ -11,7 +11,7 @@ test('商机完整业务流程 / full deals flow', async ({ page }) => {
   await signIn(page);
 
   // 准备客户 / prepare an account
-  await page.getByRole('link', { name: '客户' }).click();
+  await nav(page, '客户');
   await page.getByRole('button', { name: '新增客户' }).click();
   let dialog = page.getByRole('dialog', { name: '新增客户' });
   await dialog.getByLabel('客户名称').fill('E2E 海川电子');
@@ -19,7 +19,7 @@ test('商机完整业务流程 / full deals flow', async ({ page }) => {
   await expect(page.getByRole('row', { name: /E2E 海川电子/ })).toBeVisible();
 
   // 新增商机 / create deal
-  await page.getByRole('link', { name: '商机' }).click();
+  await nav(page, '商机');
   await expect(page.getByText('商机管理')).toBeVisible();
   await page.getByRole('button', { name: '新增商机' }).click();
   dialog = page.getByRole('dialog', { name: '新增商机' });
@@ -41,7 +41,13 @@ test('商机完整业务流程 / full deals flow', async ({ page }) => {
   await expect(row).toContainText('¥128,000.50');
   await expect(row).toContainText('方案报价');
   await expect(row).toContainText('2027-06-30');
-  await expect(page.getByTestId('deal-sums')).toContainText('¥128,000.50');
+  // 合计随筛选变化；按名称筛选后只统计本商机（其他用例可能留有商机）
+  // totals follow the filter; filter by name so data from other specs does not interfere
+  await page.getByPlaceholder('搜索商机名称、客户名称').fill('E2E 服务器扩容');
+  await page.getByPlaceholder('搜索商机名称、客户名称').press('Enter');
+  await expect(page.getByTestId('deal-sums')).toHaveText(/金额合计 \(CNY\)\s*¥128,000\.50/);
+  await page.getByPlaceholder('搜索商机名称、客户名称').fill('');
+  await page.getByPlaceholder('搜索商机名称、客户名称').press('Enter');
 
   // 详情 → 推进阶段 → 跟进 / detail → advance stage → follow-up
   await page.getByRole('button', { name: 'E2E 服务器扩容' }).click();
@@ -67,7 +73,7 @@ test('商机完整业务流程 / full deals flow', async ({ page }) => {
   await expect(page.getByRole('row', { name: /E2E 服务器扩容/ })).toContainText('赢单');
 
   // 客户详情显示商机；有商机时不能删客户 / account shows deal and cannot be deleted
-  await page.getByRole('link', { name: '客户' }).click();
+  await nav(page, '客户');
   const accRow = page.getByRole('row', { name: /E2E 海川电子/ });
   await accRow.getByRole('button', { name: 'E2E 海川电子' }).click();
   const accDrawer = page.getByRole('dialog', { name: /客户详情/ });
@@ -80,11 +86,11 @@ test('商机完整业务流程 / full deals flow', async ({ page }) => {
   await expect(accRow).toBeVisible();
 
   // 删除商机后可删除客户 / after deleting the deal the account can be deleted
-  await page.getByRole('link', { name: '商机' }).click();
+  await nav(page, '商机');
   await page.getByRole('row', { name: /E2E 服务器扩容/ }).getByRole('button', { name: /删\s*除/ }).click();
   await page.getByRole('button', { name: /确\s*定|OK/ }).click();
   await expect(page.getByRole('row', { name: /E2E 服务器扩容/ })).toHaveCount(0);
-  await page.getByRole('link', { name: '客户' }).click();
+  await nav(page, '客户');
   await page.getByRole('row', { name: /E2E 海川电子/ }).getByRole('button', { name: /删\s*除/ }).click();
   await page.getByRole('button', { name: /确\s*定|OK/ }).click();
   await expect(page.getByRole('row', { name: /E2E 海川电子/ })).toHaveCount(0);

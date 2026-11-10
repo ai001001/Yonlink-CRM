@@ -4,13 +4,13 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { App, Button, Card, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { t, tEnum, type MessageKey } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
-import { toFormErrors, useOwners, usePagedList } from '@/lib/hooks';
+import { toFormErrors, useOpenFromUrl, useOwners, usePagedList } from '@/lib/hooks';
 import { RelatedActivities } from '@/components/RelatedActivities';
 
 /** 线索 / Lead */
@@ -51,6 +51,17 @@ export default function LeadsPage() {
   const [editing, setEditing] = useState<Lead | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<Lead | null>(null);
+
+  useOpenFromUrl(
+    useCallback(
+      (id: string) => {
+        api<Lead>(`/api/leads/${id}`)
+          .then(setDetail)
+          .catch((err: Error) => message.error(err.message));
+      },
+      [message],
+    ),
+  );
 
   const openForm = (lead: Lead | 'new') => {
     form.resetFields();

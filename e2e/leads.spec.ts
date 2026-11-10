@@ -3,11 +3,11 @@
  * Leads round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
-import { signIn } from './helpers';
+import { nav, signIn } from './helpers';
 
 test('线索完整业务流程 / full leads flow', async ({ page }) => {
   await signIn(page);
-  await page.getByRole('link', { name: '线索' }).click();
+  await nav(page, '线索');
   await expect(page.getByText('线索管理')).toBeVisible();
 
   // 新增 / create

@@ -1,0 +1,16 @@
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM/.claude/worktrees/yonlink-crm-mvp-f11420
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 isolation > 统计、金额、待办、最近跟进只含本组织 / every figure is organization scoped 644ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 isolation > 全局搜索不返回其他组织数据 / global search never returns other orgs 168ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 isolation > 未登录 401 / unauthenticated → 401 89ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 consistency & boundaries > 工作台金额与商机列表合计一致 / dashboard totals equal the deals list totals 195ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 consistency & boundaries > 删除客户后数量与最近跟进同步更新 / deleting an account updates counts and recent activities 162ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 consistency & boundaries > 待办最多返回 10 条，但总数准确 / to-do list capped at 10 with accurate total 198ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 consistency & boundaries > 非法搜索参数 {} → 400 89ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 consistency & boundaries > 非法搜索参数 {"q":""} → 400 87ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 consistency & boundaries > 非法搜索参数 {"q":"   "} → 400 89ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 consistency & boundaries > 非法搜索参数 {"q":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 93ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 consistency & boundaries > 搜索通配符按字面处理，每类最多 10 条 / wildcards literal, at most 10 per type 189ms
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  15:57:40
+   Duration  4.22s (tests 87%, import 8%, transform 4%, setup 1%)

@@ -160,6 +160,26 @@ export const zhCN = {
   'dealStage.CLOSED_WON': '赢单',
   'dealStage.CLOSED_LOST': '输单',
   'accounts.tabDeals': '商机',
+  'dashboard.title': '工作台',
+  'dashboard.accounts': '客户数量',
+  'dashboard.leads': '线索数量',
+  'dashboard.deals': '商机数量',
+  'dashboard.dealAmount': '商机金额汇总',
+  'dashboard.amountAll': '全部商机',
+  'dashboard.amountOpen': '进行中',
+  'dashboard.amountWon': '已赢单',
+  'dashboard.stages': '销售阶段分布',
+  'dashboard.count': '数量',
+  'dashboard.amount': '金额',
+  'dashboard.recentActivities': '最近跟进记录',
+  'dashboard.myTodos': '我的待办',
+  'dashboard.todoSummary': '未完成 {total} 项，已逾期 {overdue} 项',
+  'dashboard.viewAll': '查看全部',
+  'dashboard.welcome': '你好，{name}',
+
+  'search.title': '搜索结果',
+  'search.for': '“{q}” 的搜索结果',
+  'search.none': '没有找到匹配的记录',
 } as const;
 
 export type MessageKey = keyof typeof zhCN;
