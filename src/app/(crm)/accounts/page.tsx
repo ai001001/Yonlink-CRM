@@ -8,6 +8,7 @@ import { useCallback, useState } from 'react';
 import { App, Button, Card, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tabs, Tag } from 'antd';
 import { PlusOutlined, StarFilled } from '@ant-design/icons';
 import { AccountDeals } from '@/components/AccountDeals';
+import { AuditTrail } from '@/components/AuditTrail';
 import { ContactsPanel } from '@/components/ContactsPanel';
 import { RelatedActivities } from '@/components/RelatedActivities';
 import { t, tEnum } from '@/i18n';
@@ -233,6 +234,7 @@ export default function AccountsPage() {
               },
               { key: 'deals', label: `${t('accounts.tabDeals')} (${detail._count.deals})`, children: <AccountDeals accountId={detail.id} /> },
               { key: 'activities', label: t('accounts.tabActivities'), children: <RelatedActivities relation={{ accountId: detail.id }} /> },
+              { key: 'audit', label: t('audit.trail'), children: <AuditTrail entityType="account" entityId={detail.id} version={detail.updatedAt} /> },
             ]}
           />
         )}

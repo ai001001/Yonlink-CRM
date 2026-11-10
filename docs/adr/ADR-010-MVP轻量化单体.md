@@ -24,5 +24,5 @@ Bearer 令牌的取舍：GitHub Pages 前端与 API 跨域，第三方 Cookie �
 
 ## 后果
 - 交付快、运维简单（单进程 + PostgreSQL）。
-- RLS、RBAC、审计日志、Valkey 权限缓存留到后续版本；当前隔离依赖服务层过滤 + 复合外键 + 测试覆盖。
+- RLS、RBAC、Valkey 权限缓存留到后续版本；审计日志已于 2026-11-10 实现（只追加、脱敏、与业务同事务，见 docs/testing/audit.md）；当前隔离依赖服务层过滤 + 复合外键 + 测试覆盖。
 - 根目录 CLAUDE.md 中与本 ADR 冲突的安全条目（Valkey、CSRF 双提交、RLS 测试角色等）在 MVP 阶段不适用。

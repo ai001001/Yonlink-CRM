@@ -5,6 +5,7 @@
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
 import { DealStage, LeadStatus } from '@/generated/prisma/enums';
+import { audit, by, diff, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
@@ -91,9 +92,11 @@ export async function getLead(ctx: AuthContext, id: string) {
  */
 export async function createLead(ctx: AuthContext, input: z.infer<typeof leadCreateSchema>) {
   const { ownerId, ...data } = input;
-  return prisma.lead.create({
-    data: { ...data, organizationId: ctx.organizationId, ownerId: await resolveOwner(ctx.organizationId, ownerId, ctx.userId) },
-    include,
+  const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
+  return prisma.$transaction(async (tx) => {
+    const lead = await tx.lead.create({ data: { ...data, organizationId: ctx.organizationId, ownerId: owner }, include });
+    await audit(tx, { ...by(ctx), action: 'lead.create', entityType: 'lead', entityId: lead.id, changes: { after: snapshot('lead', lead) } });
+    return lead;
   });
 }
 
@@ -107,10 +110,14 @@ export async function updateLead(ctx: AuthContext, id: string, input: z.infer<ty
   if (current.convertedAt && data.status !== undefined) {
     throw new ApiError(409, 'CONFLICT', 'Lead already converted', { status: ['Converted leads keep their status'] });
   }
-  return prisma.lead.update({
-    where: { id: current.id },
-    data: { ...data, ownerId: await resolveOwner(ctx.organizationId, ownerId, current.ownerId) },
-    include,
+  const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
+  return prisma.$transaction(async (tx) => {
+    const lead = await tx.lead.update({ where: { id: current.id }, data: { ...data, ownerId: owner }, include });
+    const fields = diff('lead', current, lead);
+    if (Object.keys(fields).length) {
+      await audit(tx, { ...by(ctx), action: 'lead.update', entityType: 'lead', entityId: lead.id, changes: { fields } });
+    }
+    return lead;
   });
 }
 
@@ -120,9 +127,12 @@ export async function updateLead(ctx: AuthContext, id: string, input: z.infer<ty
  */
 export async function deleteLead(ctx: AuthContext, id: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
+    const lead = await tx.lead.findFirst({ where: { id, organizationId: ctx.organizationId } });
+    if (!lead) throw notFound();
     await detachSharedActivities(tx, ctx.organizationId, 'leadId', id);
     const { count } = await tx.lead.deleteMany({ where: { id, organizationId: ctx.organizationId } });
     if (count === 0) throw notFound();
+    await audit(tx, { ...by(ctx), action: 'lead.delete', entityType: 'lead', entityId: id, changes: { before: snapshot('lead', lead) } });
   });
 }
 
@@ -171,10 +181,11 @@ export async function convertLead(ctx: AuthContext, id: string, input: z.infer<t
       account = found;
     } else {
       isNewAccount = true;
-      account = await tx.account.create({
+      const created = await tx.account.create({
         data: { organizationId: org, ownerId, name: input.account.name ?? lead.company ?? lead.name, phone: lead.phone },
-        select: { id: true, name: true },
       });
+      account = { id: created.id, name: created.name };
+      await audit(tx, { ...by(ctx), action: 'account.create', entityType: 'account', entityId: created.id, changes: { after: snapshot('account', created), via: 'lead.convert' } });
     }
 
     // 联系人：新客户或客户尚无主要联系人时设为主要联系人 / contact: primary for a new account or when none exists
@@ -189,13 +200,14 @@ export async function convertLead(ctx: AuthContext, id: string, input: z.infer<t
         email: lead.email,
         isPrimary: !hasPrimary,
       },
-      select: { id: true, name: true },
     });
+    await audit(tx, { ...by(ctx), action: 'contact.create', entityType: 'contact', entityId: contact.id, changes: { after: snapshot('contact', contact), via: 'lead.convert' } });
 
     // 商机（可选）/ optional deal
-    const deal = input.deal
-      ? await tx.deal.create({ data: { ...input.deal, organizationId: org, ownerId, accountId: account.id }, select: { id: true, name: true } })
-      : null;
+    const deal = input.deal ? await tx.deal.create({ data: { ...input.deal, organizationId: org, ownerId, accountId: account.id } }) : null;
+    if (deal) {
+      await audit(tx, { ...by(ctx), action: 'deal.create', entityType: 'deal', entityId: deal.id, changes: { after: snapshot('deal', deal), via: 'lead.convert' } });
+    }
 
     // 跟进记录关联到客户与商机（不覆盖已有关联）/ link activities to the account and deal without overwriting
     await tx.activity.updateMany({ where: { organizationId: org, leadId: lead.id, accountId: null }, data: { accountId: account.id } });
@@ -216,7 +228,20 @@ export async function convertLead(ctx: AuthContext, id: string, input: z.infer<t
     });
     if (count === 0) throw new ApiError(409, 'CONFLICT', 'Lead already converted', { lead: ['Already converted'] });
 
+    await audit(tx, {
+      ...by(ctx),
+      action: 'lead.convert',
+      entityType: 'lead',
+      entityId: lead.id,
+      changes: { accountMode: input.account.mode, accountId: account.id, contactId: contact.id, dealId: deal?.id ?? null },
+    });
+
     const converted = await tx.lead.findUniqueOrThrow({ where: { id: lead.id }, include });
-    return { lead: converted, account, contact, deal };
+    return {
+      lead: converted,
+      account,
+      contact: { id: contact.id, name: contact.name },
+      deal: deal ? { id: deal.id, name: deal.name } : null,
+    };
   });
 }

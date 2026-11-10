@@ -12,7 +12,7 @@ type Handler = (req: Request, route: { params: Promise<Record<string, string>> }
 export async function resetDb(): Promise<void> {
   resetLoginLimiter();
   await prisma.$executeRawUnsafe(
-    'TRUNCATE activities, deals, contacts, accounts, leads, sessions, users, organizations RESTART IDENTITY CASCADE',
+    'TRUNCATE audit_logs, activities, deals, contacts, accounts, leads, sessions, users, organizations RESTART IDENTITY CASCADE',
   );
 }
 
@@ -45,11 +45,19 @@ export async function createTenant(label = 'A') {
  */
 export async function call(
   handler: Handler,
-  opts: { token?: string; body?: unknown; rawBody?: string; query?: Record<string, string>; params?: Record<string, string>; method?: string } = {},
+  opts: {
+    token?: string;
+    body?: unknown;
+    rawBody?: string;
+    query?: Record<string, string>;
+    params?: Record<string, string>;
+    method?: string;
+    headers?: Record<string, string>;
+  } = {},
 ) {
   const url = new URL('http://localhost/api/test');
   for (const [k, v] of Object.entries(opts.query ?? {})) url.searchParams.set(k, v);
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...opts.headers };
   if (opts.token) headers.authorization = `Bearer ${opts.token}`;
   const body = opts.rawBody ?? (opts.body === undefined ? undefined : JSON.stringify(opts.body));
   if (body !== undefined) headers['content-type'] = 'application/json';

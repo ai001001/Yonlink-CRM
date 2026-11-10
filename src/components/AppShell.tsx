@@ -13,6 +13,7 @@ import {
   DashboardOutlined,
   FundOutlined,
   LogoutOutlined,
+  AuditOutlined,
   ScheduleOutlined,
   UserAddOutlined,
 } from '@ant-design/icons';
@@ -26,6 +27,7 @@ const NAV = [
   { key: '/accounts', icon: <BankOutlined />, label: t('nav.accounts') },
   { key: '/deals', icon: <FundOutlined />, label: t('nav.deals') },
   { key: '/activities', icon: <ScheduleOutlined />, label: t('nav.activities') },
+  { key: '/audit-logs', icon: <AuditOutlined />, label: t('nav.audit') },
 ];
 
 /**

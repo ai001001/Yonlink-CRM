@@ -5,6 +5,7 @@
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
 import { DealStage } from '@/generated/prisma/enums';
+import { audit, by, diff, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
@@ -124,9 +125,11 @@ export async function getDeal(ctx: AuthContext, id: string) {
 export async function createDeal(ctx: AuthContext, input: z.infer<typeof dealCreateSchema>) {
   const { ownerId, ...data } = input;
   await assertAccount(ctx, data.accountId);
-  return prisma.deal.create({
-    data: { ...data, organizationId: ctx.organizationId, ownerId: await resolveOwner(ctx.organizationId, ownerId, ctx.userId) },
-    include,
+  const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
+  return prisma.$transaction(async (tx) => {
+    const deal = await tx.deal.create({ data: { ...data, organizationId: ctx.organizationId, ownerId: owner }, include });
+    await audit(tx, { ...by(ctx), action: 'deal.create', entityType: 'deal', entityId: deal.id, changes: { after: snapshot('deal', deal) } });
+    return deal;
   });
 }
 
@@ -138,10 +141,14 @@ export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<ty
   const current = await getDeal(ctx, id);
   const { ownerId, ...data } = input;
   if (data.accountId) await assertAccount(ctx, data.accountId);
-  return prisma.deal.update({
-    where: { id: current.id },
-    data: { ...data, ownerId: await resolveOwner(ctx.organizationId, ownerId, current.ownerId) },
-    include,
+  const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
+  return prisma.$transaction(async (tx) => {
+    const deal = await tx.deal.update({ where: { id: current.id }, data: { ...data, ownerId: owner }, include });
+    const fields = diff('deal', current, deal);
+    if (Object.keys(fields).length) {
+      await audit(tx, { ...by(ctx), action: 'deal.update', entityType: 'deal', entityId: deal.id, changes: { fields } });
+    }
+    return deal;
   });
 }
 
@@ -151,8 +158,11 @@ export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<ty
  */
 export async function deleteDeal(ctx: AuthContext, id: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
+    const deal = await tx.deal.findFirst({ where: { id, organizationId: ctx.organizationId } });
+    if (!deal) throw notFound();
     await detachSharedActivities(tx, ctx.organizationId, 'dealId', id);
     const { count } = await tx.deal.deleteMany({ where: { id, organizationId: ctx.organizationId } });
     if (count === 0) throw notFound();
+    await audit(tx, { ...by(ctx), action: 'deal.delete', entityType: 'deal', entityId: id, changes: { before: snapshot('deal', deal) } });
   });
 }

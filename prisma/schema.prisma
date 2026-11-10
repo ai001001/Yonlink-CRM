@@ -24,6 +24,7 @@ model Organization {
   leads      Lead[]
   deals      Deal[]
   activities Activity[]
+  auditLogs  AuditLog[]
 
   @@map("organizations")
 }
@@ -43,6 +44,7 @@ model User {
   ownedAccounts   Account[]    @relation("AccountOwner")
   ownedDeals      Deal[]       @relation("DealOwner")
   ownedActivities Activity[]   @relation("ActivityOwner")
+  auditLogs       AuditLog[]   @relation("AuditActor")
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -230,4 +232,32 @@ model Activity {
   @@index([organizationId, leadId])
   @@index([organizationId, dealId])
   @@map("activities")
+}
+
+/// 审计日志（只能追加：数据库触发器禁止 UPDATE/DELETE；内容已脱敏）
+/// Audit log (append-only: a DB trigger forbids UPDATE/DELETE; contents are redacted)
+model AuditLog {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  /// 操作人；登录失败等场景为被尝试的账号 / actor; for failed logins the targeted account
+  actorId        String?      @map("actor_id") @db.Uuid
+  /// 例如 lead.create / auth.login_failed / e.g. lead.create, auth.login_failed
+  action         String       @db.VarChar(50)
+  entityType     String       @map("entity_type") @db.VarChar(30)
+  /// 被操作记录 ID（不设外键，记录删除后日志仍保留）/ target id (no FK so logs outlive the record)
+  entityId       String?      @map("entity_id") @db.Uuid
+  /// 脱敏后的变更内容 / redacted change set
+  changes        Json?        @db.JsonB
+  ip             String?      @db.VarChar(64)
+  userAgent      String?      @map("user_agent") @db.VarChar(300)
+  /// 使用 clock_timestamp()：同一事务内多条记录也能按真实写入顺序排序
+  /// clock_timestamp() keeps entries written in one transaction in real order
+  createdAt      DateTime     @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  actor          User?        @relation("AuditActor", fields: [organizationId, actorId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, entityType, entityId, createdAt(sort: Desc)])
+  @@index([organizationId, actorId, createdAt(sort: Desc)])
+  @@map("audit_logs")
 }

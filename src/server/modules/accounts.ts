@@ -4,6 +4,7 @@
  */
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
+import { audit, by, diff, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
@@ -109,8 +110,11 @@ export async function getAccount(ctx: AuthContext, id: string) {
  */
 export async function createAccount(ctx: AuthContext, input: z.infer<typeof accountCreateSchema>) {
   const { ownerId, ...data } = input;
-  const created = await prisma.account.create({
-    data: { ...data, organizationId: ctx.organizationId, ownerId: await resolveOwner(ctx.organizationId, ownerId, ctx.userId) },
+  const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
+  const created = await prisma.$transaction(async (tx) => {
+    const account = await tx.account.create({ data: { ...data, organizationId: ctx.organizationId, ownerId: owner } });
+    await audit(tx, { ...by(ctx), action: 'account.create', entityType: 'account', entityId: account.id, changes: { after: snapshot('account', account) } });
+    return account;
   });
   return getAccount(ctx, created.id);
 }
@@ -122,9 +126,13 @@ export async function createAccount(ctx: AuthContext, input: z.infer<typeof acco
 export async function updateAccount(ctx: AuthContext, id: string, input: z.infer<typeof accountUpdateSchema>) {
   const current = await getAccount(ctx, id);
   const { ownerId, ...data } = input;
-  await prisma.account.update({
-    where: { id: current.id },
-    data: { ...data, ownerId: await resolveOwner(ctx.organizationId, ownerId, current.ownerId) },
+  const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
+  await prisma.$transaction(async (tx) => {
+    const updated = await tx.account.update({ where: { id: current.id }, data: { ...data, ownerId: owner } });
+    const fields = diff('account', current, updated);
+    if (Object.keys(fields).length) {
+      await audit(tx, { ...by(ctx), action: 'account.update', entityType: 'account', entityId: id, changes: { fields } });
+    }
   });
   return getAccount(ctx, id);
 }
@@ -143,6 +151,14 @@ export async function deleteAccount(ctx: AuthContext, id: string): Promise<void>
   await prisma.$transaction(async (tx) => {
     await detachSharedActivities(tx, ctx.organizationId, 'accountId', account.id);
     await tx.account.delete({ where: { id: account.id } });
+    await audit(tx, {
+      ...by(ctx),
+      action: 'account.delete',
+      entityType: 'account',
+      entityId: account.id,
+      // 联系人随客户级联删除，记录数量 / contacts cascade with the account; record how many
+      changes: { before: snapshot('account', account), cascadedContacts: account._count.contacts },
+    });
   });
 }
 
@@ -175,7 +191,9 @@ export async function createContact(ctx: AuthContext, accountId: string, input: 
     if (input.isPrimary) {
       await tx.contact.updateMany({ where: { organizationId: ctx.organizationId, accountId }, data: { isPrimary: false } });
     }
-    return tx.contact.create({ data: { ...input, organizationId: ctx.organizationId, accountId } });
+    const contact = await tx.contact.create({ data: { ...input, organizationId: ctx.organizationId, accountId } });
+    await audit(tx, { ...by(ctx), action: 'contact.create', entityType: 'contact', entityId: contact.id, changes: { after: snapshot('contact', contact) } });
+    return contact;
   });
 }
 
@@ -193,7 +211,12 @@ export async function updateContact(ctx: AuthContext, id: string, input: z.infer
         data: { isPrimary: false },
       });
     }
-    return tx.contact.update({ where: { id }, data: input });
+    const updated = await tx.contact.update({ where: { id }, data: input });
+    const fields = diff('contact', contact, updated);
+    if (Object.keys(fields).length) {
+      await audit(tx, { ...by(ctx), action: 'contact.update', entityType: 'contact', entityId: id, changes: { fields } });
+    }
+    return updated;
   });
 }
 
@@ -202,6 +225,10 @@ export async function updateContact(ctx: AuthContext, id: string, input: z.infer
  * Delete a contact.
  */
 export async function deleteContact(ctx: AuthContext, id: string): Promise<void> {
-  const { count } = await prisma.contact.deleteMany({ where: { id, organizationId: ctx.organizationId } });
-  if (count === 0) throw notFound();
+  await prisma.$transaction(async (tx) => {
+    const contact = await tx.contact.findFirst({ where: { id, organizationId: ctx.organizationId } });
+    if (!contact) throw notFound();
+    await tx.contact.delete({ where: { id } });
+    await audit(tx, { ...by(ctx), action: 'contact.delete', entityType: 'contact', entityId: id, changes: { before: snapshot('contact', contact) } });
+  });
 }

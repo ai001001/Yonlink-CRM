@@ -12,6 +12,7 @@ import { t, tEnum, type MessageKey } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
 import { toFormErrors, useOpenFromUrl, useOwners, usePagedList } from '@/lib/hooks';
+import { AuditTrail } from '@/components/AuditTrail';
 import { ConvertLeadModal } from '@/components/ConvertLeadModal';
 import { RelatedActivities } from '@/components/RelatedActivities';
 import type { Ref } from '@/lib/types';
@@ -270,6 +271,10 @@ export default function LeadsPage() {
               {t('accounts.tabActivities')}
             </Typography.Title>
             <RelatedActivities key={detail.convertedAt ?? 'open'} relation={{ leadId: detail.id }} />
+            <Typography.Title level={5} style={{ marginTop: 24 }}>
+              {t('audit.trail')}
+            </Typography.Title>
+            <AuditTrail entityType="lead" entityId={detail.id} version={`${detail.updatedAt}${detail.convertedAt ?? ''}`} />
           </>
         )}
       </Drawer>

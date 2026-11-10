@@ -1,0 +1,19 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/audit/audit.r1-functional.test.ts > audit R1: business writes are recorded > 线索新建/修改/删除：操作人、对象、IP、UA 与变更内容 / lead create/update/delete 506ms
+ ✓ tests/audit/audit.r1-functional.test.ts > audit R1: business writes are recorded > 无实际变化的更新不写日志 / no-op updates are not logged 102ms
+ ✓ tests/audit/audit.r1-functional.test.ts > audit R1: business writes are recorded > 客户、联系人、商机、跟进的增删改都被记录 / accounts, contacts, deals, activities 312ms
+ ✓ tests/audit/audit.r1-functional.test.ts > audit R1: business writes are recorded > 线索转化：转化事件及其创建的客户/联系人/商机均有记录 / conversion and created records 117ms
+ ✓ tests/audit/audit.r1-functional.test.ts > audit R1: auth events > 登录成功、失败（密码错误）与退出均被记录，失败原因不含密码 / login, failed login and logout 154ms
+ ✓ tests/audit/audit.r1-functional.test.ts > audit R1: auth events > 停用账号登录失败原因为 inactive / inactive account reason 87ms
+ ✓ tests/audit/audit.r1-functional.test.ts > audit R1: query API > 按对象、对象 ID、操作、操作人、时间筛选并分页，最新在前 / filters and paging 144ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  23:12:38
+   Duration  3.41s (tests 84%, import 11%, transform 4%, setup 1%)

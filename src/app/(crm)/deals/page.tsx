@@ -8,6 +8,7 @@ import { useCallback, useState } from 'react';
 import { App, Button, Card, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Statistic, Table, Tabs, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
+import { AuditTrail } from '@/components/AuditTrail';
 import { RecordSelect } from '@/components/RecordSelect';
 import { RelatedActivities } from '@/components/RelatedActivities';
 import { t, tEnum } from '@/i18n';
@@ -254,6 +255,7 @@ export default function DealsPage() {
                 ),
               },
               { key: 'activities', label: t('deals.tabActivities'), children: <RelatedActivities relation={{ dealId: detail.id }} /> },
+              { key: 'audit', label: t('audit.trail'), children: <AuditTrail entityType="deal" entityId={detail.id} version={detail.updatedAt} /> },
             ]}
           />
         )}

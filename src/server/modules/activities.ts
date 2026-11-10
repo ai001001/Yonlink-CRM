@@ -5,6 +5,7 @@
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
 import { ActivityType } from '@/generated/prisma/enums';
+import { audit, by, diff, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
@@ -113,14 +114,14 @@ export async function listActivities(ctx: AuthContext, query: z.infer<typeof act
 export async function createActivity(ctx: AuthContext, input: z.infer<typeof activityCreateSchema>) {
   const { ownerId, ...data } = input;
   await assertRelated(ctx, data);
-  return prisma.activity.create({
-    data: {
-      ...data,
-      organizationId: ctx.organizationId,
-      ownerId: await resolveOwner(ctx.organizationId, ownerId, ctx.userId),
-      completedAt: data.completed ? new Date() : null,
-    },
-    include: activityInclude,
+  const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
+  return prisma.$transaction(async (tx) => {
+    const activity = await tx.activity.create({
+      data: { ...data, organizationId: ctx.organizationId, ownerId: owner, completedAt: data.completed ? new Date() : null },
+      include: activityInclude,
+    });
+    await audit(tx, { ...by(ctx), action: 'activity.create', entityType: 'activity', entityId: activity.id, changes: { after: snapshot('activity', activity) } });
+    return activity;
   });
 }
 
@@ -145,10 +146,14 @@ export async function updateActivity(ctx: AuthContext, id: string, input: z.infe
   let completedAt = current.completedAt;
   if (data.completed === true && !current.completed) completedAt = new Date();
   if (data.completed === false) completedAt = null;
-  return prisma.activity.update({
-    where: { id: current.id },
-    data: { ...data, completedAt, ownerId: await resolveOwner(ctx.organizationId, ownerId, current.ownerId) },
-    include: activityInclude,
+  const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
+  return prisma.$transaction(async (tx) => {
+    const activity = await tx.activity.update({ where: { id: current.id }, data: { ...data, completedAt, ownerId: owner }, include: activityInclude });
+    const fields = diff('activity', current, activity);
+    if (Object.keys(fields).length) {
+      await audit(tx, { ...by(ctx), action: 'activity.update', entityType: 'activity', entityId: activity.id, changes: { fields } });
+    }
+    return activity;
   });
 }
 
@@ -157,8 +162,12 @@ export async function updateActivity(ctx: AuthContext, id: string, input: z.infe
  * Delete an activity.
  */
 export async function deleteActivity(ctx: AuthContext, id: string): Promise<void> {
-  const { count } = await prisma.activity.deleteMany({ where: { id, organizationId: ctx.organizationId } });
-  if (count === 0) throw notFound();
+  await prisma.$transaction(async (tx) => {
+    const activity = await tx.activity.findFirst({ where: { id, organizationId: ctx.organizationId } });
+    if (!activity) throw notFound();
+    await tx.activity.delete({ where: { id } });
+    await audit(tx, { ...by(ctx), action: 'activity.delete', entityType: 'activity', entityId: id, changes: { before: snapshot('activity', activity) } });
+  });
 }
 
 type RelationField = 'accountId' | 'leadId' | 'dealId';

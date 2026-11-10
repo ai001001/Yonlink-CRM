@@ -1,0 +1,34 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 transactional consistency > 业务失败不产生审计记录（校验失败、409、404）/ failed operations leave no audit rows 518ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 transactional consistency > 并发转化：只有一条 lead.convert，失败方的创建记录随事务回滚 / concurrent conversion audits only the winner 249ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 transactional consistency > 审计写入失败时业务写入一并回滚 / an audit failure rolls back the business write 130ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 append-only > ORM 与原生 SQL 均无法修改或删除审计记录 / UPDATE and DELETE are rejected 161ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 append-only > API 只提供查询，不提供修改/删除 / the API exposes no write methods 99ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 append-only > 删除业务记录后其审计记录仍保留可查 / logs outlive deleted records 126ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 redaction > 打码规则 / masking rules 88ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 redaction > 邮箱/电话打码，长文本不记原文，密码与令牌从不出现 / PII masked, long text redacted, secrets never stored 220ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 redaction > 不存在的邮箱登录失败不写日志（无所属组织）/ unknown-email failures are not logged 118ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 只能查询本组织审计记录 / logs are organization scoped 128ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 未登录 401 / unauthenticated 85ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"entityType":"user"} → 400 90ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"entityId":"abc"} → 400 85ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"action":"DROP TABLE"} → 400 85ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"action":"lead"} → 400 88ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"actorId":"1"} → 400 93ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"from":"yesterday"} → 400 97ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"to":"2027-01-01"} → 400 86ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"pageSize":"101"} → 400 85ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"q":"x"} → 400 97ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"actor":"00000000-0000-4000-8000-000000000000"} → 400 86ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 数据库复合外键阻止跨组织操作人 / composite FK blocks cross-org actor 92ms
+
+ Test Files  1 passed (1)
+      Tests  22 passed (22)
+   Start at  23:12:42
+   Duration  4.94s (tests 91%, import 6%, transform 2%)

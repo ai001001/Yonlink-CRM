@@ -9,6 +9,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { hash, verify } from '@node-rs/argon2';
 import { prisma } from './db';
+import { audit, requestMeta, type RequestMeta } from './audit';
 import { ApiError } from './errors';
 
 /** 会话有效期 12 小时 / Session lifetime: 12 hours */
@@ -18,6 +19,8 @@ export const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 export interface AuthContext {
   userId: string;
   organizationId: string;
+  /** 请求来源（用于审计）/ request origin (for auditing) */
+  meta?: RequestMeta;
 }
 
 /**
@@ -60,7 +63,7 @@ export function resetLoginLimiter(): void {
  * Verify credentials and create a session.
  * @returns 原始令牌（仅此一次返回）与用户信息 / the raw token (returned once) and the user
  */
-export async function login(email: string, password: string) {
+export async function login(email: string, password: string, meta?: RequestMeta) {
   const key = email.toLowerCase();
   const now = Date.now();
   const entry = failures.get(key);
@@ -74,13 +77,31 @@ export async function login(email: string, password: string) {
   if (!user || !ok || !user.isActive) {
     const next = entry && entry.resetAt > now ? entry.count + 1 : 1;
     failures.set(key, { count: next, resetAt: entry && entry.resetAt > now ? entry.resetAt : now + WINDOW_MS });
+    // 账号存在时记录失败（不存在的邮箱无所属组织，不记录；不记录密码）
+    // log failures for existing accounts only (unknown emails have no organization); never the password
+    if (user) {
+      await prisma.$transaction((tx) =>
+        audit(tx, {
+          organizationId: user.organizationId,
+          actorId: user.id,
+          action: 'auth.login_failed',
+          entityType: 'auth',
+          entityId: user.id,
+          changes: { reason: ok ? 'inactive' : 'bad_password' },
+          meta,
+        }),
+      );
+    }
     throw new ApiError(401, 'INVALID_CREDENTIALS', 'Invalid email or password');
   }
   failures.delete(key);
 
   const token = randomBytes(32).toString('base64url');
-  await prisma.session.create({
-    data: { userId: user.id, tokenHash: hashToken(token), expiresAt: new Date(now + SESSION_TTL_MS) },
+  await prisma.$transaction(async (tx) => {
+    await tx.session.create({
+      data: { userId: user.id, tokenHash: hashToken(token), expiresAt: new Date(now + SESSION_TTL_MS) },
+    });
+    await audit(tx, { organizationId: user.organizationId, actorId: user.id, action: 'auth.login', entityType: 'auth', entityId: user.id, meta });
   });
   return { token, user: { id: user.id, name: user.name, email: user.email, organizationId: user.organizationId } };
 }
@@ -110,7 +131,7 @@ export async function authenticate(req: Request): Promise<AuthContext> {
   if (!session || session.expiresAt.getTime() <= Date.now() || !session.user.isActive) {
     throw new ApiError(401, 'UNAUTHORIZED', 'Session expired');
   }
-  return { userId: session.user.id, organizationId: session.user.organizationId };
+  return { userId: session.user.id, organizationId: session.user.organizationId, meta: requestMeta(req) };
 }
 
 /**
@@ -119,5 +140,21 @@ export async function authenticate(req: Request): Promise<AuthContext> {
  */
 export async function logout(req: Request): Promise<void> {
   const token = bearer(req);
-  if (token) await prisma.session.deleteMany({ where: { tokenHash: hashToken(token) } });
+  if (!token) return;
+  await prisma.$transaction(async (tx) => {
+    const session = await tx.session.findUnique({
+      where: { tokenHash: hashToken(token) },
+      include: { user: { select: { id: true, organizationId: true } } },
+    });
+    if (!session) return;
+    await tx.session.delete({ where: { id: session.id } });
+    await audit(tx, {
+      organizationId: session.user.organizationId,
+      actorId: session.user.id,
+      action: 'auth.logout',
+      entityType: 'auth',
+      entityId: session.user.id,
+      meta: requestMeta(req),
+    });
+  });
 }
