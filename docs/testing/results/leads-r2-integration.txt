@@ -1,0 +1,45 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM/.claude/worktrees/yonlink-crm-mvp-f11420
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+1 migration found in prisma/migrations
+
+
+No pending migrations to apply.
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 缺少姓名 / missing name → 400 424ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 空白姓名 / blank name → 400 105ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 姓名超长 / name too long → 400 109ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 邮箱非法 / bad email → 400 92ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 状态非法 / bad status → 400 100ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 来源非法 / bad source → 400 89ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 负责人非 UUID / owner not uuid → 400 94ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 类型错误 / wrong type → 400 89ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非 JSON 请求体 → 400 / non-JSON body 90ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 姓名恰好 100 字符可保存，首尾空白被去除 / exactly 100 chars accepted, whitespace trimmed 106ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 字段错误按字段返回 / field errors are keyed by field 89ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"page":"0"} → 400 / bad query params 94ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"pageSize":"101"} → 400 / bad query params 89ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"page":"abc"} → 400 / bad query params 96ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"status":"nope"} → 400 / bad query params 87ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"q":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 / bad query params 86ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 超出最后一页返回空列表但 total 正确 / page past the end is empty with correct total 123ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 搜索中的 SQL/LIKE 特殊字符按字面处理 / SQL & LIKE metacharacters are literal 150ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法 id 视为不存在 / malformed id is 404 113ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 删除线索时关联跟进记录级联删除 / deleting a lead cascades its activities 108ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 未登录不可访问 / unauthenticated requests are rejected 93ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 列表与搜索只返回本组织数据 / list and search are organization scoped 115ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 篡改 ID 访问其他组织线索：读/改/删均为 404 且数据不变 / IDOR read/update/delete → 404, data untouched 109ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 不能把负责人设为其他组织用户 / owner from another organization is rejected 106ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 请求体中的 organizationId/id 等字段被拒绝 / organizationId or id in the body is rejected 92ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 数据库复合外键阻止跨组织负责人（纵深防御）/ composite FK blocks cross-org owner at DB level 98ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 search literal wildcards (regression for R2 defect) > 包含 % 的真实名字仍可被搜索到 / names containing % are still found 181ms
+
+ Test Files  1 passed (1)
+      Tests  27 passed (27)
+   Start at  12:50:31
+   Duration  5.17s (tests 93%, import 5%, transform 2%)
+

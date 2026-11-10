@@ -13,3 +13,8 @@ coverage/
 # 本地数据（嵌入式 PostgreSQL 等）/ Local data
 .data/
 *.log
+src/generated/
+/test-results/
+/playwright-report/
+/out/
+next-env.d.ts

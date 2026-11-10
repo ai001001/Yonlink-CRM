@@ -1,0 +1,218 @@
+// 永联CRM MVP 数据模型 / Yonlink-CRM MVP data model
+// 约定 / Conventions:
+//  - 所有业务表带 organization_id，由服务端会话决定 / every business table carries organization_id set by the server session
+//  - UUID 主键、timestamptz(UTC)、金额 Decimal(18,2) / UUID PKs, UTC timestamptz, Decimal(18,2) money
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Organization {
+  id         String     @id @default(uuid()) @db.Uuid
+  name       String     @db.VarChar(200)
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  users      User[]
+  accounts   Account[]
+  contacts   Contact[]
+  leads      Lead[]
+  deals      Deal[]
+  activities Activity[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  email          String       @db.VarChar(254)
+  name           String       @db.VarChar(100)
+  passwordHash   String       @map("password_hash")
+  isActive       Boolean      @default(true) @map("is_active")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sessions       Session[]
+  ownedLeads     Lead[]       @relation("LeadOwner")
+  ownedAccounts  Account[]    @relation("AccountOwner")
+  ownedDeals     Deal[]       @relation("DealOwner")
+  ownedActivities Activity[]  @relation("ActivityOwner")
+
+  // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
+  // composite key so owner FKs cannot point at another organization's user
+  @@unique([organizationId, id])
+  @@unique([email])
+  @@map("users")
+}
+
+/// 服务端会话：只保存令牌的 SHA-256 哈希 / server session: only the SHA-256 hash of the token is stored
+model Session {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  tokenHash  String   @unique @map("token_hash") @db.Char(64)
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  UNQUALIFIED
+  CONVERTED
+
+  @@map("lead_status")
+}
+
+model Lead {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  ownerId        String?      @map("owner_id") @db.Uuid
+  name           String       @db.VarChar(100)
+  company        String?      @db.VarChar(200)
+  title          String?      @db.VarChar(100)
+  phone          String?      @db.VarChar(50)
+  mobile         String?      @db.VarChar(50)
+  email          String?      @db.VarChar(254)
+  source         String?      @db.VarChar(50)
+  status         LeadStatus   @default(NEW)
+  description    String?      @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner          User?        @relation("LeadOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  activities     Activity[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, status])
+  @@map("leads")
+}
+
+model Account {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  ownerId        String?      @map("owner_id") @db.Uuid
+  name           String       @db.VarChar(200)
+  industry       String?      @db.VarChar(50)
+  phone          String?      @db.VarChar(50)
+  website        String?      @db.VarChar(254)
+  address        String?      @db.VarChar(500)
+  description    String?      @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner          User?        @relation("AccountOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  contacts       Contact[]
+  deals          Deal[]
+  activities     Activity[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("accounts")
+}
+
+model Contact {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  accountId      String       @map("account_id") @db.Uuid
+  name           String       @db.VarChar(100)
+  title          String?      @db.VarChar(100)
+  phone          String?      @db.VarChar(50)
+  email          String?      @db.VarChar(254)
+  isPrimary      Boolean      @default(false) @map("is_primary")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // 删除客户时级联删除其联系人 / contacts are deleted with their account
+  account        Account      @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Cascade)
+
+  @@index([organizationId, accountId])
+  @@map("contacts")
+}
+
+enum DealStage {
+  QUALIFICATION
+  NEEDS_ANALYSIS
+  PROPOSAL
+  NEGOTIATION
+  CLOSED_WON
+  CLOSED_LOST
+
+  @@map("deal_stage")
+}
+
+model Deal {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  ownerId        String?      @map("owner_id") @db.Uuid
+  accountId      String       @map("account_id") @db.Uuid
+  name           String       @db.VarChar(200)
+  amount         Decimal      @default(0) @db.Decimal(18, 2)
+  currency       String       @default("CNY") @db.Char(3)
+  stage          DealStage    @default(QUALIFICATION)
+  expectedCloseDate DateTime? @map("expected_close_date") @db.Date
+  description    String?      @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner          User?        @relation("DealOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  // 有商机的客户不能删除 / accounts with deals cannot be deleted
+  account        Account      @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Restrict)
+  activities     Activity[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, accountId])
+  @@index([organizationId, stage])
+  @@map("deals")
+}
+
+enum ActivityType {
+  CALL
+  MEETING
+  VISIT
+  TASK
+
+  @@map("activity_type")
+}
+
+model Activity {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  ownerId        String?      @map("owner_id") @db.Uuid
+  type           ActivityType
+  subject        String       @db.VarChar(200)
+  content        String?      @db.Text
+  dueAt          DateTime?    @map("due_at") @db.Timestamptz(6)
+  completed      Boolean      @default(false)
+  completedAt    DateTime?    @map("completed_at") @db.Timestamptz(6)
+  accountId      String?      @map("account_id") @db.Uuid
+  leadId         String?      @map("lead_id") @db.Uuid
+  dealId         String?      @map("deal_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner          User?        @relation("ActivityOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  // 关联记录删除时跟进记录一并删除 / activities are removed with the related record
+  account        Account?     @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Cascade)
+  lead           Lead?        @relation(fields: [organizationId, leadId], references: [organizationId, id], onDelete: Cascade)
+  deal           Deal?        @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, completed, dueAt])
+  @@index([organizationId, accountId])
+  @@index([organizationId, leadId])
+  @@index([organizationId, dealId])
+  @@map("activities")
+}

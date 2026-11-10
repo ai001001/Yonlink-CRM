@@ -1,0 +1,34 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM/.claude/worktrees/yonlink-crm-mvp-f11420
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+1 migration found in prisma/migrations
+
+
+No pending migrations to apply.
+ ✓ tests/auth/auth.test.ts > auth > 登录成功返回令牌，数据库只存哈希 / login returns a token and only its hash is stored 434ms
+ ✓ tests/auth/auth.test.ts > auth > 错误密码与不存在用户返回相同错误 / wrong password and unknown user look identical 116ms
+ ✓ tests/auth/auth.test.ts > auth > 连续失败触发限流 / repeated failures are rate limited 384ms
+ ✓ tests/auth/auth.test.ts > auth > 停用用户无法登录且现有会话失效 / inactive users cannot sign in and sessions stop working 107ms
+ ✓ tests/auth/auth.test.ts > auth > 过期会话与注销后的会话被拒绝 / expired and logged-out sessions are rejected 110ms
+ ✓ tests/auth/auth.test.ts > auth > 未携带或伪造令牌返回 401 / missing or forged tokens yield 401 18ms
+ ✓ tests/auth/auth.test.ts > auth > 用户列表只返回本组织用户 / user list is organization scoped 109ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 新增线索并持久化全部字段，负责人默认当前用户 / create persists all fields, owner defaults to me 415ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 只填姓名即可创建，默认状态为新线索 / name only is enough, default status NEW 76ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 查看详情 / get detail 119ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 编辑线索：部分更新、清空字段、修改状态 / partial update, clearing fields, status change 82ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 可将负责人改为本组织其他用户或取消分配 / reassign owner within org or unassign 77ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 删除线索 / delete 87ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 搜索：姓名、公司、邮箱、手机，不区分大小写 / search name, company, email, mobile case-insensitively 141ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 按状态和来源筛选 / filter by status and source 95ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 分页：总数、页码、最新优先 / paging: totals, pages, newest first 235ms
+
+ Test Files  2 passed (2)
+      Tests  16 passed (16)
+   Start at  12:49:23
+   Duration  4.99s (tests 86%, import 10%, transform 3%, setup 1%)
+
