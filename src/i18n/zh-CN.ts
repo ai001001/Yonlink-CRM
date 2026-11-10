@@ -180,6 +180,23 @@ export const zhCN = {
   'search.title': '搜索结果',
   'search.for': '“{q}” 的搜索结果',
   'search.none': '没有找到匹配的记录',
+  'convert.action': '转化',
+  'convert.title': '转化线索',
+  'convert.intro': '将线索“{name}”转化为客户、联系人及可选的商机。转化后不可撤销，线索的跟进记录会同时关联到新的客户和商机。',
+  'convert.account': '客户',
+  'convert.newAccount': '新建客户',
+  'convert.existingAccount': '关联已有客户',
+  'convert.accountName': '客户名称',
+  'convert.selectAccount': '选择客户',
+  'convert.contact': '联系人',
+  'convert.contactHint': '将以“{name}”创建联系人（姓名、职位、电话、邮箱取自线索）',
+  'convert.createDeal': '同时创建商机',
+  'convert.submit': '确认转化',
+  'convert.success': '线索已转化',
+  'convert.alreadyConverted': '该线索已转化，不能重复转化',
+  'convert.result': '转化结果',
+  'convert.convertedAt': '转化时间',
+  'convert.statusLocked': '已转化线索的状态不可修改',
 } as const;
 
 export type MessageKey = keyof typeof zhCN;

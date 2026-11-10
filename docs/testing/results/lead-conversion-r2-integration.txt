@@ -1,0 +1,46 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+Applying migration `20261110225252_lead_conversion_trigger_fix`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20261110225252_lead_conversion_trigger_fix/
+    └─ migration.sql
+
+All migrations have been successfully applied.
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 repeat & concurrency > 重复转化 → 409，不产生多余记录 / second conversion is 409 without side effects 570ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 repeat & concurrency > 并发转化同一线索只成功一次，失败方事务完整回滚 / concurrent conversions: one wins, loser fully rolls back 219ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 缺少 account / missing account → 400 且无任何写入 109ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 非法模式 / bad mode → 400 且无任何写入 99ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 已有客户缺 id / existing without id → 400 且无任何写入 105ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 已有客户 id 非 UUID / bad uuid → 400 且无任何写入 106ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 新客户名为空白 / blank name → 400 且无任何写入 101ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 新客户名超长 / name too long → 400 且无任何写入 103ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 商机缺名称 / deal without name → 400 且无任何写入 103ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 商机金额非法 / bad amount → 400 且无任何写入 96ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 商机阶段非法 / bad stage → 400 且无任何写入 92ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 商机日期非法 / bad date → 400 且无任何写入 94ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 未知字段 / unknown field → 400 且无任何写入 95ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 联系人字段注入 / contact injection → 400 且无任何写入 96ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 已有客户不存在 → 400，事务回滚 / unknown existing account → 400, rolled back 111ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 不能通过新建或编辑把状态设为“已转化” / CONVERTED cannot be set via create or update 104ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 已转化线索不能改状态（409）/ converted lead status is locked 131ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 非法线索 id → 404 / malformed or unknown lead id → 404 93ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 relations after conversion > 删除转化出的商机/客户后，线索仍为已转化且链接置空 / deleting results nulls the links 181ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 relations after conversion > 删除已转化线索不影响客户、联系人、商机 / deleting the lead keeps converted records 153ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 organization isolation > 未登录 401 / unauthenticated 92ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 organization isolation > 不能转化其他组织的线索（404，无写入）/ cannot convert another org lead 105ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 organization isolation > 不能把线索转化到其他组织的客户（400）/ cannot convert into another org account 117ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 organization isolation > 转化产生的记录都属于当前组织 / created records belong to the caller org 122ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 organization isolation > 数据库触发器阻止跨组织转化链接 / DB trigger blocks cross-org links 131ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 organization isolation > 数据库 CHECK：已转化必须有转化时间，反之亦然 / DB CHECK keeps status and convertedAt consistent 109ms
+
+ Test Files  1 passed (1)
+      Tests  26 passed (26)
+   Start at  22:52:55
+   Duration  5.59s (tests 91%, import 5%, transform 3%)

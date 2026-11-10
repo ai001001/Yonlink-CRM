@@ -4,11 +4,12 @@
  */
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
-import { LeadStatus } from '@/generated/prisma/enums';
+import { DealStage, LeadStatus } from '@/generated/prisma/enums';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
-import { notFound } from '../errors';
+import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
+import { amountSchema, CURRENCIES, dateOnly } from './deals';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
 /** 线索来源（固定字典，前端用 i18n 显示）/ Lead sources (fixed dictionary, displayed via i18n) */
@@ -22,7 +23,8 @@ const fields = {
   mobile: optionalText(50),
   email: optionalEmail,
   source: z.enum(LEAD_SOURCES).nullish().transform((v) => v ?? null),
-  status: z.enum(LeadStatus).default(LeadStatus.NEW),
+  // “已转化”只能经转化流程设置 / CONVERTED can only be set by the conversion flow
+  status: z.enum(LeadStatus).exclude([LeadStatus.CONVERTED]).default(LeadStatus.NEW),
   description: optionalText(5000),
   ownerId: optionalUuid.optional(),
 };
@@ -30,7 +32,7 @@ const fields = {
 /** 新建线索输入 / Create input */
 export const leadCreateSchema = z.strictObject(fields);
 /** 更新线索输入（部分字段）/ Update input (partial) */
-export const leadUpdateSchema = z.strictObject({ ...fields, status: z.enum(LeadStatus) }).partial();
+export const leadUpdateSchema = z.strictObject({ ...fields, status: z.enum(LeadStatus).exclude([LeadStatus.CONVERTED]) }).partial();
 /** 列表查询 / List query */
 export const leadListSchema = listQuery.extend({
   status: z.enum(LeadStatus).optional(),
@@ -38,7 +40,12 @@ export const leadListSchema = listQuery.extend({
   ownerId: z.uuid().optional(),
 });
 
-const include = { owner: { select: { id: true, name: true } } } satisfies Prisma.LeadInclude;
+const include = {
+  owner: { select: { id: true, name: true } },
+  convertedAccount: { select: { id: true, name: true } },
+  convertedContact: { select: { id: true, name: true } },
+  convertedDeal: { select: { id: true, name: true } },
+} satisfies Prisma.LeadInclude;
 
 /**
  * 分页搜索线索。
@@ -97,6 +104,9 @@ export async function createLead(ctx: AuthContext, input: z.infer<typeof leadCre
 export async function updateLead(ctx: AuthContext, id: string, input: z.infer<typeof leadUpdateSchema>) {
   const current = await getLead(ctx, id);
   const { ownerId, ...data } = input;
+  if (current.convertedAt && data.status !== undefined) {
+    throw new ApiError(409, 'CONFLICT', 'Lead already converted', { status: ['Converted leads keep their status'] });
+  }
   return prisma.lead.update({
     where: { id: current.id },
     data: { ...data, ownerId: await resolveOwner(ctx.organizationId, ownerId, current.ownerId) },
@@ -113,5 +123,100 @@ export async function deleteLead(ctx: AuthContext, id: string): Promise<void> {
     await detachSharedActivities(tx, ctx.organizationId, 'leadId', id);
     const { count } = await tx.lead.deleteMany({ where: { id, organizationId: ctx.organizationId } });
     if (count === 0) throw notFound();
+  });
+}
+
+/** 线索转化输入 / Lead conversion input */
+export const leadConvertSchema = z.strictObject({
+  /** 新建客户（默认名称取公司名或姓名）或关联已有客户 / new account (defaults to company or name) or an existing one */
+  account: z.discriminatedUnion('mode', [
+    z.strictObject({ mode: z.literal('new'), name: requiredText(200).optional() }),
+    z.strictObject({ mode: z.literal('existing'), accountId: z.uuid() }),
+  ]),
+  /** 可选：同时创建商机 / optional deal created with the conversion */
+  deal: z
+    .strictObject({
+      name: requiredText(200),
+      amount: amountSchema.default('0'),
+      currency: z.enum(CURRENCIES).default('CNY'),
+      stage: z.enum(DealStage).default(DealStage.QUALIFICATION),
+      expectedCloseDate: dateOnly
+        .nullish()
+        .transform((v) => (v ? new Date(`${v}T00:00:00Z`) : null)),
+    })
+    .nullish()
+    .transform((v) => v ?? null),
+});
+
+/**
+ * 线索转化：在同一事务中创建/关联客户、创建联系人、可选创建商机，迁移跟进记录，并把线索标记为已转化。
+ * 转化不可逆；重复转化返回 409（并发时由条件更新保证只成功一次）。
+ * Convert a lead: in one transaction create or reuse an account, create a contact, optionally a deal,
+ * re-link the lead's activities and mark the lead converted. Irreversible; a second conversion yields 409
+ * (a conditional update guarantees a single winner under concurrency).
+ */
+export async function convertLead(ctx: AuthContext, id: string, input: z.infer<typeof leadConvertSchema>) {
+  const org = ctx.organizationId;
+  const lead = await getLead(ctx, id);
+  if (lead.convertedAt) throw new ApiError(409, 'CONFLICT', 'Lead already converted', { lead: ['Already converted'] });
+  const ownerId = lead.ownerId ?? ctx.userId;
+
+  return prisma.$transaction(async (tx) => {
+    // 客户 / account
+    let account: { id: string; name: string };
+    let isNewAccount = false;
+    if (input.account.mode === 'existing') {
+      const found = await tx.account.findFirst({ where: { id: input.account.accountId, organizationId: org }, select: { id: true, name: true } });
+      if (!found) throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid account', { 'account.accountId': ['Account not found'] });
+      account = found;
+    } else {
+      isNewAccount = true;
+      account = await tx.account.create({
+        data: { organizationId: org, ownerId, name: input.account.name ?? lead.company ?? lead.name, phone: lead.phone },
+        select: { id: true, name: true },
+      });
+    }
+
+    // 联系人：新客户或客户尚无主要联系人时设为主要联系人 / contact: primary for a new account or when none exists
+    const hasPrimary = !isNewAccount && (await tx.contact.count({ where: { organizationId: org, accountId: account.id, isPrimary: true } })) > 0;
+    const contact = await tx.contact.create({
+      data: {
+        organizationId: org,
+        accountId: account.id,
+        name: lead.name,
+        title: lead.title,
+        phone: lead.mobile ?? lead.phone,
+        email: lead.email,
+        isPrimary: !hasPrimary,
+      },
+      select: { id: true, name: true },
+    });
+
+    // 商机（可选）/ optional deal
+    const deal = input.deal
+      ? await tx.deal.create({ data: { ...input.deal, organizationId: org, ownerId, accountId: account.id }, select: { id: true, name: true } })
+      : null;
+
+    // 跟进记录关联到客户与商机（不覆盖已有关联）/ link activities to the account and deal without overwriting
+    await tx.activity.updateMany({ where: { organizationId: org, leadId: lead.id, accountId: null }, data: { accountId: account.id } });
+    if (deal) {
+      await tx.activity.updateMany({ where: { organizationId: org, leadId: lead.id, dealId: null }, data: { dealId: deal.id } });
+    }
+
+    // 条件更新防止并发重复转化 / conditional update prevents concurrent double conversion
+    const { count } = await tx.lead.updateMany({
+      where: { id: lead.id, organizationId: org, convertedAt: null },
+      data: {
+        status: LeadStatus.CONVERTED,
+        convertedAt: new Date(),
+        convertedAccountId: account.id,
+        convertedContactId: contact.id,
+        convertedDealId: deal?.id ?? null,
+      },
+    });
+    if (count === 0) throw new ApiError(409, 'CONFLICT', 'Lead already converted', { lead: ['Already converted'] });
+
+    const converted = await tx.lead.findUniqueOrThrow({ where: { id: lead.id }, include });
+    return { lead: converted, account, contact, deal };
   });
 }

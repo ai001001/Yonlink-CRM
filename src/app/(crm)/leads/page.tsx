@@ -6,12 +6,15 @@
 
 import { useCallback, useState } from 'react';
 import { App, Button, Card, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import Link from 'next/link';
+import { PlusOutlined, SwapOutlined } from '@ant-design/icons';
 import { t, tEnum, type MessageKey } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
 import { toFormErrors, useOpenFromUrl, useOwners, usePagedList } from '@/lib/hooks';
+import { ConvertLeadModal } from '@/components/ConvertLeadModal';
 import { RelatedActivities } from '@/components/RelatedActivities';
+import type { Ref } from '@/lib/types';
 
 /** 线索 / Lead */
 interface Lead {
@@ -27,6 +30,10 @@ interface Lead {
   description: string | null;
   ownerId: string | null;
   owner: { id: string; name: string } | null;
+  convertedAt: string | null;
+  convertedAccount: Ref | null;
+  convertedContact: Ref | null;
+  convertedDeal: Ref | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -36,6 +43,8 @@ const SOURCES = ['WEBSITE', 'REFERRAL', 'EXHIBITION', 'COLD_CALL', 'ADVERTISEMEN
 const STATUS_COLOR: Record<string, string> = { NEW: 'blue', CONTACTED: 'cyan', QUALIFIED: 'green', UNQUALIFIED: 'default', CONVERTED: 'purple' };
 
 const statusOptions = STATUSES.map((s) => ({ value: s, label: tEnum('leadStatus', s) }));
+// “已转化”只能通过转化操作设置 / CONVERTED is only set by the conversion action
+const editableStatusOptions = statusOptions.filter((o) => o.value !== 'CONVERTED');
 const sourceOptions = SOURCES.map((s) => ({ value: s, label: tEnum('leadSource', s) }));
 const req = (key: MessageKey) => [{ required: true, whitespace: true, message: t('common.required', { field: t(key) }) }];
 
@@ -51,6 +60,8 @@ export default function LeadsPage() {
   const [editing, setEditing] = useState<Lead | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<Lead | null>(null);
+  const [converting, setConverting] = useState<Lead | null>(null);
+  const editingConverted = editing !== null && editing !== 'new' && editing.convertedAt !== null;
 
   useOpenFromUrl(
     useCallback(
@@ -71,6 +82,7 @@ export default function LeadsPage() {
 
   const save = async () => {
     const values = await form.validateFields();
+    if (editingConverted) delete values.status;
     setSaving(true);
     try {
       const saved =
@@ -138,6 +150,9 @@ export default function LeadsPage() {
                 <Button type="link" size="small" onClick={() => openForm(r)}>
                   {t('common.edit')}
                 </Button>
+                <Button type="link" size="small" disabled={r.convertedAt !== null} onClick={() => setConverting(r)}>
+                  {t('convert.action')}
+                </Button>
                 <Popconfirm title={t('common.confirmDelete')} onConfirm={() => remove(r)}>
                   <Button type="link" size="small" danger>
                     {t('common.delete')}
@@ -191,8 +206,8 @@ export default function LeadsPage() {
             <Form.Item name="source" label={t('leads.source')}>
               <Select allowClear options={sourceOptions} />
             </Form.Item>
-            <Form.Item name="status" label={t('leads.status')}>
-              <Select options={statusOptions} />
+            <Form.Item name="status" label={t('leads.status')} extra={editingConverted ? t('convert.statusLocked') : undefined}>
+              <Select options={editingConverted ? statusOptions : editableStatusOptions} disabled={editingConverted} />
             </Form.Item>
             <Form.Item name="ownerId" label={t('common.owner')}>
               <Select allowClear options={owners.map((u) => ({ value: u.id, label: u.name }))} />
@@ -209,7 +224,18 @@ export default function LeadsPage() {
         size={640}
         open={detail !== null}
         onClose={() => setDetail(null)}
-        extra={detail && <Button onClick={() => openForm(detail)}>{t('common.edit')}</Button>}
+        extra={
+          detail && (
+            <Space>
+              {!detail.convertedAt && (
+                <Button type="primary" icon={<SwapOutlined />} onClick={() => setConverting(detail)}>
+                  {t('convert.action')}
+                </Button>
+              )}
+              <Button onClick={() => openForm(detail)}>{t('common.edit')}</Button>
+            </Space>
+          )
+        }
       >
         {detail && (
           <>
@@ -228,13 +254,35 @@ export default function LeadsPage() {
                 {detail.description}
               </Descriptions.Item>
             </Descriptions>
+            {detail.convertedAt && (
+              <Descriptions column={1} bordered size="small" title={t('convert.result')} style={{ marginTop: 24 }} data-testid="conversion-result">
+                <Descriptions.Item label={t('convert.convertedAt')}>{fmtDateTime(detail.convertedAt)}</Descriptions.Item>
+                <Descriptions.Item label={t('nav.accounts')}>
+                  {detail.convertedAccount && <Link href={`/accounts?id=${detail.convertedAccount.id}`}>{detail.convertedAccount.name}</Link>}
+                </Descriptions.Item>
+                <Descriptions.Item label={t('convert.contact')}>{detail.convertedContact?.name}</Descriptions.Item>
+                <Descriptions.Item label={t('nav.deals')}>
+                  {detail.convertedDeal && <Link href={`/deals?id=${detail.convertedDeal.id}`}>{detail.convertedDeal.name}</Link>}
+                </Descriptions.Item>
+              </Descriptions>
+            )}
             <Typography.Title level={5} style={{ marginTop: 24 }}>
               {t('accounts.tabActivities')}
             </Typography.Title>
-            <RelatedActivities relation={{ leadId: detail.id }} />
+            <RelatedActivities key={detail.convertedAt ?? 'open'} relation={{ leadId: detail.id }} />
           </>
         )}
       </Drawer>
+      <ConvertLeadModal
+        lead={converting}
+        onClose={() => setConverting(null)}
+        onConverted={async () => {
+          const id = converting?.id;
+          setConverting(null);
+          void reload();
+          if (id && detail?.id === id) setDetail(await api<Lead>(`/api/leads/${id}`));
+        }}
+      />
     </Card>
   );
 }
