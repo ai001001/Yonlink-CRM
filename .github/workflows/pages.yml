@@ -1,0 +1,47 @@
+# GitHub Pages 静态前端预览部署（尚未接入真实后端，页面会明确提示）
+# Deploy the static frontend preview to GitHub Pages (no real backend yet; the UI says so)
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 26
+          cache: npm
+      - run: npm ci
+      - run: npm run build:pages
+        env:
+          # 接入后端后改为 0，并设置 NEXT_PUBLIC_API_BASE=https://<后端域名>
+          # set to 0 and NEXT_PUBLIC_API_BASE=https://<api host> once the backend is public
+          NEXT_PUBLIC_STATIC_PREVIEW: '1'
+      - run: touch out/.nojekyll
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
