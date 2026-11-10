@@ -20,7 +20,7 @@ test('线索完整业务流程 / full leads flow', async ({ page }) => {
   await dialog.getByLabel('线索来源').click();
   await page.getByTitle('展会').click();
   await dialog.getByRole('button', { name: /保\s*存/ }).click();
-  await expect(page.getByText('保存成功')).toBeVisible();
+  await expect(page.getByText('保存成功').first()).toBeVisible();
   const row = page.getByRole('row', { name: /E2E 线索甲/ });
   await expect(row).toContainText('展会');
   await expect(row).toContainText('新线索');
@@ -57,7 +57,7 @@ test('线索完整业务流程 / full leads flow', async ({ page }) => {
   await page.getByTitle('已确认').click();
   await dialog.getByRole('button', { name: /保\s*存/ }).click();
   await expect(drawer).toContainText('已确认');
-  await page.keyboard.press('Escape');
+  await drawer.getByRole('button', { name: '关闭' }).first().click();
 
   // 刷新后数据仍在（来自数据库）/ data survives reload (persisted)
   await page.reload();
@@ -66,7 +66,7 @@ test('线索完整业务流程 / full leads flow', async ({ page }) => {
   // 删除 / delete
   await page.getByRole('row', { name: /E2E 线索甲/ }).getByRole('button', { name: /删\s*除/ }).click();
   await page.getByRole('button', { name: /确\s*定|OK/ }).click();
-  await expect(page.getByText('删除成功')).toBeVisible();
+  await expect(page.getByText('删除成功').first()).toBeVisible();
   await expect(page.getByRole('row', { name: /E2E 线索甲/ })).toHaveCount(0);
   await page.reload();
   await expect(page.getByRole('row', { name: /E2E 线索乙/ })).toBeVisible();

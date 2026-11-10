@@ -8,6 +8,7 @@ import { LeadStatus } from '@/generated/prisma/enums';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { notFound } from '../errors';
+import { detachSharedActivities } from './activities';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
 /** 线索来源（固定字典，前端用 i18n 显示）/ Lead sources (fixed dictionary, displayed via i18n) */
@@ -104,10 +105,13 @@ export async function updateLead(ctx: AuthContext, id: string, input: z.infer<ty
 }
 
 /**
- * 删除线索（关联跟进记录随之删除）。
- * Delete a lead (its activities are removed with it).
+ * 删除线索：仅关联该线索的跟进随之删除，共享跟进解除关联后保留。
+ * Delete a lead: lead-only activities are removed, shared ones are unlinked and kept.
  */
 export async function deleteLead(ctx: AuthContext, id: string): Promise<void> {
-  const { count } = await prisma.lead.deleteMany({ where: { id, organizationId: ctx.organizationId } });
-  if (count === 0) throw notFound();
+  await prisma.$transaction(async (tx) => {
+    await detachSharedActivities(tx, ctx.organizationId, 'leadId', id);
+    const { count } = await tx.lead.deleteMany({ where: { id, organizationId: ctx.organizationId } });
+    if (count === 0) throw notFound();
+  });
 }

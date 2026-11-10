@@ -8,6 +8,7 @@ import { DealStage } from '@/generated/prisma/enums';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
+import { detachSharedActivities } from './activities';
 import { containsText, listQuery, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
 /** 支持的币种 / Supported currencies */
@@ -145,10 +146,13 @@ export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<ty
 }
 
 /**
- * 删除商机（关联跟进记录级联删除）。
- * Delete a deal (its activities cascade).
+ * 删除商机：仅关联该商机的跟进随之删除，共享跟进解除关联后保留。
+ * Delete a deal: deal-only activities are removed, shared ones are unlinked and kept.
  */
 export async function deleteDeal(ctx: AuthContext, id: string): Promise<void> {
-  const { count } = await prisma.deal.deleteMany({ where: { id, organizationId: ctx.organizationId } });
-  if (count === 0) throw notFound();
+  await prisma.$transaction(async (tx) => {
+    await detachSharedActivities(tx, ctx.organizationId, 'dealId', id);
+    const { count } = await tx.deal.deleteMany({ where: { id, organizationId: ctx.organizationId } });
+    if (count === 0) throw notFound();
+  });
 }

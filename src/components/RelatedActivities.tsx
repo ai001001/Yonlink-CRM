@@ -1,11 +1,11 @@
 /**
- * 详情页中的跟进记录列表（客户/线索/商机）。
- * Activity timeline shown inside account / lead / deal details.
+ * 详情页中的跟进记录时间线（客户/线索/商机）：新增、编辑、完成、删除。
+ * Activity timeline inside account / lead / deal details: create, edit, complete, delete.
  */
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { App, Button, Empty, List, Space, Tag, Typography } from 'antd';
+import { App, Button, Checkbox, Empty, List, Popconfirm, Space, Tag, Typography } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { t, tEnum } from '@/i18n';
 import { api, qs } from '@/lib/api';
@@ -13,13 +13,21 @@ import { fmtDateTime } from '@/lib/format';
 import type { Activity, ActivityRelation } from '@/lib/types';
 import { ActivityFormModal } from './ActivityFormModal';
 
-const TYPE_COLOR: Record<string, string> = { CALL: 'blue', MEETING: 'purple', VISIT: 'orange', TASK: 'cyan' };
+export const ACTIVITY_TYPE_COLOR: Record<string, string> = { CALL: 'blue', MEETING: 'purple', VISIT: 'orange', TASK: 'cyan' };
+
+/**
+ * 切换完成状态。
+ * Toggle the completed flag.
+ */
+export async function toggleActivity(a: Activity): Promise<Activity> {
+  return api<Activity>(`/api/activities/${a.id}`, { method: 'PATCH', body: { completed: !a.completed } });
+}
 
 export function RelatedActivities({ relation }: { relation: ActivityRelation }) {
   const { message } = App.useApp();
   const [items, setItems] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [modal, setModal] = useState<{ editing: Activity | null } | null>(null);
   const key = JSON.stringify(relation);
 
   const load = useCallback(async () => {
@@ -39,24 +47,48 @@ export function RelatedActivities({ relation }: { relation: ActivityRelation }) 
     void load();
   }, [load]);
 
+  const run = async (fn: () => Promise<unknown>, ok?: string) => {
+    try {
+      await fn();
+      if (ok) message.success(ok);
+      void load();
+    } catch (err) {
+      message.error((err as Error).message);
+    }
+  };
+
   return (
     <div data-testid="related-activities">
-      <Space style={{ marginBottom: 12 }}>
-        <Button icon={<PlusOutlined />} onClick={() => setOpen(true)}>
-          {t('activities.new')}
-        </Button>
-      </Space>
+      <Button icon={<PlusOutlined />} onClick={() => setModal({ editing: null })} style={{ marginBottom: 12 }}>
+        {t('activities.new')}
+      </Button>
       <List
         loading={loading}
         dataSource={items}
         locale={{ emptyText: <Empty description={t('common.empty')} /> }}
         renderItem={(a) => (
-          <List.Item>
+          <List.Item
+            actions={[
+              <Button key="edit" type="link" size="small" onClick={() => setModal({ editing: a })}>
+                {t('common.edit')}
+              </Button>,
+              <Popconfirm
+                key="del"
+                title={t('common.confirmDelete')}
+                onConfirm={() => run(() => api(`/api/activities/${a.id}`, { method: 'DELETE' }), t('common.deleted'))}
+              >
+                <Button type="link" size="small" danger>
+                  {t('common.delete')}
+                </Button>
+              </Popconfirm>,
+            ]}
+          >
             <List.Item.Meta
+              avatar={<Checkbox checked={a.completed} aria-label={t('activities.markDone')} onChange={() => run(() => toggleActivity(a))} />}
               title={
                 <Space>
-                  <Tag color={TYPE_COLOR[a.type]}>{tEnum('activityType', a.type)}</Tag>
-                  <span>{a.subject}</span>
+                  <Tag color={ACTIVITY_TYPE_COLOR[a.type]}>{tEnum('activityType', a.type)}</Tag>
+                  <span style={a.completed ? { textDecoration: 'line-through', color: '#8c8c8c' } : undefined}>{a.subject}</span>
                   {a.completed ? <Tag color="green">{t('activities.completed')}</Tag> : <Tag>{t('activities.pending')}</Tag>}
                 </Space>
               }
@@ -74,11 +106,12 @@ export function RelatedActivities({ relation }: { relation: ActivityRelation }) 
         )}
       />
       <ActivityFormModal
-        open={open}
-        relation={relation}
-        onClose={() => setOpen(false)}
+        open={modal !== null}
+        editing={modal?.editing}
+        relation={modal?.editing ? undefined : relation}
+        onClose={() => setModal(null)}
         onSaved={() => {
-          setOpen(false);
+          setModal(null);
           void load();
         }}
       />

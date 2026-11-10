@@ -1,0 +1,323 @@
+# Round 3 regression: activities — 2026-11-10T15:51:06Z — commit a2e2d2d
+===== [lint] npm run lint =====
+
+> yonlink-crm@0.1.0 lint
+> eslint .
+
+===== [lint] exit=0 duration=5s =====
+
+===== [typecheck] npm run typecheck =====
+
+> yonlink-crm@0.1.0 typecheck
+> prisma generate && tsc --noEmit
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+
+✔ Generated Prisma Client (7.10.1) to ./src/generated/prisma in 263ms
+
+===== [typecheck] exit=0 duration=10s =====
+
+===== [unit-integration] npx vitest run --reporter=verbose =====
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM/.claude/worktrees/yonlink-crm-mvp-f11420
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+1 migration found in prisma/migrations
+
+
+No pending migrations to apply.
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 relations > 必须关联客户 / account is required 462ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 relations > 关联不存在的客户 → 400 / unknown account → 400 126ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 relations > 有商机时客户不可删，删商机后可删 / account deletable only after its deals are gone 195ms
+(node:1056245) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 relations > 删除商机级联删除其跟进记录，但不影响客户跟进 / deleting a deal cascades its activities only 169ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 负数 / negative → 400 119ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 三位小数 / 3 decimals → 400 112ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 17 位整数 / 17 integer digits → 400 116ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 非数字 / not numeric → 400 112ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 科学计数 / scientific → 400 109ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 空串 / empty → 400 105ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 浮点误差数字 / float artefact → 400 101ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 负数字 / negative number → 400 103ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 金额上限 9999999999999999.99 与 0 可保存 / max and zero amounts accepted 128ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 数据库 CHECK 拒绝负金额（纵深防御）/ DB CHECK rejects negative amounts 120ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法日期 2027-02-30 → 400 125ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法日期 2027-13-01 → 400 110ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法日期 2027/01/01 → 400 103ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法日期 2027-1-1 → 400 102ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法日期 tomorrow → 400 102ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 闰日有效 / leap day accepted 119ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法字段 {"stage":"WON"} → 400 120ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法字段 {"currency":"GBP"} → 400 99ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法字段 {"name":""} → 400 104ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法字段 {"name":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 104ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法字段 {"organizationId":"00000000-0000-4000-8000-000000000000"} → 400 110ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 更新时不允许把必填字段清空 / required fields cannot be cleared on update 129ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 organization isolation > 不能把商机挂到其他组织客户（新建/更新）/ cannot attach to another org account 119ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 organization isolation > 跨组织读/改/删商机 → 404 / IDOR on deals 122ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 organization isolation > 列表、搜索、金额合计只统计本组织 / list, search and totals are scoped 173ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 organization isolation > 不能为其他组织商机建跟进 / cannot attach activity to another org deal 118ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 organization isolation > 数据库复合外键阻止跨组织客户 / composite FK blocks cross-org account 112ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 relations > 关联不存在的 accountId → 400 452ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 relations > 关联不存在的 leadId → 400 113ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 relations > 关联不存在的 dealId → 400 103ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 relations > 多个关联同时非法时返回全部字段错误 / reports every bad relation 114ms
+(node:1056478) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 relations > 删除线索只级联仅关联该线索的跟进 / lead deletion cascades lead-only activities 216ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 relations > 删除线索/商机时，同时关联其他对象的跟进保留并解除该关联 / shared activities survive deletion and are unlinked 208ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 relations > 不关联任何对象的独立任务允许保存 / standalone task without relations is allowed 113ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 relations > 数据库 CHECK 保证完成状态与完成时间一致 / DB CHECK keeps completed and completedAt consistent 116ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"subject":"x"} → 400 93ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"EMAIL","subject":"x"} → 400 95ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL"} → 400 92ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL","subject":" "} → 400 92ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL","subject":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 96ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL","subject":"x","content":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 91ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL","subject":"x","dueAt":"2027-01-01"} → 400 87ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL","subject":"x","dueAt":"2027-01-01T10:00:00"} → 400 88ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL","subject":"x","dueAt":"not-a-date"} → 400 94ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL","subject":"x","completed":"yes"} → 400 87ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL","subject":"x","completedAt":"2027-01-01T00:00:00Z"} → 400 88ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL","subject":"x","organizationId":"00000000-0000-4000-8000-000000000000"} → 400 84ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 主题 200 字、内容 10000 字边界可保存 / length boundaries accepted 91ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 更新时不可清空类型/主题 / type and subject cannot be cleared 98ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法查询 {"type":"X"} → 400 83ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法查询 {"completed":"1"} → 400 84ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法查询 {"sort":"subject"} → 400 83ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法查询 {"dealId":"abc"} → 400 82ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 organization isolation > 列表与筛选只含本组织 / list scoped 162ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 organization isolation > 跨组织读/改/删跟进 → 404 且数据不变 / IDOR on activities 173ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 organization isolation > 不能通过更新把跟进挂到其他组织的客户/线索/商机 / cannot relink to another org on update 157ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 organization isolation > 不能把负责人设为其他组织用户 / owner from another org rejected 105ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 organization isolation > 数据库复合外键阻止跨组织关联 / composite FKs block cross-org links 114ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 relations & constraints > 存在商机的客户不能删除（409），客户与商机均保留 / account with deals cannot be deleted 680ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 relations & constraints > 数据库 RESTRICT 外键兜底（绕过服务层直接删除）/ DB RESTRICT FK backs it up 151ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 relations & constraints > 列表 _count 正确反映联系人与商机数 / list counts contacts and deals 152ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 relations & constraints > 联系人必须挂在已存在的客户下 / contacts require an existing account 93ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 relations & constraints > 跟进记录引用不存在的客户 → 400 / activity with unknown account → 400 93ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {} → 400 96ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {"name":""} → 400 90ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {"name":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 92ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {"name":"x","industry":"SPACE"} → 400 105ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {"name":"x","address":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 98ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {"name":"x","organizationId":"00000000-0000-4000-8000-000000000000"} → 400 92ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {"name":"x","_count":{"deals":0}} → 400 96ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法联系人输入 {} → 400 102ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法联系人输入 {"name":"  "} → 400 104ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法联系人输入 {"name":"x","email":"bad@"} → 400 103ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法联系人输入 {"name":"x","isPrimary":"yes"} → 400 94ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法联系人输入 {"name":"x","accountId":"00000000-0000-4000-8000-000000000000"} → 400 90ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 联系人不能通过更新改挂到其他客户 / a contact cannot be moved by update 107ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 客户名称 200 字符边界 / 200-char name boundary 94ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法查询 {"industry":"nope"} → 400 83ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法查询 {"pageSize":"0"} → 400 85ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法查询 {"ownerId":"x"} → 400 85ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 列表、搜索只含本组织 / list and search scoped 130ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 跨组织读/改/删客户 → 404 且数据不变 / IDOR on accounts 124ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 跨组织读/建联系人 → 404 / IDOR on account contacts 109ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 跨组织改/删联系人 → 404 / IDOR on contacts 124ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 设置主要联系人不影响其他组织 / setting primary does not touch other orgs 130ms
+(node:1056685) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 不能为其他组织客户创建跟进记录 / cannot attach activity to another org account 128ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 数据库复合外键阻止跨组织联系人 / composite FK blocks cross-org contact 109ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 缺少姓名 / missing name → 400 448ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 空白姓名 / blank name → 400 121ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 姓名超长 / name too long → 400 98ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 邮箱非法 / bad email → 400 95ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 状态非法 / bad status → 400 101ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 来源非法 / bad source → 400 99ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 负责人非 UUID / owner not uuid → 400 98ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 类型错误 / wrong type → 400 100ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非 JSON 请求体 → 400 / non-JSON body 91ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 姓名恰好 100 字符可保存，首尾空白被去除 / exactly 100 chars accepted, whitespace trimmed 114ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 字段错误按字段返回 / field errors are keyed by field 87ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"page":"0"} → 400 / bad query params 104ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"pageSize":"101"} → 400 / bad query params 88ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"page":"abc"} → 400 / bad query params 101ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"status":"nope"} → 400 / bad query params 100ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"q":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 / bad query params 86ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 超出最后一页返回空列表但 total 正确 / page past the end is empty with correct total 119ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 搜索中的 SQL/LIKE 特殊字符按字面处理 / SQL & LIKE metacharacters are literal 161ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法 id 视为不存在 / malformed id is 404 115ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 删除线索时关联跟进记录级联删除 / deleting a lead cascades its activities 123ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 未登录不可访问 / unauthenticated requests are rejected 100ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 列表与搜索只返回本组织数据 / list and search are organization scoped 108ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 篡改 ID 访问其他组织线索：读/改/删均为 404 且数据不变 / IDOR read/update/delete → 404, data untouched 116ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 不能把负责人设为其他组织用户 / owner from another organization is rejected 106ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 请求体中的 organizationId/id 等字段被拒绝 / organizationId or id in the body is rejected 91ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 数据库复合外键阻止跨组织负责人（纵深防御）/ composite FK blocks cross-org owner at DB level 100ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 search literal wildcards (regression for R2 defect) > 包含 % 的真实名字仍可被搜索到 / names containing % are still found 162ms
+(node:1057077) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 新增 CALL（电话记录）/ create each type 512ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 新增 MEETING（会议记录）/ create each type 119ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 新增 VISIT（客户拜访记录）/ create each type 106ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 新增 TASK（任务）/ create each type 127ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 同时关联客户、线索和商机，并返回关联名称 / link account, lead and deal together 146ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 任务带截止时间（UTC 保存）/ task with due time stored as UTC 87ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 完成状态：标记完成记录时间，重新打开清空时间 / complete sets completedAt, reopen clears it 156ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 新建即完成（电话记录）/ create already completed 90ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 编辑：只改主题不影响截止时间与关联；可清除关联 / partial update keeps other fields; relations can be cleared 134ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 详情与删除 / detail and delete 107ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 按类型、完成状态筛选，按主题/内容搜索 / filter by type and status, search subject/content 144ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 按截止时间排序：最早在前，无截止时间排最后 / sort by due date, nulls last 112ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 新增商机：金额、阶段、预计成交日期、关联客户 / create with amount, stage, close date, account 494ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 默认值：金额 0、阶段资格确认、币种 CNY / defaults 107ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 金额可用数字提交，精确保存两位小数 / numeric amounts keep exact cents 86ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 查看详情 / get detail 83ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 编辑商机：推进阶段、改金额、改日期、改关联客户 / update stage, amount, date, account 134ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 删除商机 / delete 107ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 搜索商机名称与客户名称、按阶段与客户筛选 / search name & account name, filter stage & account 148ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 列表返回筛选范围内按币种的金额合计（十进制精确）/ list returns exact per-currency totals 139ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 分页 / pagination 125ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 新增客户保存全部基本资料 / create saves the full profile 438ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 客户详情包含联系人 / detail includes contacts 107ms
+(node:1057291) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 编辑客户 / update account 110ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 删除客户（无商机）并级联删除联系人与跟进 / delete account without deals cascades contacts & activities 118ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 客户搜索：名称、电话、地址、联系人姓名 / search name, phone, address, contact name 140ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 按行业筛选与分页 / filter by industry and paginate 155ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 联系人新增、编辑、删除 / contact create, update, delete 106ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 主要联系人唯一，且排在最前 / only one primary contact, listed first 114ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 客户跟进记录：新增并按客户查询 / account follow-ups: create and list by account 109ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 新增线索并持久化全部字段，负责人默认当前用户 / create persists all fields, owner defaults to me 441ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 只填姓名即可创建，默认状态为新线索 / name only is enough, default status NEW 93ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 查看详情 / get detail 83ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 编辑线索：部分更新、清空字段、修改状态 / partial update, clearing fields, status change 94ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 可将负责人改为本组织其他用户或取消分配 / reassign owner within org or unassign 79ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 删除线索 / delete 104ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 搜索：姓名、公司、邮箱、手机，不区分大小写 / search name, company, email, mobile case-insensitively 126ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 按状态和来源筛选 / filter by status and source 100ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 分页：总数、页码、最新优先 / paging: totals, pages, newest first 264ms
+ ✓ tests/auth/auth.test.ts > auth > 登录成功返回令牌，数据库只存哈希 / login returns a token and only its hash is stored 431ms
+ ✓ tests/auth/auth.test.ts > auth > 错误密码与不存在用户返回相同错误 / wrong password and unknown user look identical 134ms
+ ✓ tests/auth/auth.test.ts > auth > 连续失败触发限流 / repeated failures are rate limited 369ms
+ ✓ tests/auth/auth.test.ts > auth > 停用用户无法登录且现有会话失效 / inactive users cannot sign in and sessions stop working 92ms
+ ✓ tests/auth/auth.test.ts > auth > 过期会话与注销后的会话被拒绝 / expired and logged-out sessions are rejected 107ms
+ ✓ tests/auth/auth.test.ts > auth > 未携带或伪造令牌返回 401 / missing or forged tokens yield 401 15ms
+ ✓ tests/auth/auth.test.ts > auth > 用户列表只返回本组织用户 / user list is organization scoped 99ms
+
+ Test Files  9 passed (9)
+      Tests  164 passed (164)
+   Start at  15:51:22
+   Duration  27.06s (tests 92%, import 7%, transform 1%)
+
+===== [unit-integration] exit=0 duration=28s =====
+
+===== [build-pages] env BUILD_TARGET=pages NEXT_PUBLIC_STATIC_PREVIEW=1 npx next build =====
+▲ Next.js 16.4.6 (Turbopack)
+- Environments: .env
+✓ Running next.config.ts took 52ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 29.4s
+  Running TypeScript ...
+  Finished TypeScript in 12.7s ...
+  Collecting page data using 1 worker ...
+  Generating static pages using 1 worker (0/8) ...
+  Generating static pages using 1 worker (2/8) 
+  Generating static pages using 1 worker (4/8) 
+  Generating static pages using 1 worker (6/8) 
+✓ Generating static pages using 1 worker (8/8) in 2.7s
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /accounts
+├ ○ /activities
+├ ○ /deals
+├ ○ /leads
+└ ○ /login
+
+
+○  (Static)  prerendered as static content
+
+===== [build-pages] exit=0 duration=47s =====
+
+===== [build] npm run build =====
+
+> yonlink-crm@0.1.0 build
+> next build
+
+▲ Next.js 16.4.6 (Turbopack)
+- Environments: .env
+✓ Running next.config.ts took 39ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 26.6s
+  Running TypeScript ...
+  Finished TypeScript in 10.7s ...
+  Collecting page data using 1 worker ...
+  Generating static pages using 1 worker (0/16) ...
+  Generating static pages using 1 worker (4/16) 
+  Generating static pages using 1 worker (8/16) 
+  Generating static pages using 1 worker (12/16) 
+✓ Generating static pages using 1 worker (16/16) in 855ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /accounts
+├ ○ /activities
+├ ƒ /api/accounts
+├ ƒ /api/accounts/[id]
+├ ƒ /api/accounts/[id]/contacts
+├ ƒ /api/activities
+├ ƒ /api/activities/[id]
+├ ƒ /api/auth/login
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/me
+├ ƒ /api/contacts/[id]
+├ ƒ /api/deals
+├ ƒ /api/deals/[id]
+├ ƒ /api/leads
+├ ƒ /api/leads/[id]
+├ ƒ /api/users
+├ ○ /deals
+├ ○ /leads
+└ ○ /login
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+===== [build] exit=0 duration=41s =====
+
+===== [e2e] npx playwright test =====
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+1 migration found in prisma/migrations
+
+
+No pending migrations to apply.
+已创建组织与管理员 / created organization and admin: E2E 测试组织 / e2e-admin@yonlink.test
+
+Running 5 tests using 1 worker
+
+[WebServer] (node:1059517) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+[WebServer] (Use `node --trace-deprecation ...` to show where the warning was created)
+  ✓  1 e2e/accounts.spec.ts:10:1 › 客户完整业务流程 / full accounts flow (15.2s)
+  ✓  2 e2e/activities.spec.ts:10:1 › 跟进管理完整业务流程 / full activities flow (18.6s)
+  ✓  3 e2e/deals.spec.ts:10:1 › 商机完整业务流程 / full deals flow (18.2s)
+  ✓  4 e2e/leads.spec.ts:8:1 › 线索完整业务流程 / full leads flow (15.9s)
+  ✓  5 e2e/leads.spec.ts:76:1 › 未登录访问业务页跳转登录 / unauthenticated access redirects to login (2.2s)
+
+  5 passed (1.3m)
+===== [e2e] exit=0 duration=76s =====
+
+RESULT: PASS

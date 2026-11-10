@@ -7,6 +7,7 @@ import type { Prisma } from '@/generated/prisma/client';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
+import { detachSharedActivities } from './activities';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
 /** 行业字典 / Industry dictionary */
@@ -129,8 +130,8 @@ export async function updateAccount(ctx: AuthContext, id: string, input: z.infer
 }
 
 /**
- * 删除客户：联系人与跟进记录级联删除；存在商机时拒绝（409）。
- * Delete an account: contacts and activities cascade; refused with 409 while deals exist.
+ * 删除客户：联系人与仅关联该客户的跟进级联删除，共享跟进解除关联后保留；存在商机时拒绝（409）。
+ * Delete an account: contacts and account-only activities cascade, shared ones are kept unlinked; 409 while deals exist.
  */
 export async function deleteAccount(ctx: AuthContext, id: string): Promise<void> {
   const account = await getAccount(ctx, id);
@@ -139,7 +140,10 @@ export async function deleteAccount(ctx: AuthContext, id: string): Promise<void>
   }
   // 若并发新建了商机，数据库 RESTRICT 外键仍会拒绝（P2003 → 409）
   // a concurrently created deal is still blocked by the RESTRICT FK (P2003 → 409)
-  await prisma.account.delete({ where: { id: account.id } });
+  await prisma.$transaction(async (tx) => {
+    await detachSharedActivities(tx, ctx.organizationId, 'accountId', account.id);
+    await tx.account.delete({ where: { id: account.id } });
+  });
 }
 
 /**

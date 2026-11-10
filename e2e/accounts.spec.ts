@@ -21,7 +21,7 @@ test('客户完整业务流程 / full accounts flow', async ({ page }) => {
   await dialog.getByLabel('电话').fill('0571-12345678');
   await dialog.getByLabel('地址').fill('杭州市滨江区');
   await dialog.getByRole('button', { name: SAVE }).click();
-  await expect(page.getByText('保存成功')).toBeVisible();
+  await expect(page.getByText('保存成功').first()).toBeVisible();
   await expect(page.getByRole('row', { name: /E2E 远望制造/ })).toContainText('制造业');
 
   // 详情 + 联系人 / detail + contacts
@@ -59,7 +59,7 @@ test('客户完整业务流程 / full accounts flow', async ({ page }) => {
   await expect(timeline).toContainText('E2E 上门拜访');
   await expect(timeline).toContainText('客户拜访');
   await expect(timeline).toContainText('确认了二期需求');
-  await page.keyboard.press('Escape');
+  await drawer.getByRole('button', { name: '关闭' }).first().click();
 
   // 按联系人姓名搜索客户 / search by contact name
   await page.getByPlaceholder('搜索客户名称、电话、网站、地址、联系人').fill('欧阳');
@@ -85,6 +85,6 @@ test('客户完整业务流程 / full accounts flow', async ({ page }) => {
   await expect(saved).toBeVisible();
   await saved.getByRole('button', { name: /删\s*除/ }).click();
   await page.getByRole('button', { name: /确\s*定|OK/ }).click();
-  await expect(page.getByText('删除成功')).toBeVisible();
+  await expect(page.getByText('删除成功').first()).toBeVisible();
   await expect(page.getByRole('row', { name: /E2E 远望集团/ })).toHaveCount(0);
 });

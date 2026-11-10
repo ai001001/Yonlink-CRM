@@ -7,7 +7,7 @@ import type { Prisma } from '@/generated/prisma/client';
 import { ActivityType } from '@/generated/prisma/enums';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
-import { ApiError } from '../errors';
+import { ApiError, notFound } from '../errors';
 import { containsText, listQuery, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
 const activityFields = {
@@ -28,6 +28,9 @@ const activityFields = {
 /** 新建跟进记录 / Create activity */
 export const activityCreateSchema = z.strictObject(activityFields);
 
+/** 更新跟进记录 / Update activity */
+export const activityUpdateSchema = z.strictObject({ ...activityFields, completed: z.boolean() }).partial();
+
 /** 跟进记录列表查询 / Activity list query */
 export const activityListSchema = listQuery.extend({
   type: z.enum(ActivityType).optional(),
@@ -36,6 +39,8 @@ export const activityListSchema = listQuery.extend({
   leadId: z.uuid().optional(),
   dealId: z.uuid().optional(),
   ownerId: z.uuid().optional(),
+  /** createdAt：最新优先；dueAt：截止时间升序（无截止时间排后）/ newest first, or due date ascending */
+  sort: z.enum(['createdAt', 'dueAt']).default('createdAt'),
 });
 
 /** 返回时附带的关联信息 / Related data included in responses */
@@ -68,8 +73,8 @@ export async function assertRelated(
 }
 
 /**
- * 分页查询跟进记录：未完成且有截止时间的按截止时间排序，否则最新优先。
- * List activities with pagination, newest first.
+ * 分页查询跟进记录（默认最新优先，可按截止时间排序）。
+ * List activities with pagination (newest first by default, or by due date).
  */
 export async function listActivities(ctx: AuthContext, query: z.infer<typeof activityListSchema>): Promise<Page<unknown>> {
   const where: Prisma.ActivityWhereInput = {
@@ -89,7 +94,10 @@ export async function listActivities(ctx: AuthContext, query: z.infer<typeof act
     prisma.activity.findMany({
       where,
       include: activityInclude,
-      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+      orderBy:
+        query.sort === 'dueAt'
+          ? [{ dueAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'asc' }]
+          : [{ createdAt: 'desc' }, { id: 'asc' }],
       skip: (query.page - 1) * query.pageSize,
       take: query.pageSize,
     }),
@@ -113,5 +121,67 @@ export async function createActivity(ctx: AuthContext, input: z.infer<typeof act
       completedAt: data.completed ? new Date() : null,
     },
     include: activityInclude,
+  });
+}
+
+/**
+ * 跟进记录详情；跨组织返回 404。
+ * Activity detail; cross-organization access yields 404.
+ */
+export async function getActivity(ctx: AuthContext, id: string) {
+  const activity = await prisma.activity.findFirst({ where: { id, organizationId: ctx.organizationId }, include: activityInclude });
+  if (!activity) throw notFound();
+  return activity;
+}
+
+/**
+ * 更新跟进记录；完成状态变化时同步完成时间。
+ * Update an activity; completedAt follows changes of the completed flag.
+ */
+export async function updateActivity(ctx: AuthContext, id: string, input: z.infer<typeof activityUpdateSchema>) {
+  const current = await getActivity(ctx, id);
+  const { ownerId, ...data } = input;
+  await assertRelated(ctx, data);
+  let completedAt = current.completedAt;
+  if (data.completed === true && !current.completed) completedAt = new Date();
+  if (data.completed === false) completedAt = null;
+  return prisma.activity.update({
+    where: { id: current.id },
+    data: { ...data, completedAt, ownerId: await resolveOwner(ctx.organizationId, ownerId, current.ownerId) },
+    include: activityInclude,
+  });
+}
+
+/**
+ * 删除跟进记录。
+ * Delete an activity.
+ */
+export async function deleteActivity(ctx: AuthContext, id: string): Promise<void> {
+  const { count } = await prisma.activity.deleteMany({ where: { id, organizationId: ctx.organizationId } });
+  if (count === 0) throw notFound();
+}
+
+type RelationField = 'accountId' | 'leadId' | 'dealId';
+
+/**
+ * 删除客户/线索/商机前调用：同时关联其他对象的跟进记录只解除该关联而保留，
+ * 其余仅关联该记录的跟进随外键级联删除。
+ * Call before deleting an account / lead / deal: activities that also reference another
+ * record are kept and only unlinked; activities referencing just this record cascade.
+ * @param tx 事务客户端 / transaction client
+ * @param organizationId 当前组织 / current organization
+ * @param field 关联字段 / relation field
+ * @param id 将被删除的记录 / record being deleted
+ */
+export async function detachSharedActivities(
+  tx: Prisma.TransactionClient,
+  organizationId: string,
+  field: RelationField,
+  id: string,
+): Promise<void> {
+  const others = (['accountId', 'leadId', 'dealId'] as const).filter((f) => f !== field);
+  await tx.activity.updateMany({
+    where: { organizationId, [field]: id, OR: others.map((f) => ({ [f]: { not: null } })) },
+    data: { [field]: null },
   });
 }

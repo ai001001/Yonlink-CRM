@@ -15,3 +15,4 @@
 | Leads 线索 | ✅ | ✅ | ✅ | [leads.md](leads.md) |
 | Accounts 客户（含联系人） | ✅ | ✅ | ✅ | [accounts.md](accounts.md) |
 | Deals 商机 | ✅ | ✅ | ✅ | [deals.md](deals.md) |
+| Activities 跟进 | ✅ | ✅ | ✅ | [activities.md](activities.md) |

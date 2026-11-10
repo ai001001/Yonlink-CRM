@@ -1,0 +1,17 @@
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM/.claude/worktrees/yonlink-crm-mvp-f11420
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 新增 CALL（电话记录）/ create each type 499ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 新增 MEETING（会议记录）/ create each type 109ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 新增 VISIT（客户拜访记录）/ create each type 93ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 新增 TASK（任务）/ create each type 115ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 同时关联客户、线索和商机，并返回关联名称 / link account, lead and deal together 169ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 任务带截止时间（UTC 保存）/ task with due time stored as UTC 84ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 完成状态：标记完成记录时间，重新打开清空时间 / complete sets completedAt, reopen clears it 154ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 新建即完成（电话记录）/ create already completed 84ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 编辑：只改主题不影响截止时间与关联；可清除关联 / partial update keeps other fields; relations can be cleared 113ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 详情与删除 / detail and delete 102ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 按类型、完成状态筛选，按主题/内容搜索 / filter by type and status, search subject/content 150ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 按截止时间排序：最早在前，无截止时间排最后 / sort by due date, nulls last 103ms
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  15:47:26
+   Duration  3.80s (tests 87%, import 8%, transform 5%, setup 1%)

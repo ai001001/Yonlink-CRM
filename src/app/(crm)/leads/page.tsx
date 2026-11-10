@@ -5,12 +5,13 @@
 'use client';
 
 import { useState } from 'react';
-import { App, Button, Card, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag } from 'antd';
+import { App, Button, Card, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { t, tEnum, type MessageKey } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
 import { toFormErrors, useOwners, usePagedList } from '@/lib/hooks';
+import { RelatedActivities } from '@/components/RelatedActivities';
 
 /** 线索 / Lead */
 interface Lead {
@@ -216,6 +217,10 @@ export default function LeadsPage() {
                 {detail.description}
               </Descriptions.Item>
             </Descriptions>
+            <Typography.Title level={5} style={{ marginTop: 24 }}>
+              {t('accounts.tabActivities')}
+            </Typography.Title>
+            <RelatedActivities relation={{ leadId: detail.id }} />
           </>
         )}
       </Drawer>
