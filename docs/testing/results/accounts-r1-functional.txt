@@ -1,0 +1,16 @@
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM/.claude/worktrees/yonlink-crm-mvp-f11420
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 新增客户保存全部基本资料 / create saves the full profile 489ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 客户详情包含联系人 / detail includes contacts 109ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 编辑客户 / update account 106ms
+(node:1033012) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 删除客户（无商机）并级联删除联系人与跟进 / delete account without deals cascades contacts & activities 110ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 客户搜索：名称、电话、地址、联系人姓名 / search name, phone, address, contact name 148ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 按行业筛选与分页 / filter by industry and paginate 154ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 联系人新增、编辑、删除 / contact create, update, delete 104ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 主要联系人唯一，且排在最前 / only one primary contact, listed first 114ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 客户跟进记录：新增并按客户查询 / account follow-ups: create and list by account 102ms
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  15:29:26
+   Duration  3.85s (tests 73%, import 13%, transform 12%, setup 1%, worker 1%)

@@ -150,7 +150,7 @@ export default function LeadsPage() {
         // 从详情抽屉打开编辑时须位于抽屉之上 / must stack above the detail drawer
         zIndex={1100}
       >
-        <Form form={form} layout="vertical" initialValues={{ status: 'NEW' }}>
+        <Form form={form} name="lead" layout="vertical" initialValues={{ status: 'NEW' }}>
           <div className="form-row">
             <Form.Item name="name" label={t('leads.name')} rules={req('leads.name')}>
               <Input maxLength={100} />

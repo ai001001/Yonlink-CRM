@@ -1,0 +1,225 @@
+# Round 3 regression: accounts — 2026-11-10T15:32:51Z — commit 70eab81
+===== [lint] npm run lint =====
+
+> yonlink-crm@0.1.0 lint
+> eslint .
+
+===== [lint] exit=0 duration=6s =====
+
+===== [typecheck] npm run typecheck =====
+
+> yonlink-crm@0.1.0 typecheck
+> prisma generate && tsc --noEmit
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+
+✔ Generated Prisma Client (7.10.1) to ./src/generated/prisma in 221ms
+
+===== [typecheck] exit=0 duration=8s =====
+
+===== [unit-integration] npx vitest run --reporter=verbose =====
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM/.claude/worktrees/yonlink-crm-mvp-f11420
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+1 migration found in prisma/migrations
+
+
+No pending migrations to apply.
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 relations & constraints > 存在商机的客户不能删除（409），客户与商机均保留 / account with deals cannot be deleted 524ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 relations & constraints > 数据库 RESTRICT 外键兜底（绕过服务层直接删除）/ DB RESTRICT FK backs it up 161ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 relations & constraints > 列表 _count 正确反映联系人与商机数 / list counts contacts and deals 167ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 relations & constraints > 联系人必须挂在已存在的客户下 / contacts require an existing account 98ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 relations & constraints > 跟进记录引用不存在的客户 → 400 / activity with unknown account → 400 100ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {} → 400 93ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {"name":""} → 400 98ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {"name":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 91ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {"name":"x","industry":"SPACE"} → 400 88ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {"name":"x","address":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 91ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {"name":"x","organizationId":"00000000-0000-4000-8000-000000000000"} → 400 87ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {"name":"x","_count":{"deals":0}} → 400 88ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法联系人输入 {} → 400 100ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法联系人输入 {"name":"  "} → 400 101ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法联系人输入 {"name":"x","email":"bad@"} → 400 100ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法联系人输入 {"name":"x","isPrimary":"yes"} → 400 101ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法联系人输入 {"name":"x","accountId":"00000000-0000-4000-8000-000000000000"} → 400 101ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 联系人不能通过更新改挂到其他客户 / a contact cannot be moved by update 110ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 客户名称 200 字符边界 / 200-char name boundary 97ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法查询 {"industry":"nope"} → 400 85ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法查询 {"pageSize":"0"} → 400 89ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法查询 {"ownerId":"x"} → 400 87ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 列表、搜索只含本组织 / list and search scoped 126ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 跨组织读/改/删客户 → 404 且数据不变 / IDOR on accounts 115ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 跨组织读/建联系人 → 404 / IDOR on account contacts 106ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 跨组织改/删联系人 → 404 / IDOR on contacts 114ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 设置主要联系人不影响其他组织 / setting primary does not touch other orgs 126ms
+(node:1036639) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 不能为其他组织客户创建跟进记录 / cannot attach activity to another org account 127ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 数据库复合外键阻止跨组织联系人 / composite FK blocks cross-org contact 111ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 缺少姓名 / missing name → 400 373ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 空白姓名 / blank name → 400 91ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 姓名超长 / name too long → 400 93ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 邮箱非法 / bad email → 400 95ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 状态非法 / bad status → 400 96ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 来源非法 / bad source → 400 93ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 负责人非 UUID / owner not uuid → 400 93ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 类型错误 / wrong type → 400 97ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非 JSON 请求体 → 400 / non-JSON body 91ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 姓名恰好 100 字符可保存，首尾空白被去除 / exactly 100 chars accepted, whitespace trimmed 107ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 字段错误按字段返回 / field errors are keyed by field 90ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"page":"0"} → 400 / bad query params 96ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"pageSize":"101"} → 400 / bad query params 91ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"page":"abc"} → 400 / bad query params 87ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"status":"nope"} → 400 / bad query params 89ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"q":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 / bad query params 95ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 超出最后一页返回空列表但 total 正确 / page past the end is empty with correct total 126ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 搜索中的 SQL/LIKE 特殊字符按字面处理 / SQL & LIKE metacharacters are literal 160ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法 id 视为不存在 / malformed id is 404 104ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 删除线索时关联跟进记录级联删除 / deleting a lead cascades its activities 114ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 未登录不可访问 / unauthenticated requests are rejected 92ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 列表与搜索只返回本组织数据 / list and search are organization scoped 105ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 篡改 ID 访问其他组织线索：读/改/删均为 404 且数据不变 / IDOR read/update/delete → 404, data untouched 109ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 不能把负责人设为其他组织用户 / owner from another organization is rejected 111ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 请求体中的 organizationId/id 等字段被拒绝 / organizationId or id in the body is rejected 90ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 数据库复合外键阻止跨组织负责人（纵深防御）/ composite FK blocks cross-org owner at DB level 97ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 search literal wildcards (regression for R2 defect) > 包含 % 的真实名字仍可被搜索到 / names containing % are still found 178ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 新增客户保存全部基本资料 / create saves the full profile 453ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 客户详情包含联系人 / detail includes contacts 98ms
+(node:1036745) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 编辑客户 / update account 100ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 删除客户（无商机）并级联删除联系人与跟进 / delete account without deals cascades contacts & activities 102ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 客户搜索：名称、电话、地址、联系人姓名 / search name, phone, address, contact name 139ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 按行业筛选与分页 / filter by industry and paginate 161ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 联系人新增、编辑、删除 / contact create, update, delete 108ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 主要联系人唯一，且排在最前 / only one primary contact, listed first 112ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 客户跟进记录：新增并按客户查询 / account follow-ups: create and list by account 112ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 新增线索并持久化全部字段，负责人默认当前用户 / create persists all fields, owner defaults to me 456ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 只填姓名即可创建，默认状态为新线索 / name only is enough, default status NEW 67ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 查看详情 / get detail 79ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 编辑线索：部分更新、清空字段、修改状态 / partial update, clearing fields, status change 78ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 可将负责人改为本组织其他用户或取消分配 / reassign owner within org or unassign 74ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 删除线索 / delete 81ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 搜索：姓名、公司、邮箱、手机，不区分大小写 / search name, company, email, mobile case-insensitively 124ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 按状态和来源筛选 / filter by status and source 98ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 分页：总数、页码、最新优先 / paging: totals, pages, newest first 235ms
+ ✓ tests/auth/auth.test.ts > auth > 登录成功返回令牌，数据库只存哈希 / login returns a token and only its hash is stored 432ms
+ ✓ tests/auth/auth.test.ts > auth > 错误密码与不存在用户返回相同错误 / wrong password and unknown user look identical 140ms
+ ✓ tests/auth/auth.test.ts > auth > 连续失败触发限流 / repeated failures are rate limited 415ms
+ ✓ tests/auth/auth.test.ts > auth > 停用用户无法登录且现有会话失效 / inactive users cannot sign in and sessions stop working 97ms
+ ✓ tests/auth/auth.test.ts > auth > 过期会话与注销后的会话被拒绝 / expired and logged-out sessions are rejected 99ms
+ ✓ tests/auth/auth.test.ts > auth > 未携带或伪造令牌返回 401 / missing or forged tokens yield 401 16ms
+ ✓ tests/auth/auth.test.ts > auth > 用户列表只返回本组织用户 / user list is organization scoped 111ms
+
+ Test Files  5 passed (5)
+      Tests  81 passed (81)
+   Start at  15:33:06
+   Duration  13.88s (tests 91%, import 7%, transform 1%)
+
+===== [unit-integration] exit=0 duration=15s =====
+
+===== [build-pages] env BUILD_TARGET=pages NEXT_PUBLIC_STATIC_PREVIEW=1 npx next build =====
+▲ Next.js 16.4.6 (Turbopack)
+- Environments: .env
+✓ Running next.config.ts took 54ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 28.9s
+  Running TypeScript ...
+  Finished TypeScript in 11.8s ...
+  Collecting page data using 1 worker ...
+  Generating static pages using 1 worker (0/6) ...
+  Generating static pages using 1 worker (1/6) 
+  Generating static pages using 1 worker (2/6) 
+  Generating static pages using 1 worker (4/6) 
+✓ Generating static pages using 1 worker (6/6) in 878ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /accounts
+├ ○ /leads
+└ ○ /login
+
+
+○  (Static)  prerendered as static content
+
+===== [build-pages] exit=0 duration=45s =====
+
+===== [build] npm run build =====
+
+> yonlink-crm@0.1.0 build
+> next build
+
+▲ Next.js 16.4.6 (Turbopack)
+- Environments: .env
+✓ Running next.config.ts took 34ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 22.8s
+  Running TypeScript ...
+  Finished TypeScript in 9.8s ...
+  Collecting page data using 1 worker ...
+  Generating static pages using 1 worker (0/13) ...
+  Generating static pages using 1 worker (3/13) 
+  Generating static pages using 1 worker (6/13) 
+  Generating static pages using 1 worker (9/13) 
+✓ Generating static pages using 1 worker (13/13) in 689ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /accounts
+├ ƒ /api/accounts
+├ ƒ /api/accounts/[id]
+├ ƒ /api/accounts/[id]/contacts
+├ ƒ /api/activities
+├ ƒ /api/auth/login
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/me
+├ ƒ /api/contacts/[id]
+├ ƒ /api/leads
+├ ƒ /api/leads/[id]
+├ ƒ /api/users
+├ ○ /leads
+└ ○ /login
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+===== [build] exit=0 duration=35s =====
+
+===== [e2e] npx playwright test =====
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+1 migration found in prisma/migrations
+
+
+No pending migrations to apply.
+已创建组织与管理员 / created organization and admin: E2E 测试组织 / e2e-admin@yonlink.test
+
+Running 3 tests using 1 worker
+
+[WebServer] (node:1037949) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+[WebServer] (Use `node --trace-deprecation ...` to show where the warning was created)
+  ✓  1 e2e/accounts.spec.ts:10:1 › 客户完整业务流程 / full accounts flow (14.4s)
+  ✓  2 e2e/leads.spec.ts:8:1 › 线索完整业务流程 / full leads flow (12.4s)
+  ✓  3 e2e/leads.spec.ts:76:1 › 未登录访问业务页跳转登录 / unauthenticated access redirects to login (2.1s)
+
+  3 passed (33.9s)
+===== [e2e] exit=0 duration=35s =====
+
+RESULT: PASS
