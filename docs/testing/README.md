@@ -14,3 +14,4 @@
 | 基础（认证/组织） | ✅ | ✅ | ✅ | 随 Leads 一起执行，见 [leads.md](leads.md) |
 | Leads 线索 | ✅ | ✅ | ✅ | [leads.md](leads.md) |
 | Accounts 客户（含联系人） | ✅ | ✅ | ✅ | [accounts.md](accounts.md) |
+| Deals 商机 | ✅ | ✅ | ✅ | [deals.md](deals.md) |

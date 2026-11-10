@@ -1,0 +1,36 @@
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM/.claude/worktrees/yonlink-crm-mvp-f11420
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 relations > 必须关联客户 / account is required 425ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 relations > 关联不存在的客户 → 400 / unknown account → 400 120ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 relations > 有商机时客户不可删，删商机后可删 / account deletable only after its deals are gone 160ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 relations > 删除商机级联删除其跟进记录，但不影响客户跟进 / deleting a deal cascades its activities only 178ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 负数 / negative → 400 116ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 三位小数 / 3 decimals → 400 105ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 17 位整数 / 17 integer digits → 400 111ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 非数字 / not numeric → 400 104ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 科学计数 / scientific → 400 101ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 空串 / empty → 400 119ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 浮点误差数字 / float artefact → 400 103ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 负数字 / negative number → 400 94ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 金额上限 9999999999999999.99 与 0 可保存 / max and zero amounts accepted 116ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 数据库 CHECK 拒绝负金额（纵深防御）/ DB CHECK rejects negative amounts 115ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法日期 2027-02-30 → 400 116ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法日期 2027-13-01 → 400 108ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法日期 2027/01/01 → 400 102ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法日期 2027-1-1 → 400 106ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法日期 tomorrow → 400 97ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 闰日有效 / leap day accepted 116ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法字段 {"stage":"WON"} → 400 105ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法字段 {"currency":"GBP"} → 400 100ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法字段 {"name":""} → 400 101ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法字段 {"name":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 96ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法字段 {"organizationId":"00000000-0000-4000-8000-000000000000"} → 400 97ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 更新时不允许把必填字段清空 / required fields cannot be cleared on update 133ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 organization isolation > 不能把商机挂到其他组织客户（新建/更新）/ cannot attach to another org account 123ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 organization isolation > 跨组织读/改/删商机 → 404 / IDOR on deals 115ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 organization isolation > 列表、搜索、金额合计只统计本组织 / list, search and totals are scoped 159ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 organization isolation > 不能为其他组织商机建跟进 / cannot attach activity to another org deal 115ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 organization isolation > 数据库复合外键阻止跨组织客户 / composite FK blocks cross-org account 103ms
+ Test Files  1 passed (1)
+      Tests  31 passed (31)
+   Start at  15:38:27
+   Duration  6.03s (tests 93%, import 4%, transform 2%)

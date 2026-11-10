@@ -1,0 +1,14 @@
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM/.claude/worktrees/yonlink-crm-mvp-f11420
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 新增商机：金额、阶段、预计成交日期、关联客户 / create with amount, stage, close date, account 450ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 默认值：金额 0、阶段资格确认、币种 CNY / defaults 127ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 金额可用数字提交，精确保存两位小数 / numeric amounts keep exact cents 74ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 查看详情 / get detail 87ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 编辑商机：推进阶段、改金额、改日期、改关联客户 / update stage, amount, date, account 103ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 删除商机 / delete 94ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 搜索商机名称与客户名称、按阶段与客户筛选 / search name & account name, filter stage & account 188ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 列表返回筛选范围内按币种的金额合计（十进制精确）/ list returns exact per-currency totals 123ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 分页 / pagination 126ms
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  15:37:55
+   Duration  3.48s (tests 80%, import 11%, transform 8%, setup 1%)

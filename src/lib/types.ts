@@ -59,3 +59,20 @@ export interface Account {
 
 /** 跟进记录可固定的关联 / Relation an activity form can be pinned to */
 export type ActivityRelation = { accountId: string } | { leadId: string } | { dealId: string };
+
+/** 商机 / Deal */
+export interface Deal {
+  id: string;
+  name: string;
+  accountId: string;
+  account: Ref;
+  amount: string;
+  currency: string;
+  stage: 'QUALIFICATION' | 'NEEDS_ANALYSIS' | 'PROPOSAL' | 'NEGOTIATION' | 'CLOSED_WON' | 'CLOSED_LOST';
+  expectedCloseDate: string | null;
+  description: string | null;
+  ownerId: string | null;
+  owner: Ref | null;
+  createdAt: string;
+  updatedAt: string;
+}
