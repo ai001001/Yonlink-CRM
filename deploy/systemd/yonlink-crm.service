@@ -1,0 +1,17 @@
+# 永联CRM 后端（Next.js，仅监听 127.0.0.1:3001，由 Caddy 反向代理）
+# Yonlink-CRM backend (Next.js on 127.0.0.1:3001 only, behind Caddy)
+[Unit]
+Description=Yonlink-CRM backend
+After=yonlink-postgres.service
+Requires=yonlink-postgres.service
+
+[Service]
+WorkingDirectory=%h/yonlink-deploy/current
+EnvironmentFile=%h/yonlink-deploy/shared/app.env
+ExecStart=%h/yonlink-deploy/current/node_modules/.bin/next start -p 3001 -H 127.0.0.1
+Restart=always
+RestartSec=5
+MemoryMax=1500M
+
+[Install]
+WantedBy=default.target

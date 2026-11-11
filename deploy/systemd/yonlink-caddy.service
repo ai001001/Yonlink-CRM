@@ -1,0 +1,15 @@
+# 永联CRM HTTPS 入口（Caddy 自动申请并续期 Let's Encrypt 证书）
+# Yonlink-CRM HTTPS entry (Caddy obtains and renews Let's Encrypt certificates)
+# 绑定 80/443 需一次性授权：sudo setcap cap_net_bind_service=+ep ~/yonlink-deploy/bin/caddy
+[Unit]
+Description=Yonlink-CRM Caddy
+After=network-online.target yonlink-crm.service
+
+[Service]
+ExecStart=%h/yonlink-deploy/bin/caddy run --config %h/yonlink-deploy/shared/Caddyfile --adapter caddyfile
+ExecReload=%h/yonlink-deploy/bin/caddy reload --config %h/yonlink-deploy/shared/Caddyfile --adapter caddyfile
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

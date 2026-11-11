@@ -1,0 +1,15 @@
+# 永联CRM PostgreSQL（embedded-postgres，仅监听 127.0.0.1）
+# Yonlink-CRM PostgreSQL (embedded-postgres, listens on 127.0.0.1 only)
+[Unit]
+Description=Yonlink-CRM PostgreSQL
+
+[Service]
+WorkingDirectory=%h/yonlink-deploy/current
+ExecStart=/usr/bin/env node scripts/db.mjs start
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=60
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=default.target

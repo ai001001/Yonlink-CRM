@@ -1,0 +1,19 @@
+# 永联CRM 公网入口 / Yonlink-CRM public entry
+# 域名使用 sslip.io（解析到服务器公网 IP），Caddy 自动 HTTPS
+# The host is an sslip.io name resolving to the server IP; Caddy provides automatic HTTPS
+132-226-98-75.sslip.io {
+	encode gzip
+	request_body {
+		max_size 1MB
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options DENY
+		-Server
+	}
+	# Caddy 默认不信任客户端自带的 X-Forwarded-For，后端拿到的是真实来源 IP
+	# Caddy ignores client-supplied X-Forwarded-For by default, so the backend sees the real client IP
+	reverse_proxy 127.0.0.1:3001
+}
