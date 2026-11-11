@@ -1,0 +1,18 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/rbac/account-deal-count.r2-integration.test.ts > account deal count R2 > 经理改派商机后，销售代表的计数随之增减 / count follows reassignment 585ms
+ ✓ tests/rbac/account-deal-count.r2-integration.test.ts > account deal count R2 > 删除判断使用真实总数：他人负责的商机同样阻止删除，并返回真实数量 / delete guard uses the true total 166ms
+ ✓ tests/rbac/account-deal-count.r2-integration.test.ts > account deal count R2 > 联系人数不受影响（联系人随客户可见）/ contact count is unaffected 147ms
+ ✓ tests/rbac/account-deal-count.r2-integration.test.ts > account deal count R2 > 列表中每个客户的计数都与可见商机一致（多客户）/ every account in the list matches visible deals 202ms
+ ✓ tests/rbac/account-deal-count.r2-integration.test.ts > account deal count R2 > 其他组织的商机不计入 / deals of other organizations are never counted 159ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  14:56:20
+   Duration  3.43s (tests 80%, import 13%, transform 6%, setup 1%)
+

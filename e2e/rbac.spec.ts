@@ -29,6 +29,19 @@ test('演示账号列表与各角色权限 / demo accounts and per-role permissi
   for (const role of ['系统管理员', '销售经理', '销售代表', '只读用户']) await expect(list).toContainText(role);
   await expect(list).toContainText('sales1@demo.yonlink.test');
 
+  // 经理通过 API 在王芳的客户下新增一个由陈静负责的商机（用于验证商机数按可见范围计数）
+  // the manager adds a deal owned by 陈静 under 王芳's account via the API (deal count must follow visibility)
+  const demoUsers = (await (await page.request.get('/api/auth/demo-accounts')).json()).items as { id: string; name: string }[];
+  const idOf = (name: string) => demoUsers.find((u) => u.name === name)!.id;
+  const managerToken = (await (await page.request.post('/api/auth/demo-login', { data: { userId: idOf('郑经理') } })).json()).token;
+  const auth = { Authorization: `Bearer ${managerToken}` };
+  const accountsRes = await (await page.request.get('/api/accounts?q=' + encodeURIComponent('杭州远望'), { headers: auth })).json();
+  const created = await page.request.post('/api/deals', {
+    headers: auth,
+    data: { name: 'E2E 陈静负责的商机', accountId: accountsRes.items[0].id, ownerId: idOf('陈静') },
+  });
+  expect(created.status()).toBe(201);
+
   // 销售代表：只看自己的数据，无删除、无审计/用户管理，负责人锁定 / sales rep
   await demoLogin(page, '王芳');
   await expect(page.getByTestId('current-role')).toHaveText('销售代表');
@@ -48,6 +61,16 @@ test('演示账号列表与各角色权限 / demo accounts and per-role permissi
   await dialog.getByLabel('姓名').fill('E2E 销售自建线索');
   await dialog.getByRole('button', { name: /保\s*存/ }).click();
   await expect(page.getByRole('row', { name: /E2E 销售自建线索/ })).toContainText('王芳');
+  // 客户商机数只统计自己负责的（他人负责的 1 个不计入）/ deal count excludes the deal owned by someone else
+  await nav(page, '客户');
+  const accRow = page.getByRole('row', { name: /【演示】杭州远望制造/ });
+  await expect(accRow.getByRole('cell').nth(4)).toHaveText('1');
+  await accRow.getByRole('button', { name: '【演示】杭州远望制造' }).click();
+  const accDrawer = page.getByRole('dialog', { name: /客户详情/ });
+  await expect(accDrawer.getByRole('tab', { name: '商机 (1)' })).toBeVisible();
+  await accDrawer.getByRole('tab', { name: '商机 (1)' }).click();
+  await expect(accDrawer.getByTestId('account-deals')).not.toContainText('E2E 陈静负责的商机');
+  await accDrawer.getByRole('button', { name: '关闭' }).first().click();
   await nav(page, '商机');
   await expect(page.getByRole('row', { name: /【演示】远望年度采购/ })).toBeVisible();
   await expect(page.getByRole('row', { name: /【演示】锦城仓储系统/ })).toHaveCount(0);
@@ -67,6 +90,8 @@ test('演示账号列表与各角色权限 / demo accounts and per-role permissi
 
   // 销售经理：全部数据 + 删除，无审计与用户管理 / manager
   await demoLogin(page, '郑经理');
+  await nav(page, '客户');
+  await expect(page.getByRole('row', { name: /【演示】杭州远望制造/ }).getByRole('cell').nth(4)).toHaveText('2');
   await nav(page, '线索');
   await expect(page.getByRole('row', { name: /E2E 销售自建线索/ })).toBeVisible();
   await expect(page.getByRole('row', { name: /E2E 销售自建线索/ }).getByRole('button', { name: /删\s*除/ })).toBeVisible();

@@ -1,0 +1,16 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/rbac/account-deal-count.r1-functional.test.ts > account deal count R1 > 销售代表在列表与详情中只统计自己负责的商机 / sales rep counts own deals in list and detail 1140ms
+ ✓ tests/rbac/account-deal-count.r1-functional.test.ts > account deal count R1 > 管理员、经理、只读用户统计全部商机 / read-all roles count every deal 212ms
+ ✓ tests/rbac/account-deal-count.r1-functional.test.ts > account deal count R1 > 计数与该客户的商机列表条数一致 / count matches the account deal list 218ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  14:55:48
+   Duration  3.76s (tests 84%, import 9%, transform 6%, setup 1%)
+

@@ -7,7 +7,7 @@ import type { Prisma } from '@/generated/prisma/client';
 import { audit, by, diff, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
-import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
+import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, can, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
@@ -58,10 +58,17 @@ export const contactCreateSchema = z.strictObject(contactFields);
 /** 更新联系人 / Update contact */
 export const contactUpdateSchema = z.strictObject({ ...contactFields, isPrimary: z.boolean() }).partial();
 
-const listInclude = {
-  owner: { select: { id: true, name: true } },
-  _count: { select: { contacts: true, deals: true } },
-} satisfies Prisma.AccountInclude;
+/**
+ * 客户返回内容；商机数与商机列表遵循相同可见范围（销售代表只统计自己负责的商机）。
+ * Account include; the deal count follows the same visibility as the deals list (sales reps count only their own).
+ */
+function listInclude(ctx: AuthContext) {
+  const dealScope: Prisma.DealWhereInput = can(ctx, 'record.read.all') ? {} : { ownerId: ctx.userId };
+  return {
+    owner: { select: { id: true, name: true } },
+    _count: { select: { contacts: true, deals: { where: dealScope } } },
+  } satisfies Prisma.AccountInclude;
+}
 
 const contactOrder: Prisma.ContactOrderByWithRelationInput[] = [{ isPrimary: 'desc' }, { createdAt: 'asc' }];
 
@@ -78,7 +85,7 @@ export async function listAccounts(ctx: AuthContext, query: z.infer<typeof accou
   const [items, total] = await prisma.$transaction([
     prisma.account.findMany({
       where,
-      include: listInclude,
+      include: listInclude(ctx),
       orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
       skip: (query.page - 1) * query.pageSize,
       take: query.pageSize,
@@ -95,7 +102,7 @@ export async function listAccounts(ctx: AuthContext, query: z.infer<typeof accou
 export async function getAccount(ctx: AuthContext, id: string) {
   const account = await prisma.account.findFirst({
     where: { id, ...visible(ctx) },
-    include: { ...listInclude, contacts: { orderBy: contactOrder } },
+    include: { ...listInclude(ctx), contacts: { orderBy: contactOrder } },
   });
   if (!account) throw notFound();
   return account;
@@ -145,8 +152,10 @@ export async function updateAccount(ctx: AuthContext, id: string, input: z.infer
 export async function deleteAccount(ctx: AuthContext, id: string): Promise<void> {
   assertCanDelete(ctx);
   const account = await getAccount(ctx, id);
-  if (account._count.deals > 0) {
-    throw new ApiError(409, 'CONFLICT', 'Account has deals', { deals: [String(account._count.deals)] });
+  // 删除判断必须用全部商机数，不能用按可见范围过滤后的计数 / use the true total, not the visibility-filtered count
+  const dealTotal = await prisma.deal.count({ where: { organizationId: ctx.organizationId, accountId: account.id } });
+  if (dealTotal > 0) {
+    throw new ApiError(409, 'CONFLICT', 'Account has deals', { deals: [String(dealTotal)] });
   }
   // 若并发新建了商机，数据库 RESTRICT 外键仍会拒绝（P2003 → 409）
   // a concurrently created deal is still blocked by the RESTRICT FK (P2003 → 409)
