@@ -271,6 +271,22 @@ export const zhCN = {
   'deals.columnMore': '还有 {n} 个未显示，可用搜索缩小范围',
   'deals.dragHint': '拖动卡片到其他阶段即可更新销售阶段',
   'deals.emptyColumn': '暂无商机',
+  'bulk.selected': '已选择 {n} 条',
+  'bulk.clear': '取消选择',
+  'bulk.assign': '批量指派负责人',
+  'bulk.status': '批量修改状态',
+  'bulk.stage': '批量修改阶段',
+  'bulk.complete': '批量标记完成',
+  'bulk.reopen': '批量重新打开',
+  'bulk.delete': '批量删除',
+  'bulk.confirmAssign': '确认将选中的 {n} 条记录的负责人改为“{owner}”？',
+  'bulk.confirmValue': '确认将选中的 {n} 条记录改为“{value}”？',
+  'bulk.confirmComplete': '确认将选中的 {n} 条跟进标记为{value}？',
+  'bulk.confirmDelete': '确认删除选中的 {n} 条记录？删除后不可恢复。',
+  'bulk.done': '已处理 {n} 条',
+  'bulk.partial': '成功 {ok} 条，失败 {fail} 条',
+  'bulk.failedTitle': '以下记录未处理',
+  'bulk.unassigned': '未分配',
 } as const;
 
 export type MessageKey = keyof typeof zhCN;

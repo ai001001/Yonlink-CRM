@@ -1,0 +1,21 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/bulk/bulk.r1-functional.test.ts > bulk R1 leads > 批量指派负责人 / assign owner 551ms
+ ✓ tests/bulk/bulk.r1-functional.test.ts > bulk R1 leads > 批量取消分配（ownerId 为 null）/ unassign with null 118ms
+ ✓ tests/bulk/bulk.r1-functional.test.ts > bulk R1 leads > 批量修改状态 / change status 173ms
+ ✓ tests/bulk/bulk.r1-functional.test.ts > bulk R1 leads > 批量删除 / delete 119ms
+ ✓ tests/bulk/bulk.r1-functional.test.ts > bulk R1 leads > 重复 ID 自动去重 / duplicate ids are processed once 97ms
+ ✓ tests/bulk/bulk.r1-functional.test.ts > bulk R1 leads > 每条记录写一条审计 / one audit entry per record 123ms
+ ✓ tests/bulk/bulk.r1-functional.test.ts > bulk R1 accounts, deals, activities > 客户：批量指派与删除 / accounts assign and delete 181ms
+ ✓ tests/bulk/bulk.r1-functional.test.ts > bulk R1 accounts, deals, activities > 商机：批量改阶段、指派、删除 / deals stage, assign, delete 163ms
+ ✓ tests/bulk/bulk.r1-functional.test.ts > bulk R1 accounts, deals, activities > 跟进：批量完成、重新打开、删除 / activities complete, reopen, delete 172ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  22:46:33
+   Duration  3.85s (tests 83%, import 9%, transform 7%)

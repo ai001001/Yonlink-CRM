@@ -41,34 +41,31 @@ function withHeaders(req: Request, res: Response): Response {
 }
 
 /**
+ * 把任意异常转换为业务异常（未知异常记录日志并转为 INTERNAL_ERROR，不泄露内部信息）。
+ * Convert any thrown value into an ApiError (unknown errors are logged and become INTERNAL_ERROR).
+ */
+export function toApiError(err: unknown): ApiError {
+  if (err instanceof ApiError) return err;
+  if (err instanceof z.ZodError) return new ApiError(400, 'VALIDATION_ERROR', 'Invalid input', fieldErrors(err));
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    // P2025：记录不存在 / record missing
+    if (err.code === 'P2025') return notFound();
+    // P2002：唯一约束冲突（如邮箱已存在）/ unique constraint (e.g. email already used)
+    if (err.code === 'P2002') return new ApiError(409, 'CONFLICT', 'Duplicate value');
+    // P2003：外键约束 / FK violation
+    if (err.code === 'P2003') return new ApiError(409, 'CONFLICT', 'Related records prevent this operation');
+  }
+  console.error('[api] unexpected error', err instanceof Error ? err.message : 'unknown');
+  return new ApiError(500, 'INTERNAL_ERROR', 'Internal server error');
+}
+
+/**
  * 生成 JSON 错误响应。
  * Build a JSON error response.
  */
 function errorResponse(err: unknown): Response {
-  if (err instanceof ApiError) {
-    return Response.json(
-      { error: { code: err.code, message: err.message, details: err.details } },
-      { status: err.status },
-    );
-  }
-  if (err instanceof z.ZodError) {
-    return errorResponse(new ApiError(400, 'VALIDATION_ERROR', 'Invalid input', fieldErrors(err)));
-  }
-  if (err instanceof Prisma.PrismaClientKnownRequestError) {
-    // P2025：记录不存在 / record missing；P2003：外键约束 / FK violation
-    if (err.code === 'P2025') return errorResponse(notFound());
-    // P2002：唯一约束冲突（如邮箱已存在）/ unique constraint (e.g. email already used)
-    if (err.code === 'P2002') return errorResponse(new ApiError(409, 'CONFLICT', 'Duplicate value'));
-    if (err.code === 'P2003') {
-      return errorResponse(new ApiError(409, 'CONFLICT', 'Related records prevent this operation'));
-    }
-  }
-  // 不向客户端泄露内部错误 / never leak internals to the client
-  console.error('[api] unexpected error', err instanceof Error ? err.message : 'unknown');
-  return Response.json(
-    { error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } },
-    { status: 500 },
-  );
+  const e = toApiError(err);
+  return Response.json({ error: { code: e.code, message: e.message, details: e.details } }, { status: e.status });
 }
 
 /**

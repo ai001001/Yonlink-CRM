@@ -9,13 +9,14 @@ import { App, Button, Card, Descriptions, Drawer, Form, Input, Modal, Popconfirm
 import { PlusOutlined, StarFilled } from '@ant-design/icons';
 import { AccountDeals } from '@/components/AccountDeals';
 import { usePermissions } from '@/components/AuthProvider';
+import { BulkBar } from '@/components/BulkBar';
 import { AuditTrail } from '@/components/AuditTrail';
 import { ContactsPanel } from '@/components/ContactsPanel';
 import { RelatedActivities } from '@/components/RelatedActivities';
 import { t, tEnum } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
-import { toFormErrors, useOpenFromUrl, useOwners, usePagedList } from '@/lib/hooks';
+import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSelection } from '@/lib/hooks';
 import type { Account } from '@/lib/types';
 
 const INDUSTRIES = ['MANUFACTURING', 'IT', 'FINANCE', 'RETAIL', 'EDUCATION', 'HEALTHCARE', 'CONSTRUCTION', 'LOGISTICS', 'GOVERNMENT', 'OTHER'];
@@ -28,6 +29,7 @@ export default function AccountsPage() {
   const [q, setQ] = useState('');
   const [industry, setIndustry] = useState<string>();
   const { data, loading, reload, pagination } = usePagedList<Account>('/api/accounts', { q, industry });
+  const sel = useSelection(data.items, perm.can('record.update.own') || perm.canDelete);
 
   const [form] = Form.useForm();
   const [editing, setEditing] = useState<Account | 'new' | null>(null);
@@ -101,8 +103,19 @@ export default function AccountsPage() {
         <Input.Search allowClear placeholder={t('accounts.searchPlaceholder')} style={{ width: 320 }} onSearch={setQ} />
         <Select allowClear placeholder={t('accounts.industry')} style={{ width: 140 }} options={industryOptions} value={industry} onChange={setIndustry} />
       </Space>
+      <BulkBar
+        path="/api/accounts"
+        selected={sel.selected}
+        names={Object.fromEntries(data.items.map((r) => [r.id, r.name]))}
+        onDone={() => {
+          sel.clear();
+          void reload();
+        }}
+        onClear={sel.clear}
+      />
       <Table<Account>
         rowKey="id"
+        rowSelection={sel.rowSelection}
         loading={loading}
         dataSource={data.items}
         pagination={{ ...pagination, showTotal: (total) => t('common.total', { total }) }}

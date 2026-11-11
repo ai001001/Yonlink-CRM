@@ -15,6 +15,17 @@ const DEALS = '搜索商机名称、客户名称';
 /** 按名称精确匹配表格行 / Table row matching a name literally */
 const rowOf = (page: Page, text: string) => page.getByRole('row', { name: new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) });
 
+/**
+ * 按列标题读取某行的单元格（不依赖列位置；例如表格新增了勾选列）。
+ * Read a row's cell by column header (independent of column position, e.g. after a selection column is added).
+ */
+async function cellByHeader(page: Page, row: ReturnType<typeof rowOf>, header: string) {
+  const headers = await page.locator('thead th').allInnerTexts();
+  const index = headers.findIndex((h) => h.trim() === header);
+  expect(index, `列标题“${header}”不存在`).toBeGreaterThanOrEqual(0);
+  return row.locator('td').nth(index);
+}
+
 /** 在列表页搜索框中搜索（数据较多时列表分页，先搜索再断言）/ search before asserting (lists paginate) */
 async function search(page: Page, placeholder: string, text: string): Promise<void> {
   const box = page.getByPlaceholder(placeholder);
@@ -91,7 +102,7 @@ test('演示账号列表与各角色权限 / demo accounts and per-role permissi
   await nav(page, '客户');
   await search(page, ACCOUNTS_SEARCH, S.sales1SingleDealAccount);
   const accRow = rowOf(page, S.sales1SingleDealAccount);
-  await expect(accRow.getByRole('cell').nth(4)).toHaveText('1');
+  await expect(await cellByHeader(page, accRow, '商机数')).toHaveText('1');
   await accRow.getByRole('button', { name: S.sales1SingleDealAccount }).click();
   const accDrawer = page.getByRole('dialog', { name: /客户详情/ });
   await expect(accDrawer.getByRole('tab', { name: '商机 (1)' })).toBeVisible();
@@ -123,7 +134,7 @@ test('演示账号列表与各角色权限 / demo accounts and per-role permissi
   await demoLogin(page, '郑经理');
   await nav(page, '客户');
   await search(page, ACCOUNTS_SEARCH, S.sales1SingleDealAccount);
-  await expect(rowOf(page, S.sales1SingleDealAccount).getByRole('cell').nth(4)).toHaveText('2');
+  await expect(await cellByHeader(page, rowOf(page, S.sales1SingleDealAccount), '商机数')).toHaveText('2');
   await nav(page, '线索');
   await search(page, LEADS, 'E2E 销售自建线索');
   await expect(page.getByRole('row', { name: /E2E 销售自建线索/ })).toBeVisible();

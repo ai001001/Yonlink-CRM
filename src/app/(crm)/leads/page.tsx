@@ -11,9 +11,10 @@ import { PlusOutlined, SwapOutlined } from '@ant-design/icons';
 import { t, tEnum, type MessageKey } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
-import { toFormErrors, useOpenFromUrl, useOwners, usePagedList } from '@/lib/hooks';
+import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSelection } from '@/lib/hooks';
 import { AuditTrail } from '@/components/AuditTrail';
 import { usePermissions } from '@/components/AuthProvider';
+import { BulkBar } from '@/components/BulkBar';
 import { ConvertLeadModal } from '@/components/ConvertLeadModal';
 import { RelatedActivities } from '@/components/RelatedActivities';
 import type { Ref } from '@/lib/types';
@@ -58,6 +59,7 @@ export default function LeadsPage() {
   const [status, setStatus] = useState<string>();
   const [source, setSource] = useState<string>();
   const { data, loading, reload, pagination } = usePagedList<Lead>('/api/leads', { q, status, source });
+  const sel = useSelection(data.items, perm.can('record.update.own') || perm.canDelete);
 
   const [form] = Form.useForm();
   const [editing, setEditing] = useState<Lead | 'new' | null>(null);
@@ -131,8 +133,20 @@ export default function LeadsPage() {
         <Select allowClear placeholder={t('leads.status')} style={{ width: 140 }} options={statusOptions} value={status} onChange={setStatus} />
         <Select allowClear placeholder={t('leads.source')} style={{ width: 140 }} options={sourceOptions} value={source} onChange={setSource} />
       </Space>
+      <BulkBar
+        path="/api/leads"
+        selected={sel.selected}
+        names={Object.fromEntries(data.items.map((r) => [r.id, r.name]))}
+        valueChange={{ action: 'status', field: 'status', options: editableStatusOptions }}
+        onDone={() => {
+          sel.clear();
+          void reload();
+        }}
+        onClear={sel.clear}
+      />
       <Table<Lead>
         rowKey="id"
+        rowSelection={sel.rowSelection}
         loading={loading}
         dataSource={data.items}
         pagination={{ ...pagination, showTotal: (total) => t('common.total', { total }) }}

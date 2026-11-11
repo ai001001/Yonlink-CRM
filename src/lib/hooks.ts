@@ -108,3 +108,25 @@ export function useOpenFromUrl(open: (id: string) => void): void {
     if (id) open(id);
   }, [open]);
 }
+
+/**
+ * 表格多选（用于批量操作）：列表数据变化后自动移除已不在当前页的选择。
+ * Table multi-select for bulk actions; selections not on the current page are dropped when data changes.
+ * @param items 当前页记录 / records on the current page
+ * @param enabled 是否允许选择（按权限）/ whether selection is allowed (permission based)
+ */
+export function useSelection<T extends { id: string }>(items: T[], enabled: boolean) {
+  const [selected, setSelected] = useState<string[]>([]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelected((s) => {
+      const keep = s.filter((id) => items.some((i) => i.id === id));
+      return keep.length === s.length ? s : keep;
+    });
+  }, [items]);
+  return {
+    selected,
+    clear: () => setSelected([]),
+    rowSelection: enabled ? { selectedRowKeys: selected, onChange: (keys: React.Key[]) => setSelected(keys as string[]) } : undefined,
+  };
+}

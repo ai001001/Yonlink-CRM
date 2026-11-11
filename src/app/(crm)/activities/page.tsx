@@ -11,11 +11,12 @@ import dayjs from 'dayjs';
 import { ActivityFormModal, activityTypeOptions } from '@/components/ActivityFormModal';
 import { ActivityRelationFields } from '@/components/ActivityRelationFields';
 import { usePermissions } from '@/components/AuthProvider';
+import { BulkBar } from '@/components/BulkBar';
 import { ACTIVITY_TYPE_COLOR, toggleActivity } from '@/components/RelatedActivities';
 import { t, tEnum } from '@/i18n';
 import { api } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
-import { usePagedList } from '@/lib/hooks';
+import { usePagedList, useSelection } from '@/lib/hooks';
 import type { Activity } from '@/lib/types';
 
 type StatusFilter = 'all' | 'false' | 'true';
@@ -53,6 +54,7 @@ export default function ActivitiesPage() {
     // 未完成按截止时间排序，便于处理待办 / pending items sorted by due date
     sort: status === 'false' ? 'dueAt' : 'createdAt',
   });
+  const sel = useSelection(data.items, perm.can('record.update.own') || perm.canDelete);
   const [modal, setModal] = useState<{ editing: Activity | null } | null>(null);
   const [detail, setDetail] = useState<Activity | null>(null);
 
@@ -90,8 +92,20 @@ export default function ActivitiesPage() {
         <Select allowClear placeholder={t('activities.type')} style={{ width: 140 }} options={activityTypeOptions} value={type} onChange={setType} />
         <Input.Search allowClear placeholder={t('activities.searchPlaceholder')} style={{ width: 240 }} onSearch={setQ} />
       </Space>
+      <BulkBar
+        path="/api/activities"
+        selected={sel.selected}
+        names={Object.fromEntries(data.items.map((r) => [r.id, r.subject]))}
+        completable
+        onDone={() => {
+          sel.clear();
+          void reload();
+        }}
+        onClear={sel.clear}
+      />
       <Table<Activity>
         rowKey="id"
+        rowSelection={sel.rowSelection}
         loading={loading}
         dataSource={data.items}
         pagination={{ ...pagination, showTotal: (total) => t('common.total', { total }) }}

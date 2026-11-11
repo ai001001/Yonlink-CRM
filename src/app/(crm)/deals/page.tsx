@@ -11,12 +11,13 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { AuditTrail } from '@/components/AuditTrail';
 import { DealBoard } from '@/components/DealBoard';
 import { usePermissions } from '@/components/AuthProvider';
+import { BulkBar } from '@/components/BulkBar';
 import { RecordSelect } from '@/components/RecordSelect';
 import { RelatedActivities } from '@/components/RelatedActivities';
 import { t, tEnum } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
-import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, type PageResult } from '@/lib/hooks';
+import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSelection, type PageResult } from '@/lib/hooks';
 import type { Deal } from '@/lib/types';
 
 const DEAL_STAGES = ['QUALIFICATION', 'NEEDS_ANALYSIS', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST'] as const;
@@ -44,6 +45,7 @@ export default function DealsPage() {
   const [boardVersion, setBoardVersion] = useState(0);
   const [stage, setStage] = useState<string>();
   const { data, loading, reload, pagination } = usePagedList<Deal>('/api/deals', { q, stage });
+  const sel = useSelection(data.items, perm.can('record.update.own') || perm.canDelete);
   // 列表与看板一起刷新 / refresh both the list and the board
   const refresh = () => {
     void reload();
@@ -148,8 +150,22 @@ export default function DealsPage() {
       </Space>
       {view === 'board' && <DealBoard q={q} version={boardVersion} onOpen={setDetail} />}
       {view === 'list' && (
+        <BulkBar
+          path="/api/deals"
+          selected={sel.selected}
+          names={Object.fromEntries(data.items.map((r) => [r.id, r.name]))}
+          valueChange={{ action: 'stage', field: 'stage', options: stageOptions }}
+          onDone={() => {
+            sel.clear();
+            refresh();
+          }}
+          onClear={sel.clear}
+        />
+      )}
+      {view === 'list' && (
         <Table<Deal>
           rowKey="id"
+          rowSelection={sel.rowSelection}
           loading={loading}
           dataSource={data.items}
           pagination={{ ...pagination, showTotal: (total) => t('common.total', { total }) }}

@@ -1,0 +1,31 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 permissions > 销售代表：可批量改自己线索的状态；他人线索返回 NOT_FOUND 且不变 / sales: own succeed, others not found 530ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 permissions > 销售代表：批量删除与指派给他人整批 403 / sales: bulk delete and assigning to others are rejected 109ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 permissions > 只读用户：批量修改返回逐条 FORBIDDEN，批量删除整批 403 / read-only: forbidden per record, delete 403 109ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 permissions > 经理：可批量改派他人记录 / managers can reassign anyone 169ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 business rules & partial success > 已转化线索不能改状态（CONFLICT），其他照常处理 / converted leads conflict, others proceed 161ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 business rules & partial success > 有商机的客户不能删除（CONFLICT），无商机的被删除 / accounts with deals are kept 143ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 business rules & partial success > 不存在与已删除的 ID 返回 NOT_FOUND；重复删除幂等 / missing ids are NOT_FOUND 97ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 business rules & partial success > 失败的记录不写审计，成功的逐条写 / only successful records are audited 96ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 其他组织的记录一律 NOT_FOUND 且不受影响 / other organizations are untouched 121ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 不能把记录指派给其他组织或停用的用户（整批 400）/ owner must be an active user of the organization 118ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 空 ids / empty ids → 400 73ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 非 UUID / bad uuid → 400 73ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 未知动作 / unknown action → 400 70ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 状态设为已转化 / CONVERTED status → 400 68ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 缺少负责人字段 / missing ownerId → 400 73ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 多余字段 / extra field → 400 68ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 线索不支持改阶段 / stage on leads → 400 73ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 上限 200 条：201 条整批 400，200 条可处理 / limit is 200 records 354ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 未登录 401；跟进与商机接口同样校验 / unauthenticated 401 on every bulk endpoint 72ms
+
+ Test Files  1 passed (1)
+      Tests  19 passed (19)
+   Start at  22:47:12
+   Duration  4.70s (tests 89%, import 6%, transform 4%)
