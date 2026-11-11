@@ -6,6 +6,8 @@ After=yonlink-postgres.service
 Requires=yonlink-postgres.service
 
 [Service]
+# node 路径由 runtime.env 提供 / node path comes from runtime.env
+EnvironmentFile=%h/yonlink-deploy/shared/runtime.env
 WorkingDirectory=%h/yonlink-deploy/current
 EnvironmentFile=%h/yonlink-deploy/shared/app.env
 ExecStart=%h/yonlink-deploy/current/node_modules/.bin/next start -p 3001 -H 127.0.0.1

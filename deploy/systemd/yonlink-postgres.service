@@ -4,6 +4,8 @@
 Description=Yonlink-CRM PostgreSQL
 
 [Service]
+# node 路径由 runtime.env 提供 / node path comes from runtime.env
+EnvironmentFile=%h/yonlink-deploy/shared/runtime.env
 WorkingDirectory=%h/yonlink-deploy/current
 ExecStart=/usr/bin/env node scripts/db.mjs start
 Restart=on-failure
