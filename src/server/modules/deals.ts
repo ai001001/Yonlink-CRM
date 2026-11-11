@@ -167,3 +167,65 @@ export async function deleteDeal(ctx: AuthContext, id: string): Promise<void> {
     await audit(tx, { ...by(ctx), action: 'deal.delete', entityType: 'deal', entityId: id, changes: { before: snapshot('deal', deal) } });
   });
 }
+
+/** 看板查询（无分页，每列最多 limit 张卡片）/ Board query (no paging, up to `limit` cards per column) */
+export const dealBoardSchema = z.object({
+  q: z.string().trim().max(100).optional(),
+  accountId: z.uuid().optional(),
+  ownerId: z.uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});
+
+/** 看板列 / Board column */
+export interface BoardColumn {
+  stage: DealStage;
+  count: number;
+  sums: { currency: string; amount: string }[];
+  items: unknown[];
+  hasMore: boolean;
+}
+
+/**
+ * 销售漏斗看板：按阶段分列，返回每列数量、按币种金额合计与卡片（按预计成交日期升序，无日期排后）。
+ * 可见范围与列表一致（销售代表只看自己负责的）。
+ * Pipeline board: one column per stage with count, per-currency totals and cards ordered by expected
+ * close date (dateless last). Visibility matches the list (sales reps see their own deals only).
+ */
+export async function dealBoard(ctx: AuthContext, query: z.infer<typeof dealBoardSchema>): Promise<{ columns: BoardColumn[] }> {
+  const where: Prisma.DealWhereInput = { AND: [visible(ctx), { accountId: query.accountId, ownerId: query.ownerId }] };
+  if (query.q) {
+    const c = containsText(query.q);
+    where.OR = [{ name: c }, { account: { name: c } }];
+  }
+  const stages = Object.values(DealStage);
+  const [groups, ...cards] = await prisma.$transaction([
+    prisma.deal.groupBy({
+      by: ['stage', 'currency'],
+      where,
+      _count: { _all: true },
+      _sum: { amount: true },
+      orderBy: [{ stage: 'asc' }, { currency: 'asc' }],
+    }),
+    ...stages.map((stage) =>
+      prisma.deal.findMany({
+        where: { AND: [where, { stage }] },
+        include,
+        orderBy: [{ expectedCloseDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'asc' }],
+        take: query.limit,
+      }),
+    ),
+  ]);
+  return {
+    columns: stages.map((stage, i) => {
+      const rows = groups.filter((g) => g.stage === stage);
+      const count = rows.reduce((n, g) => n + ((g._count as { _all: number } | undefined)?._all ?? 0), 0);
+      return {
+        stage,
+        count,
+        sums: rows.map((g) => ({ currency: g.currency, amount: (g._sum?.amount ?? 0).toString() })),
+        items: cards[i] ?? [],
+        hasMore: count > (cards[i]?.length ?? 0),
+      };
+    }),
+  };
+}

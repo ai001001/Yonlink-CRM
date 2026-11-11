@@ -1,0 +1,28 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 visibility & permissions > 销售代表看板只含自己负责的商机，合计也只算自己的 / sales reps see and sum only their own deals 724ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 visibility & permissions > ownerId 筛选无法绕过可见范围 / an ownerId filter cannot bypass visibility 180ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 visibility & permissions > 改阶段权限：只读 403、销售改他人 404、销售改自己 200、经理改任意 200 / stage change permissions 161ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 visibility & permissions > 非法阶段 → 400 且数据不变 / an invalid stage is rejected and nothing changes 94ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 visibility & permissions > 未登录 401 / unauthenticated → 401 69ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > 其他组织商机不出现在看板上 / other organizations never appear 165ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > 非法参数 {"limit":"0"} → 400 65ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > 非法参数 {"limit":"201"} → 400 77ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > 非法参数 {"limit":"abc"} → 400 68ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > 非法参数 {"accountId":"x"} → 400 70ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > 非法参数 {"ownerId":"1"} → 400 73ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > 非法参数 {"q":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 69ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > limit 边界 1 与 200 可用 / limit boundaries 1 and 200 work 178ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > 搜索中的通配符按字面处理 / search wildcards are literal 151ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > 按客户筛选 / filter by account 146ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  16:11:56
+   Duration  4.37s (tests 88%, import 7%, transform 4%)
+

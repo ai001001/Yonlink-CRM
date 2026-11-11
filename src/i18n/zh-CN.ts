@@ -264,6 +264,13 @@ export const zhCN = {
   'demo.notice': '演示环境：演示账号属于独立的“演示企业”，数据为演示数据，可随意操作。',
   'demo.badge': '演示账号',
   'common.ownerLocked': '销售代表只能将记录指派给自己',
+  'deals.viewList': '列表',
+  'deals.viewBoard': '看板',
+  'deals.moveTo': '移动到',
+  'deals.moved': '已移动到“{stage}”',
+  'deals.columnMore': '还有 {n} 个未显示，可用搜索缩小范围',
+  'deals.dragHint': '拖动卡片到其他阶段即可更新销售阶段',
+  'deals.emptyColumn': '暂无商机',
 } as const;
 
 export type MessageKey = keyof typeof zhCN;

@@ -5,10 +5,11 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { App, Button, Card, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Statistic, Table, Tabs, Tag } from 'antd';
+import { App, Button, Card, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Segmented, Select, Space, Statistic, Table, Tabs, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { AuditTrail } from '@/components/AuditTrail';
+import { DealBoard } from '@/components/DealBoard';
 import { usePermissions } from '@/components/AuthProvider';
 import { RecordSelect } from '@/components/RecordSelect';
 import { RelatedActivities } from '@/components/RelatedActivities';
@@ -39,8 +40,15 @@ export default function DealsPage() {
   const owners = useOwners();
   const perm = usePermissions();
   const [q, setQ] = useState('');
+  const [view, setView] = useState<'list' | 'board'>('list');
+  const [boardVersion, setBoardVersion] = useState(0);
   const [stage, setStage] = useState<string>();
   const { data, loading, reload, pagination } = usePagedList<Deal>('/api/deals', { q, stage });
+  // 列表与看板一起刷新 / refresh both the list and the board
+  const refresh = () => {
+    void reload();
+    setBoardVersion((v) => v + 1);
+  };
   const sums = (data as PageResult<Deal> & { sums?: { currency: string; amount: string }[] }).sums ?? [];
 
   const [form] = Form.useForm<FormValues>();
@@ -81,7 +89,7 @@ export default function DealsPage() {
       message.success(t('common.saved'));
       setEditing(null);
       if (detail?.id === saved.id) setDetail(saved);
-      void reload();
+      refresh();
     } catch (err) {
       if (err instanceof ClientApiError) form.setFields(toFormErrors(err.details) as never);
       message.error((err as Error).message);
@@ -95,7 +103,7 @@ export default function DealsPage() {
       await api(`/api/deals/${deal.id}`, { method: 'DELETE' });
       message.success(t('common.deleted'));
       if (detail?.id === deal.id) setDetail(null);
-      void reload();
+      refresh();
     } catch (err) {
       message.error((err as Error).message);
     }
@@ -117,60 +125,75 @@ export default function DealsPage() {
     >
       <Space wrap style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
         <Space wrap>
+          <Segmented
+            value={view}
+            onChange={(v) => setView(v as 'list' | 'board')}
+            options={[
+              { value: 'list', label: t('deals.viewList') },
+              { value: 'board', label: t('deals.viewBoard') },
+            ]}
+          />
           <Input.Search allowClear placeholder={t('deals.searchPlaceholder')} style={{ width: 280 }} onSearch={setQ} />
-          <Select allowClear placeholder={t('deals.stage')} style={{ width: 140 }} options={stageOptions} value={stage} onChange={setStage} />
+          {view === 'list' && (
+            <Select allowClear placeholder={t('deals.stage')} style={{ width: 140 }} options={stageOptions} value={stage} onChange={setStage} />
+          )}
         </Space>
-        <Space size="large" data-testid="deal-sums">
-          {sums.map((s) => (
-            <Statistic key={s.currency} title={`${t('deals.sum')} (${s.currency})`} value={fmtMoney(s.amount, s.currency)} />
-          ))}
-        </Space>
+        {view === 'list' && (
+          <Space size="large" data-testid="deal-sums">
+            {sums.map((s) => (
+              <Statistic key={s.currency} title={`${t('deals.sum')} (${s.currency})`} value={fmtMoney(s.amount, s.currency)} />
+            ))}
+          </Space>
+        )}
       </Space>
-      <Table<Deal>
-        rowKey="id"
-        loading={loading}
-        dataSource={data.items}
-        pagination={{ ...pagination, showTotal: (total) => t('common.total', { total }) }}
-        columns={[
-          {
-            title: t('deals.name'),
-            dataIndex: 'name',
-            render: (v: string, r) => (
-              <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setDetail(r)}>
-                {v}
-              </Button>
-            ),
-          },
-          { title: t('deals.account'), render: (_, r) => r.account.name },
-          { title: t('deals.amount'), dataIndex: 'amount', align: 'right', render: (v: string, r) => fmtMoney(v, r.currency) },
-          { title: t('deals.stage'), dataIndex: 'stage', render: (v: string) => <Tag color={STAGE_COLOR[v]}>{tEnum('dealStage', v)}</Tag> },
-          {
-            title: t('deals.expectedCloseDate'),
-            dataIndex: 'expectedCloseDate',
-            render: (v: string | null, r) => <span style={isOverdue(r) ? { color: '#d4380d' } : undefined}>{fmtDate(v?.slice(0, 10))}</span>,
-          },
-          { title: t('common.owner'), render: (_, r) => r.owner?.name ?? t('common.unassigned') },
-          {
-            title: t('common.actions'),
-            render: (_, r) => (
-              <Space>
-                {perm.canEdit(r) && (
-                  <Button type="link" size="small" onClick={() => openForm(r)}>
-                    {t('common.edit')}
-                  </Button>
-                )}
-                {perm.canDelete && (
-                  <Popconfirm title={t('common.confirmDelete')} onConfirm={() => remove(r)}>
-                    <Button type="link" size="small" danger>
-                      {t('common.delete')}
+      {view === 'board' && <DealBoard q={q} version={boardVersion} onOpen={setDetail} />}
+      {view === 'list' && (
+        <Table<Deal>
+          rowKey="id"
+          loading={loading}
+          dataSource={data.items}
+          pagination={{ ...pagination, showTotal: (total) => t('common.total', { total }) }}
+          columns={[
+            {
+              title: t('deals.name'),
+              dataIndex: 'name',
+              render: (v: string, r) => (
+                <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setDetail(r)}>
+                  {v}
+                </Button>
+              ),
+            },
+            { title: t('deals.account'), render: (_, r) => r.account.name },
+            { title: t('deals.amount'), dataIndex: 'amount', align: 'right', render: (v: string, r) => fmtMoney(v, r.currency) },
+            { title: t('deals.stage'), dataIndex: 'stage', render: (v: string) => <Tag color={STAGE_COLOR[v]}>{tEnum('dealStage', v)}</Tag> },
+            {
+              title: t('deals.expectedCloseDate'),
+              dataIndex: 'expectedCloseDate',
+              render: (v: string | null, r) => <span style={isOverdue(r) ? { color: '#d4380d' } : undefined}>{fmtDate(v?.slice(0, 10))}</span>,
+            },
+            { title: t('common.owner'), render: (_, r) => r.owner?.name ?? t('common.unassigned') },
+            {
+              title: t('common.actions'),
+              render: (_, r) => (
+                <Space>
+                  {perm.canEdit(r) && (
+                    <Button type="link" size="small" onClick={() => openForm(r)}>
+                      {t('common.edit')}
                     </Button>
-                  </Popconfirm>
-                )}
-              </Space>
-            ),
-          },
-        ]}
-      />
+                  )}
+                  {perm.canDelete && (
+                    <Popconfirm title={t('common.confirmDelete')} onConfirm={() => remove(r)}>
+                      <Button type="link" size="small" danger>
+                        {t('common.delete')}
+                      </Button>
+                    </Popconfirm>
+                  )}
+                </Space>
+              ),
+            },
+          ]}
+        />
+      )}
 
       <Modal
         title={editing === 'new' ? t('deals.new') : t('deals.edit')}

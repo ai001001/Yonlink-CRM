@@ -1,0 +1,20 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/deals/deal-board.r1-functional.test.ts > deal board R1 > 固定 6 列，顺序与销售阶段一致；空列数量为 0 / six columns in stage order 544ms
+ ✓ tests/deals/deal-board.r1-functional.test.ts > deal board R1 > 商机进入对应阶段列，数量与按币种合计精确 / deals land in their columns with exact per-currency totals 191ms
+ ✓ tests/deals/deal-board.r1-functional.test.ts > deal board R1 > 卡片按预计成交日期升序，无日期排最后 / cards ordered by expected close date, dateless last 140ms
+ ✓ tests/deals/deal-board.r1-functional.test.ts > deal board R1 > 卡片包含客户、负责人、金额等展示字段 / cards carry account, owner and amount 98ms
+ ✓ tests/deals/deal-board.r1-functional.test.ts > deal board R1 > 搜索按商机名或客户名过滤看板 / search filters the board by deal or account name 163ms
+ ✓ tests/deals/deal-board.r1-functional.test.ts > deal board R1 > 改阶段（拖动）后卡片移到新列，合计随之变化，并写审计 / moving a card updates columns, totals and audit 114ms
+ ✓ tests/deals/deal-board.r1-functional.test.ts > deal board R1 > 每列最多返回 limit 张卡片，数量仍为真实总数并标记 hasMore / per-column limit with true counts 155ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  16:11:30
+   Duration  3.69s (tests 80%, import 10%, transform 8%, setup 1%, worker 1%)
+
