@@ -23,6 +23,7 @@
 | 修复：销售代表客户商机数 | ✅ | ✅ | ✅ | [account-deal-count.md](account-deal-count.md) |
 | 商机销售漏斗看板 | ✅ | ✅ | ✅ | [deal-board.md](deal-board.md) |
 | 演示数据：虚构涡轮增压器企业 | ✅ | ✅ | ✅ | [demo-data.md](demo-data.md) |
+| CI 失败产物上传 + 登录页文字 | ✅ | ✅ | ✅ | [ci-artifacts.md](ci-artifacts.md) |
 
 ## 整体回归（全部模块完成后）
 命令：`scripts/regression.sh final-mvp` → **PASS**（lint、typecheck、11 文件 181/181、静态导出、生产构建、E2E 6/6）。原始输出：[results/final-mvp-r3-regression.txt](results/final-mvp-r3-regression.txt)

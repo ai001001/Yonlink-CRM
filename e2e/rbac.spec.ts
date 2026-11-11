@@ -46,6 +46,9 @@ test('演示账号列表与各角色权限 / demo accounts and per-role permissi
   await expect(list.getByRole('row')).toHaveCount(6);
   for (const role of ['系统管理员', '销售经理', '销售代表', '只读用户']) await expect(list).toContainText(role);
   await expect(list).toContainText('sales1@demo.yonlink.test');
+  // 登录页说明与当前演示组织一致 / the notice matches the current demo organization
+  await expect(page.getByText('演示环境：演示账号属于独立的演示组织，所有客户与业务数据均为虚构的演示数据，可随意操作。')).toBeVisible();
+  await expect(page.getByText('演示企业')).toHaveCount(0);
 
   // 经理通过 API 在王芳的客户下新增一个由陈静负责的商机（用于验证商机数按可见范围计数）
   // the manager adds a deal owned by 陈静 under 王芳's account via the API (deal count must follow visibility)

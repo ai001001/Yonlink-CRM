@@ -1,0 +1,5 @@
+# 第一轮：失败产物验证（2026-11-11T22:24:55Z）
+临时用例故意失败（未提交），检查 test-results/ 中的产物：
+  ✘ e2e/zz-artifact-check.spec.ts › artifact check
+  产物：test-failed-1.png（截图）、trace.zip（操作轨迹）、error-context.md（页面快照）
+结论：PASS（失败时三类产物均生成；临时用例已删除）

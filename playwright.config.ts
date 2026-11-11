@@ -18,6 +18,8 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${PORT}`,
     locale: 'zh-CN',
     trace: 'retain-on-failure',
+    // 失败时保留截图，便于排查偶发问题 / keep a screenshot on failure for diagnosing flaky runs
+    screenshot: 'only-on-failure',
     // 本机 ARM64 Ubuntu 使用系统 Chromium；CI 使用 Playwright 自带浏览器
     // system Chromium on the ARM64 Ubuntu server; bundled browser in CI
     launchOptions: { executablePath: process.env.CI ? undefined : (process.env.CHROMIUM_PATH ?? '/usr/bin/chromium') },
