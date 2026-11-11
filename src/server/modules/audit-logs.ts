@@ -6,9 +6,10 @@ import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
+import { requirePermission } from '../permissions';
 import { listQuery, type Page } from '../validation';
 
-const ENTITY_TYPES = ['lead', 'account', 'contact', 'deal', 'activity', 'auth'] as const;
+const ENTITY_TYPES = ['lead', 'account', 'contact', 'deal', 'activity', 'user', 'auth'] as const;
 
 /**
  * 查询参数（严格模式：未知参数报错，避免把拼错的筛选条件静默忽略后返回全部日志）。
@@ -28,6 +29,7 @@ export const auditListSchema = listQuery.omit({ q: true }).strict().extend({
  * List audit logs with pagination, newest first.
  */
 export async function listAuditLogs(ctx: AuthContext, query: z.infer<typeof auditListSchema>): Promise<Page<unknown>> {
+  requirePermission(ctx, 'audit.read');
   const where: Prisma.AuditLogWhereInput = {
     organizationId: ctx.organizationId,
     entityType: query.entityType,

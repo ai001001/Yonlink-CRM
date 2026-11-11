@@ -7,7 +7,7 @@
 import { useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Avatar, Dropdown, Layout, Menu, Spin, Typography } from 'antd';
+import { Avatar, Dropdown, Layout, Menu, Spin, Tag, Typography } from 'antd';
 import {
   BankOutlined,
   DashboardOutlined,
@@ -15,19 +15,21 @@ import {
   LogoutOutlined,
   AuditOutlined,
   ScheduleOutlined,
+  TeamOutlined,
   UserAddOutlined,
 } from '@ant-design/icons';
-import { t } from '@/i18n';
+import { t, tEnum } from '@/i18n';
 import { useAuth } from './AuthProvider';
 import { GlobalSearch } from './GlobalSearch';
 
-const NAV = [
+const NAV: { key: string; icon: React.ReactNode; label: string; permission?: string }[] = [
   { key: '/', icon: <DashboardOutlined />, label: t('nav.dashboard') },
   { key: '/leads', icon: <UserAddOutlined />, label: t('nav.leads') },
   { key: '/accounts', icon: <BankOutlined />, label: t('nav.accounts') },
   { key: '/deals', icon: <FundOutlined />, label: t('nav.deals') },
   { key: '/activities', icon: <ScheduleOutlined />, label: t('nav.activities') },
-  { key: '/audit-logs', icon: <AuditOutlined />, label: t('nav.audit') },
+  { key: '/audit-logs', icon: <AuditOutlined />, label: t('nav.audit'), permission: 'audit.read' },
+  { key: '/users', icon: <TeamOutlined />, label: t('nav.users'), permission: 'user.manage' },
 ];
 
 /**
@@ -67,7 +69,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           theme="dark"
           mode="inline"
           selectedKeys={[selectedKey(pathname)]}
-          items={NAV.map((n) => ({ key: n.key, icon: n.icon, label: <Link href={n.key}>{n.label}</Link> }))}
+          items={NAV.filter((n) => !n.permission || me.permissions.includes(n.permission)).map((n) => ({
+            key: n.key,
+            icon: n.icon,
+            label: <Link href={n.key}>{n.label}</Link>,
+          }))}
         />
       </Layout.Sider>
       <Layout>
@@ -77,6 +83,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           <GlobalSearch />
           <div style={{ flex: 1 }} />
           <Typography.Text type="secondary">{me.organization.name}</Typography.Text>
+          {me.isDemo && <Tag color="orange">{t('demo.badge')}</Tag>}
+          <Tag color="blue" data-testid="current-role">
+            {tEnum('role', me.role)}
+          </Tag>
           <Dropdown
             menu={{
               items: [{ key: 'logout', icon: <LogoutOutlined />, label: t('nav.logout') }],
@@ -86,7 +96,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               },
             }}
           >
-            <span style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }} data-testid="user-menu">
+            <span style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }} data-testid="user-menu">
               <Avatar style={{ background: '#1f5fbf' }}>{me.name.slice(0, 1)}</Avatar>
               {me.name}
             </span>

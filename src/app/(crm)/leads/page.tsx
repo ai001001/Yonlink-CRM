@@ -13,6 +13,7 @@ import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
 import { toFormErrors, useOpenFromUrl, useOwners, usePagedList } from '@/lib/hooks';
 import { AuditTrail } from '@/components/AuditTrail';
+import { usePermissions } from '@/components/AuthProvider';
 import { ConvertLeadModal } from '@/components/ConvertLeadModal';
 import { RelatedActivities } from '@/components/RelatedActivities';
 import type { Ref } from '@/lib/types';
@@ -52,6 +53,7 @@ const req = (key: MessageKey) => [{ required: true, whitespace: true, message: t
 export default function LeadsPage() {
   const { message } = App.useApp();
   const owners = useOwners();
+  const perm = usePermissions();
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<string>();
   const [source, setSource] = useState<string>();
@@ -117,9 +119,11 @@ export default function LeadsPage() {
     <Card
       title={t('leads.title')}
       extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
-          {t('leads.new')}
-        </Button>
+        perm.canCreate && (
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
+            {t('leads.new')}
+          </Button>
+        )
       }
     >
       <Space wrap style={{ marginBottom: 16 }}>
@@ -148,17 +152,23 @@ export default function LeadsPage() {
             title: t('common.actions'),
             render: (_, r) => (
               <Space>
-                <Button type="link" size="small" onClick={() => openForm(r)}>
-                  {t('common.edit')}
-                </Button>
-                <Button type="link" size="small" disabled={r.convertedAt !== null} onClick={() => setConverting(r)}>
-                  {t('convert.action')}
-                </Button>
-                <Popconfirm title={t('common.confirmDelete')} onConfirm={() => remove(r)}>
-                  <Button type="link" size="small" danger>
-                    {t('common.delete')}
+                {perm.canEdit(r) && (
+                  <Button type="link" size="small" onClick={() => openForm(r)}>
+                    {t('common.edit')}
                   </Button>
-                </Popconfirm>
+                )}
+                {perm.canEdit(r) && perm.canCreate && (
+                  <Button type="link" size="small" disabled={r.convertedAt !== null} onClick={() => setConverting(r)}>
+                    {t('convert.action')}
+                  </Button>
+                )}
+                {perm.canDelete && (
+                  <Popconfirm title={t('common.confirmDelete')} onConfirm={() => remove(r)}>
+                    <Button type="link" size="small" danger>
+                      {t('common.delete')}
+                    </Button>
+                  </Popconfirm>
+                )}
               </Space>
             ),
           },
@@ -210,8 +220,8 @@ export default function LeadsPage() {
             <Form.Item name="status" label={t('leads.status')} extra={editingConverted ? t('convert.statusLocked') : undefined}>
               <Select options={editingConverted ? statusOptions : editableStatusOptions} disabled={editingConverted} />
             </Form.Item>
-            <Form.Item name="ownerId" label={t('common.owner')}>
-              <Select allowClear options={owners.map((u) => ({ value: u.id, label: u.name }))} />
+            <Form.Item name="ownerId" label={t('common.owner')} extra={perm.canAssign ? undefined : t('common.ownerLocked')}>
+              <Select allowClear={perm.canAssign} disabled={!perm.canAssign} options={owners.map((u) => ({ value: u.id, label: u.name }))} />
             </Form.Item>
           </div>
           <Form.Item name="description" label={t('common.description')}>
@@ -228,12 +238,12 @@ export default function LeadsPage() {
         extra={
           detail && (
             <Space>
-              {!detail.convertedAt && (
+              {!detail.convertedAt && perm.canEdit(detail) && perm.canCreate && (
                 <Button type="primary" icon={<SwapOutlined />} onClick={() => setConverting(detail)}>
                   {t('convert.action')}
                 </Button>
               )}
-              <Button onClick={() => openForm(detail)}>{t('common.edit')}</Button>
+              {perm.canEdit(detail) && <Button onClick={() => openForm(detail)}>{t('common.edit')}</Button>}
             </Space>
           )
         }

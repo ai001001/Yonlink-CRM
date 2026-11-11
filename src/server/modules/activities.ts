@@ -8,6 +8,7 @@ import { ActivityType } from '@/generated/prisma/enums';
 import { audit, by, diff, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
+import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
 import { containsText, listQuery, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
@@ -60,12 +61,13 @@ export async function assertRelated(
   ctx: AuthContext,
   ids: { accountId?: string | null; leadId?: string | null; dealId?: string | null },
 ): Promise<void> {
-  const org = ctx.organizationId;
+  // 关联对象必须对当前用户可见 / related records must be visible to the user
+  const scope = visible(ctx);
   const errors: Record<string, string[]> = {};
   const [account, lead, deal] = await Promise.all([
-    ids.accountId ? prisma.account.count({ where: { id: ids.accountId, organizationId: org } }) : 1,
-    ids.leadId ? prisma.lead.count({ where: { id: ids.leadId, organizationId: org } }) : 1,
-    ids.dealId ? prisma.deal.count({ where: { id: ids.dealId, organizationId: org } }) : 1,
+    ids.accountId ? prisma.account.count({ where: { id: ids.accountId, ...scope } }) : 1,
+    ids.leadId ? prisma.lead.count({ where: { id: ids.leadId, ...scope } }) : 1,
+    ids.dealId ? prisma.deal.count({ where: { id: ids.dealId, ...scope } }) : 1,
   ]);
   if (!account) errors.accountId = ['Account not found'];
   if (!lead) errors.leadId = ['Lead not found'];
@@ -78,14 +80,19 @@ export async function assertRelated(
  * List activities with pagination (newest first by default, or by due date).
  */
 export async function listActivities(ctx: AuthContext, query: z.infer<typeof activityListSchema>): Promise<Page<unknown>> {
+  // 可见范围必须用 AND 组合，不能被 ownerId 筛选覆盖 / visibility is ANDed so the ownerId filter cannot override it
   const where: Prisma.ActivityWhereInput = {
-    organizationId: ctx.organizationId,
-    type: query.type,
-    completed: query.completed === undefined ? undefined : query.completed === 'true',
-    accountId: query.accountId,
-    leadId: query.leadId,
-    dealId: query.dealId,
-    ownerId: query.ownerId,
+    AND: [
+      visible(ctx),
+      {
+        type: query.type,
+        completed: query.completed === undefined ? undefined : query.completed === 'true',
+        accountId: query.accountId,
+        leadId: query.leadId,
+        dealId: query.dealId,
+        ownerId: query.ownerId,
+      },
+    ],
   };
   if (query.q) {
     const c = containsText(query.q);
@@ -113,6 +120,8 @@ export async function listActivities(ctx: AuthContext, query: z.infer<typeof act
  */
 export async function createActivity(ctx: AuthContext, input: z.infer<typeof activityCreateSchema>) {
   const { ownerId, ...data } = input;
+  requirePermission(ctx, 'record.create');
+  assertOwnerAssignable(ctx, ownerId);
   await assertRelated(ctx, data);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
   return prisma.$transaction(async (tx) => {
@@ -130,7 +139,7 @@ export async function createActivity(ctx: AuthContext, input: z.infer<typeof act
  * Activity detail; cross-organization access yields 404.
  */
 export async function getActivity(ctx: AuthContext, id: string) {
-  const activity = await prisma.activity.findFirst({ where: { id, organizationId: ctx.organizationId }, include: activityInclude });
+  const activity = await prisma.activity.findFirst({ where: { id, ...visible(ctx) }, include: activityInclude });
   if (!activity) throw notFound();
   return activity;
 }
@@ -141,7 +150,9 @@ export async function getActivity(ctx: AuthContext, id: string) {
  */
 export async function updateActivity(ctx: AuthContext, id: string, input: z.infer<typeof activityUpdateSchema>) {
   const current = await getActivity(ctx, id);
+  assertCanUpdate(ctx, current);
   const { ownerId, ...data } = input;
+  assertOwnerAssignable(ctx, ownerId);
   await assertRelated(ctx, data);
   let completedAt = current.completedAt;
   if (data.completed === true && !current.completed) completedAt = new Date();
@@ -162,8 +173,9 @@ export async function updateActivity(ctx: AuthContext, id: string, input: z.infe
  * Delete an activity.
  */
 export async function deleteActivity(ctx: AuthContext, id: string): Promise<void> {
+  assertCanDelete(ctx);
   await prisma.$transaction(async (tx) => {
-    const activity = await tx.activity.findFirst({ where: { id, organizationId: ctx.organizationId } });
+    const activity = await tx.activity.findFirst({ where: { id, ...visible(ctx) } });
     if (!activity) throw notFound();
     await tx.activity.delete({ where: { id } });
     await audit(tx, { ...by(ctx), action: 'activity.delete', entityType: 'activity', entityId: id, changes: { before: snapshot('activity', activity) } });

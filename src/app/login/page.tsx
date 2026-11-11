@@ -1,28 +1,61 @@
 /**
- * 登录页 / Sign-in page.
+ * 登录页：邮箱密码登录；演示环境下列出演示账号，点击“登录”即可免密进入。
+ * Sign-in page: email/password login; in demo environments demo accounts are listed for one-click login.
  */
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, App, Button, Card, Form, Input, Typography } from 'antd';
+import { Alert, App, Button, Card, Divider, Form, Input, Table, Tag, Typography } from 'antd';
 import { useAuth } from '@/components/AuthProvider';
-import { t } from '@/i18n';
-import { STATIC_PREVIEW } from '@/lib/api';
+import { t, tEnum } from '@/i18n';
+import { api, STATIC_PREVIEW } from '@/lib/api';
+
+/** 演示账号（不含密码）/ Demo account (no password) */
+interface DemoAccount {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  organizationName: string;
+}
+
+const ROLE_COLOR: Record<string, string> = { ADMIN: 'red', MANAGER: 'purple', SALES: 'blue', READONLY: 'default' };
 
 export default function LoginPage() {
-  const { me, signIn } = useAuth();
+  const { me, signIn, signInDemo } = useAuth();
   const router = useRouter();
   const { message } = App.useApp();
   const [submitting, setSubmitting] = useState(false);
+  const [demo, setDemo] = useState<DemoAccount[]>([]);
+  const [demoBusy, setDemoBusy] = useState<string | null>(null);
 
   useEffect(() => {
     if (me) router.replace('/');
   }, [me, router]);
 
+  useEffect(() => {
+    // 未开启演示登录时接口返回 404，列表不显示 / the endpoint is 404 when demo login is disabled
+    if (STATIC_PREVIEW) return;
+    api<{ items: DemoAccount[] }>('/api/auth/demo-accounts')
+      .then((r) => setDemo(r.items))
+      .catch(() => setDemo([]));
+  }, []);
+
+  const demoLogin = async (account: DemoAccount) => {
+    setDemoBusy(account.id);
+    try {
+      await signInDemo(account.id);
+    } catch (err) {
+      message.error((err as Error).message);
+    } finally {
+      setDemoBusy(null);
+    }
+  };
+
   return (
-    <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg,#0f2a5a,#1f5fbf)' }}>
-      <Card style={{ width: 380 }}>
+    <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '32px 16px', background: 'linear-gradient(135deg,#0f2a5a,#1f5fbf)' }}>
+      <Card style={{ width: demo.length ? 560 : 380, maxWidth: '100%' }}>
         <Typography.Title level={3} style={{ marginBottom: 4 }}>
           {t('login.title')}
         </Typography.Title>
@@ -52,6 +85,43 @@ export default function LoginPage() {
             {t('login.submit')}
           </Button>
         </Form>
+
+        {demo.length > 0 && (
+          <div data-testid="demo-accounts">
+            <Divider />
+            <Typography.Text type="secondary">{t('demo.title')}</Typography.Text>
+            <Table<DemoAccount>
+              rowKey="id"
+              size="small"
+              pagination={false}
+              style={{ marginTop: 8 }}
+              dataSource={demo}
+              columns={[
+                {
+                  title: t('users.role'),
+                  dataIndex: 'role',
+                  render: (v: string, r) => (
+                    <>
+                      <Tag color={ROLE_COLOR[v]}>{tEnum('role', v)}</Tag>
+                      {r.name}
+                    </>
+                  ),
+                },
+                { title: t('users.email'), dataIndex: 'email', render: (v: string) => <Typography.Text code>{v}</Typography.Text> },
+                {
+                  title: '',
+                  align: 'right',
+                  render: (_, r) => (
+                    <Button size="small" loading={demoBusy === r.id} onClick={() => demoLogin(r)} aria-label={`${t('demo.login')} ${r.name}`}>
+                      {t('demo.login')}
+                    </Button>
+                  ),
+                },
+              ]}
+            />
+            <Alert type="info" style={{ marginTop: 12 }} title={t('demo.notice')} />
+          </div>
+        )}
       </Card>
     </div>
   );

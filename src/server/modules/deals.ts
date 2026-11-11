@@ -8,6 +8,7 @@ import { DealStage } from '@/generated/prisma/enums';
 import { audit, by, diff, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
+import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
 import { containsText, listQuery, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
@@ -62,11 +63,11 @@ const include = {
 } satisfies Prisma.DealInclude;
 
 /**
- * 确认客户属于当前组织。
- * Ensure the account belongs to the current organization.
+ * 确认客户属于当前组织且对当前用户可见。
+ * Ensure the account belongs to the organization and is visible to the user.
  */
 async function assertAccount(ctx: AuthContext, accountId: string): Promise<void> {
-  const n = await prisma.account.count({ where: { id: accountId, organizationId: ctx.organizationId } });
+  const n = await prisma.account.count({ where: { id: accountId, ...visible(ctx) } });
   if (!n) throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid account', { accountId: ['Account not found'] });
 }
 
@@ -78,12 +79,7 @@ export async function listDeals(
   ctx: AuthContext,
   query: z.infer<typeof dealListSchema>,
 ): Promise<Page<unknown> & { sums: { currency: string; amount: string }[] }> {
-  const where: Prisma.DealWhereInput = {
-    organizationId: ctx.organizationId,
-    stage: query.stage,
-    accountId: query.accountId,
-    ownerId: query.ownerId,
-  };
+  const where: Prisma.DealWhereInput = { AND: [visible(ctx), { stage: query.stage, accountId: query.accountId, ownerId: query.ownerId }] };
   if (query.q) {
     const c = containsText(query.q);
     where.OR = [{ name: c }, { account: { name: c } }];
@@ -113,7 +109,7 @@ export async function listDeals(
  * Deal detail; cross-organization access yields 404.
  */
 export async function getDeal(ctx: AuthContext, id: string) {
-  const deal = await prisma.deal.findFirst({ where: { id, organizationId: ctx.organizationId }, include });
+  const deal = await prisma.deal.findFirst({ where: { id, ...visible(ctx) }, include });
   if (!deal) throw notFound();
   return deal;
 }
@@ -124,6 +120,8 @@ export async function getDeal(ctx: AuthContext, id: string) {
  */
 export async function createDeal(ctx: AuthContext, input: z.infer<typeof dealCreateSchema>) {
   const { ownerId, ...data } = input;
+  requirePermission(ctx, 'record.create');
+  assertOwnerAssignable(ctx, ownerId);
   await assertAccount(ctx, data.accountId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
   return prisma.$transaction(async (tx) => {
@@ -139,7 +137,9 @@ export async function createDeal(ctx: AuthContext, input: z.infer<typeof dealCre
  */
 export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<typeof dealUpdateSchema>) {
   const current = await getDeal(ctx, id);
+  assertCanUpdate(ctx, current);
   const { ownerId, ...data } = input;
+  assertOwnerAssignable(ctx, ownerId);
   if (data.accountId) await assertAccount(ctx, data.accountId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
   return prisma.$transaction(async (tx) => {
@@ -157,8 +157,9 @@ export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<ty
  * Delete a deal: deal-only activities are removed, shared ones are unlinked and kept.
  */
 export async function deleteDeal(ctx: AuthContext, id: string): Promise<void> {
+  assertCanDelete(ctx);
   await prisma.$transaction(async (tx) => {
-    const deal = await tx.deal.findFirst({ where: { id, organizationId: ctx.organizationId } });
+    const deal = await tx.deal.findFirst({ where: { id, ...visible(ctx) } });
     if (!deal) throw notFound();
     await detachSharedActivities(tx, ctx.organizationId, 'dealId', id);
     const { count } = await tx.deal.deleteMany({ where: { id, organizationId: ctx.organizationId } });

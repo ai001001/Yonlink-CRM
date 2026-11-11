@@ -22,12 +22,12 @@ if (!email || !password || password.length < 10) {
 
 const existing = await prisma.user.findUnique({ where: { email } });
 if (existing) {
-  await prisma.user.update({ where: { id: existing.id }, data: { passwordHash: await hashPassword(password), isActive: true } });
+  await prisma.user.update({ where: { id: existing.id }, data: { passwordHash: await hashPassword(password), isActive: true, role: 'ADMIN' } });
   console.log(`已更新管理员密码 / admin password updated: ${email}`);
 } else {
   const org = await prisma.organization.create({ data: { name: orgName } });
   await prisma.user.create({
-    data: { organizationId: org.id, email, name: '系统管理员', passwordHash: await hashPassword(password) },
+    data: { organizationId: org.id, email, name: '系统管理员', role: 'ADMIN', passwordHash: await hashPassword(password) },
   });
   console.log(`已创建组织与管理员 / created organization and admin: ${orgName} / ${email}`);
 }

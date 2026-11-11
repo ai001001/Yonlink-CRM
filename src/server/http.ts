@@ -57,6 +57,8 @@ function errorResponse(err: unknown): Response {
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     // P2025：记录不存在 / record missing；P2003：外键约束 / FK violation
     if (err.code === 'P2025') return errorResponse(notFound());
+    // P2002：唯一约束冲突（如邮箱已存在）/ unique constraint (e.g. email already used)
+    if (err.code === 'P2002') return errorResponse(new ApiError(409, 'CONFLICT', 'Duplicate value'));
     if (err.code === 'P2003') {
       return errorResponse(new ApiError(409, 'CONFLICT', 'Related records prevent this operation'));
     }

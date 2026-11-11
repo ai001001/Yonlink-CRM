@@ -27,6 +27,6 @@ export default defineConfig({
     url: `http://127.0.0.1:${PORT}/login`,
     reuseExistingServer: false,
     timeout: 60_000,
-    env: { DATABASE_URL: process.env.TEST_DATABASE_URL ?? '', NODE_ENV: 'production' },
+    env: { DATABASE_URL: process.env.TEST_DATABASE_URL ?? '', NODE_ENV: 'production', DEMO_LOGIN_ENABLED: '1' },
   },
 });

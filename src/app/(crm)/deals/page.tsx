@@ -9,6 +9,7 @@ import { App, Button, Card, DatePicker, Descriptions, Drawer, Form, Input, Input
 import { PlusOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { AuditTrail } from '@/components/AuditTrail';
+import { usePermissions } from '@/components/AuthProvider';
 import { RecordSelect } from '@/components/RecordSelect';
 import { RelatedActivities } from '@/components/RelatedActivities';
 import { t, tEnum } from '@/i18n';
@@ -36,6 +37,7 @@ interface FormValues extends Omit<Partial<Deal>, 'expectedCloseDate'> {
 export default function DealsPage() {
   const { message } = App.useApp();
   const owners = useOwners();
+  const perm = usePermissions();
   const [q, setQ] = useState('');
   const [stage, setStage] = useState<string>();
   const { data, loading, reload, pagination } = usePagedList<Deal>('/api/deals', { q, stage });
@@ -106,9 +108,11 @@ export default function DealsPage() {
     <Card
       title={t('deals.title')}
       extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
-          {t('deals.new')}
-        </Button>
+        perm.canCreate && (
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
+            {t('deals.new')}
+          </Button>
+        )
       }
     >
       <Space wrap style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
@@ -150,14 +154,18 @@ export default function DealsPage() {
             title: t('common.actions'),
             render: (_, r) => (
               <Space>
-                <Button type="link" size="small" onClick={() => openForm(r)}>
-                  {t('common.edit')}
-                </Button>
-                <Popconfirm title={t('common.confirmDelete')} onConfirm={() => remove(r)}>
-                  <Button type="link" size="small" danger>
-                    {t('common.delete')}
+                {perm.canEdit(r) && (
+                  <Button type="link" size="small" onClick={() => openForm(r)}>
+                    {t('common.edit')}
                   </Button>
-                </Popconfirm>
+                )}
+                {perm.canDelete && (
+                  <Popconfirm title={t('common.confirmDelete')} onConfirm={() => remove(r)}>
+                    <Button type="link" size="small" danger>
+                      {t('common.delete')}
+                    </Button>
+                  </Popconfirm>
+                )}
               </Space>
             ),
           },
@@ -205,8 +213,8 @@ export default function DealsPage() {
             <Form.Item name="expectedCloseDate" label={t('deals.expectedCloseDate')}>
               <DatePicker style={{ width: '100%' }} />
             </Form.Item>
-            <Form.Item name="ownerId" label={t('common.owner')}>
-              <Select allowClear options={owners.map((u) => ({ value: u.id, label: u.name }))} />
+            <Form.Item name="ownerId" label={t('common.owner')} extra={perm.canAssign ? undefined : t('common.ownerLocked')}>
+              <Select allowClear={perm.canAssign} disabled={!perm.canAssign} options={owners.map((u) => ({ value: u.id, label: u.name }))} />
             </Form.Item>
           </div>
           <Form.Item name="description" label={t('common.description')}>
@@ -220,7 +228,7 @@ export default function DealsPage() {
         size={720}
         open={detail !== null}
         onClose={() => setDetail(null)}
-        extra={detail && <Button onClick={() => openForm(detail)}>{t('common.edit')}</Button>}
+        extra={detail && perm.canEdit(detail) && <Button onClick={() => openForm(detail)}>{t('common.edit')}</Button>}
       >
         {detail && (
           <Tabs

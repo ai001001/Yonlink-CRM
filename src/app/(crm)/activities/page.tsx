@@ -10,6 +10,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { ActivityFormModal, activityTypeOptions } from '@/components/ActivityFormModal';
 import { ActivityRelationFields } from '@/components/ActivityRelationFields';
+import { usePermissions } from '@/components/AuthProvider';
 import { ACTIVITY_TYPE_COLOR, toggleActivity } from '@/components/RelatedActivities';
 import { t, tEnum } from '@/i18n';
 import { api } from '@/lib/api';
@@ -41,6 +42,7 @@ function RelatedTags({ a }: { a: Activity }) {
 
 export default function ActivitiesPage() {
   const { message } = App.useApp();
+  const perm = usePermissions();
   const [q, setQ] = useState('');
   const [type, setType] = useState<string>();
   const [status, setStatus] = useState<StatusFilter>('false');
@@ -68,9 +70,11 @@ export default function ActivitiesPage() {
     <Card
       title={t('activities.title')}
       extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setModal({ editing: null })}>
-          {t('activities.new')}
-        </Button>
+        perm.canCreate && (
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setModal({ editing: null })}>
+            {t('activities.new')}
+          </Button>
+        )
       }
     >
       <Space wrap style={{ marginBottom: 16 }}>
@@ -96,7 +100,12 @@ export default function ActivitiesPage() {
             title: t('activities.completed'),
             width: 72,
             render: (_, r) => (
-              <Checkbox checked={r.completed} aria-label={`${t('activities.markDone')} ${r.subject}`} onChange={() => run(() => toggleActivity(r))} />
+              <Checkbox
+                checked={r.completed}
+                disabled={!perm.canEdit(r)}
+                aria-label={`${t('activities.markDone')} ${r.subject}`}
+                onChange={() => run(() => toggleActivity(r))}
+              />
             ),
           },
           { title: t('activities.type'), dataIndex: 'type', render: (v: string) => <Tag color={ACTIVITY_TYPE_COLOR[v]}>{tEnum('activityType', v)}</Tag> },
@@ -127,14 +136,18 @@ export default function ActivitiesPage() {
             title: t('common.actions'),
             render: (_, r) => (
               <Space>
-                <Button type="link" size="small" onClick={() => setModal({ editing: r })}>
-                  {t('common.edit')}
-                </Button>
-                <Popconfirm title={t('common.confirmDelete')} onConfirm={() => run(() => api(`/api/activities/${r.id}`, { method: 'DELETE' }), t('common.deleted'))}>
-                  <Button type="link" size="small" danger>
-                    {t('common.delete')}
+                {perm.canEdit(r) && (
+                  <Button type="link" size="small" onClick={() => setModal({ editing: r })}>
+                    {t('common.edit')}
                   </Button>
-                </Popconfirm>
+                )}
+                {perm.canDelete && (
+                  <Popconfirm title={t('common.confirmDelete')} onConfirm={() => run(() => api(`/api/activities/${r.id}`, { method: 'DELETE' }), t('common.deleted'))}>
+                    <Button type="link" size="small" danger>
+                      {t('common.delete')}
+                    </Button>
+                  </Popconfirm>
+                )}
               </Space>
             ),
           },
@@ -158,7 +171,7 @@ export default function ActivitiesPage() {
         size={560}
         open={detail !== null}
         onClose={() => setDetail(null)}
-        extra={detail && <Button onClick={() => setModal({ editing: detail })}>{t('common.edit')}</Button>}
+        extra={detail && perm.canEdit(detail) && <Button onClick={() => setModal({ editing: detail })}>{t('common.edit')}</Button>}
       >
         {detail && (
           <Descriptions column={1} bordered size="small">

@@ -35,7 +35,11 @@ model User {
   email           String       @db.VarChar(254)
   name            String       @db.VarChar(100)
   passwordHash    String       @map("password_hash")
+  /// 角色（服务端每个请求从数据库读取）/ role (read from the DB on every request)
+  role            UserRole     @default(SALES)
   isActive        Boolean      @default(true) @map("is_active")
+  /// 演示账号：仅在 DEMO_LOGIN_ENABLED=1 时可免密一键登录 / demo account: password-less login only when DEMO_LOGIN_ENABLED=1
+  isDemo          Boolean      @default(false) @map("is_demo")
   createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -51,6 +55,16 @@ model User {
   @@unique([organizationId, id])
   @@unique([email])
   @@map("users")
+}
+
+/// 系统角色 / System roles
+enum UserRole {
+  ADMIN
+  MANAGER
+  SALES
+  READONLY
+
+  @@map("user_role")
 }
 
 /// 服务端会话：只保存令牌的 SHA-256 哈希 / server session: only the SHA-256 hash of the token is stored

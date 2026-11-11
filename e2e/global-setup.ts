@@ -22,4 +22,6 @@ export default async function setup(): Promise<void> {
     stdio: 'inherit',
     env: { ...env, SEED_ADMIN_EMAIL: E2E_EMAIL, SEED_ADMIN_PASSWORD: E2E_PASSWORD, SEED_ORG_NAME: 'E2E 测试组织' },
   });
+  // 演示组织与各角色演示账号（用于一键登录与权限 E2E）/ demo org and per-role demo accounts
+  execSync('npx tsx prisma/seed-demo.ts', { stdio: 'inherit', env });
 }

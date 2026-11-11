@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { App, Card, Checkbox, Col, Empty, List, Row, Space, Statistic, Table, Tag, Typography } from 'antd';
 import { BankOutlined, FundOutlined, UserAddOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { useAuth } from '@/components/AuthProvider';
+import { useAuth, usePermissions } from '@/components/AuthProvider';
 import { ACTIVITY_TYPE_COLOR, toggleActivity } from '@/components/RelatedActivities';
 import { t, tEnum } from '@/i18n';
 import { api } from '@/lib/api';
@@ -56,6 +56,7 @@ const related = (a: Activity) => [a.account?.name, a.lead?.name, a.deal?.name].f
 
 export default function DashboardPage() {
   const { me } = useAuth();
+  const perm = usePermissions();
   const { message } = App.useApp();
   const [data, setData] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
@@ -150,6 +151,7 @@ export default function DashboardPage() {
                         <Checkbox
                           aria-label={`${t('activities.markDone')} ${a.subject}`}
                           checked={a.completed}
+                          disabled={!perm.canEdit(a)}
                           onChange={async () => {
                             try {
                               await toggleActivity(a);

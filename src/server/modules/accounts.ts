@@ -7,6 +7,7 @@ import type { Prisma } from '@/generated/prisma/client';
 import { audit, by, diff, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
+import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
@@ -69,11 +70,7 @@ const contactOrder: Prisma.ContactOrderByWithRelationInput[] = [{ isPrimary: 'de
  * Search accounts with pagination (name, phone, website, address, contact name).
  */
 export async function listAccounts(ctx: AuthContext, query: z.infer<typeof accountListSchema>): Promise<Page<unknown>> {
-  const where: Prisma.AccountWhereInput = {
-    organizationId: ctx.organizationId,
-    industry: query.industry,
-    ownerId: query.ownerId,
-  };
+  const where: Prisma.AccountWhereInput = { AND: [visible(ctx), { industry: query.industry, ownerId: query.ownerId }] };
   if (query.q) {
     const c = containsText(query.q);
     where.OR = [{ name: c }, { phone: c }, { website: c }, { address: c }, { contacts: { some: { name: c } } }];
@@ -97,7 +94,7 @@ export async function listAccounts(ctx: AuthContext, query: z.infer<typeof accou
  */
 export async function getAccount(ctx: AuthContext, id: string) {
   const account = await prisma.account.findFirst({
-    where: { id, organizationId: ctx.organizationId },
+    where: { id, ...visible(ctx) },
     include: { ...listInclude, contacts: { orderBy: contactOrder } },
   });
   if (!account) throw notFound();
@@ -110,6 +107,8 @@ export async function getAccount(ctx: AuthContext, id: string) {
  */
 export async function createAccount(ctx: AuthContext, input: z.infer<typeof accountCreateSchema>) {
   const { ownerId, ...data } = input;
+  requirePermission(ctx, 'record.create');
+  assertOwnerAssignable(ctx, ownerId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
   const created = await prisma.$transaction(async (tx) => {
     const account = await tx.account.create({ data: { ...data, organizationId: ctx.organizationId, ownerId: owner } });
@@ -125,7 +124,9 @@ export async function createAccount(ctx: AuthContext, input: z.infer<typeof acco
  */
 export async function updateAccount(ctx: AuthContext, id: string, input: z.infer<typeof accountUpdateSchema>) {
   const current = await getAccount(ctx, id);
+  assertCanUpdate(ctx, current);
   const { ownerId, ...data } = input;
+  assertOwnerAssignable(ctx, ownerId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
   await prisma.$transaction(async (tx) => {
     const updated = await tx.account.update({ where: { id: current.id }, data: { ...data, ownerId: owner } });
@@ -142,6 +143,7 @@ export async function updateAccount(ctx: AuthContext, id: string, input: z.infer
  * Delete an account: contacts and account-only activities cascade, shared ones are kept unlinked; 409 while deals exist.
  */
 export async function deleteAccount(ctx: AuthContext, id: string): Promise<void> {
+  assertCanDelete(ctx);
   const account = await getAccount(ctx, id);
   if (account._count.deals > 0) {
     throw new ApiError(409, 'CONFLICT', 'Account has deals', { deals: [String(account._count.deals)] });
@@ -163,13 +165,26 @@ export async function deleteAccount(ctx: AuthContext, id: string): Promise<void>
 }
 
 /**
- * 读取本组织客户 ID，不存在时 404。
- * Load an account id within the organization or throw 404.
+ * 读取当前用户可见的客户，不可见时 404。
+ * Load an account visible to the user or throw 404.
  */
-async function requireAccount(ctx: AuthContext, accountId: string): Promise<string> {
-  const row = await prisma.account.findFirst({ where: { id: accountId, organizationId: ctx.organizationId }, select: { id: true } });
+async function requireAccount(ctx: AuthContext, accountId: string): Promise<{ id: string; ownerId: string | null }> {
+  const row = await prisma.account.findFirst({ where: { id: accountId, ...visible(ctx) }, select: { id: true, ownerId: true } });
   if (!row) throw notFound();
-  return row.id;
+  return row;
+}
+
+/**
+ * 读取可见客户下的联系人（含客户负责人，用于编辑权限判断）。
+ * Load a contact under a visible account (with the account owner for edit checks).
+ */
+async function requireContact(ctx: AuthContext, id: string) {
+  const contact = await prisma.contact.findFirst({
+    where: { id, organizationId: ctx.organizationId, account: visible(ctx) },
+    include: { account: { select: { ownerId: true } } },
+  });
+  if (!contact) throw notFound();
+  return contact;
 }
 
 /**
@@ -186,7 +201,8 @@ export async function listContacts(ctx: AuthContext, accountId: string) {
  * Create a contact; marking it primary clears other primary contacts of the account.
  */
 export async function createContact(ctx: AuthContext, accountId: string, input: z.infer<typeof contactCreateSchema>) {
-  await requireAccount(ctx, accountId);
+  // 联系人属于客户资料，按客户编辑权限判断 / contacts are part of the account: account edit rights apply
+  assertCanUpdate(ctx, await requireAccount(ctx, accountId));
   return prisma.$transaction(async (tx) => {
     if (input.isPrimary) {
       await tx.contact.updateMany({ where: { organizationId: ctx.organizationId, accountId }, data: { isPrimary: false } });
@@ -202,8 +218,8 @@ export async function createContact(ctx: AuthContext, accountId: string, input: 
  * Update a contact.
  */
 export async function updateContact(ctx: AuthContext, id: string, input: z.infer<typeof contactUpdateSchema>) {
-  const contact = await prisma.contact.findFirst({ where: { id, organizationId: ctx.organizationId } });
-  if (!contact) throw notFound();
+  const { account, ...contact } = await requireContact(ctx, id);
+  assertCanUpdate(ctx, account);
   return prisma.$transaction(async (tx) => {
     if (input.isPrimary) {
       await tx.contact.updateMany({
@@ -225,9 +241,9 @@ export async function updateContact(ctx: AuthContext, id: string, input: z.infer
  * Delete a contact.
  */
 export async function deleteContact(ctx: AuthContext, id: string): Promise<void> {
+  const { account, ...contact } = await requireContact(ctx, id);
+  assertCanUpdate(ctx, account);
   await prisma.$transaction(async (tx) => {
-    const contact = await tx.contact.findFirst({ where: { id, organizationId: ctx.organizationId } });
-    if (!contact) throw notFound();
     await tx.contact.delete({ where: { id } });
     await audit(tx, { ...by(ctx), action: 'contact.delete', entityType: 'contact', entityId: id, changes: { before: snapshot('contact', contact) } });
   });

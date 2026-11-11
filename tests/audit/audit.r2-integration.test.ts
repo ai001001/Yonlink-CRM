@@ -136,7 +136,7 @@ describe('audit R2 isolation & input', () => {
   });
 
   it.each([
-    [{ entityType: 'user' }],
+    [{ entityType: 'session' }],
     [{ entityId: 'abc' }],
     [{ action: 'DROP TABLE' }],
     [{ action: 'lead' }],

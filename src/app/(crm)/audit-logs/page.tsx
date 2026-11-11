@@ -12,14 +12,15 @@ import { t, tEnum } from '@/i18n';
 import { fmtDateTime } from '@/lib/format';
 import { useOwners, usePagedList } from '@/lib/hooks';
 
-const ENTITIES = ['lead', 'account', 'contact', 'deal', 'activity', 'auth'];
+const ENTITIES = ['lead', 'account', 'contact', 'deal', 'activity', 'user', 'auth'];
 const ACTIONS: Record<string, string[]> = {
   lead: ['create', 'update', 'delete', 'convert'],
   account: ['create', 'update', 'delete'],
   contact: ['create', 'update', 'delete'],
   deal: ['create', 'update', 'delete'],
   activity: ['create', 'update', 'delete'],
-  auth: ['login', 'login_failed', 'logout'],
+  user: ['create', 'update', 'reset_password'],
+  auth: ['login', 'demo_login', 'login_failed', 'logout'],
 };
 
 export default function AuditLogsPage() {

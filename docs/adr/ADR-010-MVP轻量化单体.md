@@ -15,7 +15,7 @@
 | 本地数据库 | `embedded-postgres`（linux-arm64，无需 sudo/Docker） | Docker Compose |
 | 认证 | Argon2id 密码 + 不透明会话令牌（DB 只存 SHA-256），`Authorization: Bearer` 传递 | Cookie 会话 + CSRF 双提交 |
 | 租户隔离 | 所有业务表 `organization_id`；服务层按会话组织过滤；**复合外键 (organization_id, id)** 防跨组织引用 | + PostgreSQL RLS |
-| 权限 | 不做角色权限，同组织用户可见同组织数据 | RBAC + 记录/字段权限 |
+| 权限 | 固定四种角色（管理员/经理/销售/只读）+ 记录负责人可见范围（2026-11-11 实现，见 docs/testing/rbac.md） | RBAC + 记录/字段权限 |
 | 缓存/队列 | 无 | Valkey + BullMQ |
 | 测试 | Vitest 5（API 级集成测试，独立测试库）+ Playwright（系统 Chromium） | 同 |
 | 演示 | GitHub Pages 静态前端（`BUILD_TARGET=pages`）+ Oracle 服务器 API | — |
@@ -24,5 +24,5 @@ Bearer 令牌的取舍：GitHub Pages 前端与 API 跨域，第三方 Cookie �
 
 ## 后果
 - 交付快、运维简单（单进程 + PostgreSQL）。
-- RLS、RBAC、Valkey 权限缓存留到后续版本；审计日志已于 2026-11-10 实现（只追加、脱敏、与业务同事务，见 docs/testing/audit.md）；当前隔离依赖服务层过滤 + 复合外键 + 测试覆盖。
+- RLS、自定义角色/字段权限、Valkey 权限缓存留到后续版本；审计日志已于 2026-11-10 实现（只追加、脱敏、与业务同事务，见 docs/testing/audit.md）；当前隔离依赖服务层过滤 + 复合外键 + 测试覆盖。
 - 根目录 CLAUDE.md 中与本 ADR 冲突的安全条目（Valkey、CSRF 双提交、RLS 测试角色等）在 MVP 阶段不适用。

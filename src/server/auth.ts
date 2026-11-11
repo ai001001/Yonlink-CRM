@@ -8,6 +8,7 @@
  */
 import { createHash, randomBytes } from 'node:crypto';
 import { hash, verify } from '@node-rs/argon2';
+import type { UserRole } from '@/generated/prisma/enums';
 import { prisma } from './db';
 import { audit, requestMeta, type RequestMeta } from './audit';
 import { ApiError } from './errors';
@@ -19,6 +20,8 @@ export const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 export interface AuthContext {
   userId: string;
   organizationId: string;
+  /** 当前角色（每个请求从数据库读取）/ current role (read from the DB on every request) */
+  role: UserRole;
   /** 请求来源（用于审计）/ request origin (for auditing) */
   meta?: RequestMeta;
 }
@@ -126,12 +129,12 @@ export async function authenticate(req: Request): Promise<AuthContext> {
   if (!token) throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required');
   const session = await prisma.session.findUnique({
     where: { tokenHash: hashToken(token) },
-    include: { user: { select: { id: true, organizationId: true, isActive: true } } },
+    include: { user: { select: { id: true, organizationId: true, isActive: true, role: true } } },
   });
   if (!session || session.expiresAt.getTime() <= Date.now() || !session.user.isActive) {
     throw new ApiError(401, 'UNAUTHORIZED', 'Session expired');
   }
-  return { userId: session.user.id, organizationId: session.user.organizationId, meta: requestMeta(req) };
+  return { userId: session.user.id, organizationId: session.user.organizationId, role: session.user.role, meta: requestMeta(req) };
 }
 
 /**

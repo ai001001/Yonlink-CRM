@@ -12,6 +12,7 @@ import { api, qs } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
 import type { Activity, ActivityRelation } from '@/lib/types';
 import { ActivityFormModal } from './ActivityFormModal';
+import { usePermissions } from './AuthProvider';
 
 export const ACTIVITY_TYPE_COLOR: Record<string, string> = { CALL: 'blue', MEETING: 'purple', VISIT: 'orange', TASK: 'cyan' };
 
@@ -25,6 +26,7 @@ export async function toggleActivity(a: Activity): Promise<Activity> {
 
 export function RelatedActivities({ relation }: { relation: ActivityRelation }) {
   const { message } = App.useApp();
+  const perm = usePermissions();
   const [items, setItems] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState<{ editing: Activity | null } | null>(null);
@@ -59,9 +61,11 @@ export function RelatedActivities({ relation }: { relation: ActivityRelation }) 
 
   return (
     <div data-testid="related-activities">
-      <Button icon={<PlusOutlined />} onClick={() => setModal({ editing: null })} style={{ marginBottom: 12 }}>
-        {t('activities.new')}
-      </Button>
+      {perm.canCreate && (
+        <Button icon={<PlusOutlined />} onClick={() => setModal({ editing: null })} style={{ marginBottom: 12 }}>
+          {t('activities.new')}
+        </Button>
+      )}
       <List
         loading={loading}
         dataSource={items}
@@ -69,9 +73,12 @@ export function RelatedActivities({ relation }: { relation: ActivityRelation }) 
         renderItem={(a) => (
           <List.Item
             actions={[
-              <Button key="edit" type="link" size="small" onClick={() => setModal({ editing: a })}>
-                {t('common.edit')}
-              </Button>,
+              perm.canEdit(a) && (
+                <Button key="edit" type="link" size="small" onClick={() => setModal({ editing: a })}>
+                  {t('common.edit')}
+                </Button>
+              ),
+              perm.canDelete && (
               <Popconfirm
                 key="del"
                 title={t('common.confirmDelete')}
@@ -80,11 +87,19 @@ export function RelatedActivities({ relation }: { relation: ActivityRelation }) 
                 <Button type="link" size="small" danger>
                   {t('common.delete')}
                 </Button>
-              </Popconfirm>,
-            ]}
+              </Popconfirm>
+              ),
+            ].filter(Boolean)}
           >
             <List.Item.Meta
-              avatar={<Checkbox checked={a.completed} aria-label={t('activities.markDone')} onChange={() => run(() => toggleActivity(a))} />}
+              avatar={
+                <Checkbox
+                  checked={a.completed}
+                  disabled={!perm.canEdit(a)}
+                  aria-label={t('activities.markDone')}
+                  onChange={() => run(() => toggleActivity(a))}
+                />
+              }
               title={
                 <Space>
                   <Tag color={ACTIVITY_TYPE_COLOR[a.type]}>{tEnum('activityType', a.type)}</Tag>

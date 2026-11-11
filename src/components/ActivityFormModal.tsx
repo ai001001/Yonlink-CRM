@@ -11,6 +11,7 @@ import { t, tEnum } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { toFormErrors, useOwners } from '@/lib/hooks';
 import type { Activity, ActivityRelation } from '@/lib/types';
+import { usePermissions } from './AuthProvider';
 
 export const ACTIVITY_TYPES = ['CALL', 'MEETING', 'VISIT', 'TASK'] as const;
 export const activityTypeOptions = ACTIVITY_TYPES.map((v) => ({ value: v, label: tEnum('activityType', v) }));
@@ -43,6 +44,7 @@ interface FormValues {
 export function ActivityFormModal({ open, editing, relation, extra, onClose, onSaved }: Props) {
   const { message } = App.useApp();
   const owners = useOwners();
+  const perm = usePermissions();
   const [form] = Form.useForm<FormValues>();
   const [saving, setSaving] = useState(false);
 
@@ -103,8 +105,8 @@ export function ActivityFormModal({ open, editing, relation, extra, onClose, onS
         </Form.Item>
         {extra}
         <div className="form-row">
-          <Form.Item name="ownerId" label={t('common.owner')}>
-            <Select allowClear options={owners.map((u) => ({ value: u.id, label: u.name }))} />
+          <Form.Item name="ownerId" label={t('common.owner')} extra={perm.canAssign ? undefined : t('common.ownerLocked')}>
+            <Select allowClear={perm.canAssign} disabled={!perm.canAssign} options={owners.map((u) => ({ value: u.id, label: u.name }))} />
           </Form.Item>
           <Form.Item name="completed" label={t('activities.completed')} valuePropName="checked">
             <Switch />

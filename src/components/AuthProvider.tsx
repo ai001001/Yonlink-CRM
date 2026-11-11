@@ -12,6 +12,10 @@ export interface Me {
   id: string;
   name: string;
   email: string;
+  role: 'ADMIN' | 'MANAGER' | 'SALES' | 'READONLY';
+  isDemo: boolean;
+  /** 服务端返回的权限点（仅用于界面显示，服务端仍逐请求校验）/ permissions from the server (UI only) */
+  permissions: string[];
   organization: { id: string; name: string };
 }
 
@@ -19,6 +23,7 @@ interface AuthState {
   me: Me | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInDemo: (userId: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -61,13 +66,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
+  const signInDemo = useCallback(
+    async (userId: string) => {
+      const res = await api<{ token: string }>('/api/auth/demo-login', { method: 'POST', body: { userId } });
+      setToken(res.token);
+      await refresh();
+    },
+    [refresh],
+  );
+
   const signOut = useCallback(async () => {
     await api('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
     setToken(null);
     setMe(null);
   }, []);
 
-  return <AuthContext.Provider value={{ me, loading, signIn, signOut }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ me, loading, signIn, signInDemo, signOut }}>{children}</AuthContext.Provider>;
 }
 
 /**
@@ -78,4 +92,22 @@ export function useAuth(): AuthState {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
   return ctx;
+}
+
+/**
+ * 权限辅助（仅决定界面是否显示操作，真正的授权在服务端）。
+ * Permission helpers (only decide what the UI shows; real authorization is server-side).
+ */
+export function usePermissions() {
+  const { me } = useAuth();
+  const can = (permission: string) => !!me?.permissions.includes(permission);
+  return {
+    can,
+    /** 能否编辑该记录 / whether the record can be edited */
+    canEdit: (record: { ownerId: string | null }) => can('record.update.all') || (can('record.update.own') && record.ownerId === me?.id),
+    canCreate: can('record.create'),
+    canDelete: can('record.delete'),
+    canAssign: can('owner.assign'),
+    meId: me?.id ?? null,
+  };
 }

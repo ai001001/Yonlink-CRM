@@ -14,11 +14,13 @@ import type { Contact } from '@/lib/types';
 
 interface Props {
   accountId: string;
+  /** 是否可编辑（按客户编辑权限）/ editable per account edit rights */
+  editable: boolean;
   contacts: Contact[];
   onChanged: () => void;
 }
 
-export function ContactsPanel({ accountId, contacts, onChanged }: Props) {
+export function ContactsPanel({ accountId, editable, contacts, onChanged }: Props) {
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const [editing, setEditing] = useState<Contact | 'new' | null>(null);
@@ -59,9 +61,11 @@ export function ContactsPanel({ accountId, contacts, onChanged }: Props) {
 
   return (
     <div data-testid="contacts-panel">
-      <Button icon={<PlusOutlined />} onClick={() => openForm('new')} style={{ marginBottom: 12 }}>
-        {t('contacts.new')}
-      </Button>
+      {editable && (
+        <Button icon={<PlusOutlined />} onClick={() => openForm('new')} style={{ marginBottom: 12 }}>
+          {t('contacts.new')}
+        </Button>
+      )}
       <Table<Contact>
         rowKey="id"
         size="small"
@@ -88,6 +92,7 @@ export function ContactsPanel({ accountId, contacts, onChanged }: Props) {
           { title: t('contacts.email'), dataIndex: 'email' },
           {
             title: t('common.actions'),
+            hidden: !editable,
             render: (_, r) => (
               <Space>
                 <Button type="link" size="small" onClick={() => openForm(r)}>

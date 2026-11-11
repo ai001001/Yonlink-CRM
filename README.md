@@ -14,7 +14,8 @@ npm install
 npm run db:start          # 启动本地 PostgreSQL（首次自动生成 .env 与随机密码，保持运行）
 npm run db:migrate        # 另开终端：执行数据库迁移
 npm run db:seed           # 创建组织与管理员（读取 .env 中的 SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD）
-npm run dev               # http://localhost:3000
+npm run db:seed-demo      # 可选：演示组织与各角色演示账号（数据标注【演示】）
+DEMO_LOGIN_ENABLED=1 npm run dev   # http://localhost:3000，登录页可一键登录演示账号
 ```
 
 `.env` 不入库；变量说明见 [.env.example](.env.example)。
@@ -45,5 +46,7 @@ e2e/                    Playwright 端到端测试
 - 每个请求都由服务端校验会话；`organization_id` 只来自会话，请求体中的 `organizationId`/`id` 被拒绝。
 - 所有引用使用 `(organization_id, id)` 复合外键，数据库层面禁止跨组织关联。
 - 密码 Argon2id；会话令牌只存 SHA-256 哈希；登录失败限流。
+- 角色权限（管理员/经理/销售/只读）服务端强制，销售代表只能看到自己负责的记录；重要操作写只追加审计日志。
+- 演示账号一键登录仅在 `DEMO_LOGIN_ENABLED=1` 时开启，生产环境必须关闭。
 
 品牌声明：永联CRM 为自主品牌与自主代码，仅参考 Zoho CRM 的公开业务设计，与 Zoho 无任何关联。

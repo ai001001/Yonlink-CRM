@@ -3,6 +3,7 @@
  * Test helpers: reset DB, create orgs/users, call route handlers over HTTP semantics.
  */
 import { randomBytes } from 'node:crypto';
+import type { UserRole } from '@/generated/prisma/enums';
 import { hashPassword, hashToken, resetLoginLimiter } from '@/server/auth';
 import { prisma } from '@/server/db';
 
@@ -19,10 +20,10 @@ export async function resetDb(): Promise<void> {
 let seq = 0;
 
 /**
- * 创建组织 + 用户 + 会话令牌。
- * Create an organization, a user and a session token.
+ * 创建组织 + 用户 + 会话令牌（默认系统管理员）。
+ * Create an organization, a user (admin by default) and a session token.
  */
-export async function createTenant(label = 'A') {
+export async function createTenant(label = 'A', role: UserRole = 'ADMIN') {
   seq += 1;
   const org = await prisma.organization.create({ data: { name: `测试组织 ${label}` } });
   const password = 'Passw0rd!test';
@@ -31,6 +32,7 @@ export async function createTenant(label = 'A') {
       organizationId: org.id,
       email: `user${seq}-${label.toLowerCase()}@yonlink.test`,
       name: `用户${label}${seq}`,
+      role,
       passwordHash: await hashPassword(password),
     },
   });
@@ -68,4 +70,18 @@ export async function call(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const json: any = text ? JSON.parse(text) : null;
   return { status: res.status, json, headers: res.headers };
+}
+
+/**
+ * 在已有组织中新增指定角色的用户并创建会话。
+ * Add a user with the given role to an existing organization and create a session.
+ */
+export async function addUser(organizationId: string, role: UserRole, label: string = role) {
+  seq += 1;
+  const user = await prisma.user.create({
+    data: { organizationId, role, email: `user${seq}-${label.toLowerCase()}@yonlink.test`, name: `${label}${seq}`, passwordHash: 'x' },
+  });
+  const token = randomBytes(32).toString('base64url');
+  await prisma.session.create({ data: { userId: user.id, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + 3600_000) } });
+  return { user, token };
 }

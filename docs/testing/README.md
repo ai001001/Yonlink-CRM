@@ -19,6 +19,7 @@
 | Dashboard 工作台（含全局搜索） | ✅ | ✅ | ✅ | [dashboard.md](dashboard.md) |
 | 线索转化 | ✅ | ✅ | ✅ | [lead-conversion.md](lead-conversion.md) |
 | 审计日志 | ✅ | ✅ | ✅ | [audit.md](audit.md) |
+| 角色权限 + 演示账号一键登录 | ✅ | ✅ | ✅ | [rbac.md](rbac.md) |
 
 ## 整体回归（全部模块完成后）
 命令：`scripts/regression.sh final-mvp` → **PASS**（lint、typecheck、11 文件 181/181、静态导出、生产构建、E2E 6/6）。原始输出：[results/final-mvp-r3-regression.txt](results/final-mvp-r3-regression.txt)

@@ -8,6 +8,7 @@ import { useCallback, useState } from 'react';
 import { App, Button, Card, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tabs, Tag } from 'antd';
 import { PlusOutlined, StarFilled } from '@ant-design/icons';
 import { AccountDeals } from '@/components/AccountDeals';
+import { usePermissions } from '@/components/AuthProvider';
 import { AuditTrail } from '@/components/AuditTrail';
 import { ContactsPanel } from '@/components/ContactsPanel';
 import { RelatedActivities } from '@/components/RelatedActivities';
@@ -23,6 +24,7 @@ const industryOptions = INDUSTRIES.map((v) => ({ value: v, label: tEnum('industr
 export default function AccountsPage() {
   const { message } = App.useApp();
   const owners = useOwners();
+  const perm = usePermissions();
   const [q, setQ] = useState('');
   const [industry, setIndustry] = useState<string>();
   const { data, loading, reload, pagination } = usePagedList<Account>('/api/accounts', { q, industry });
@@ -88,9 +90,11 @@ export default function AccountsPage() {
     <Card
       title={t('accounts.title')}
       extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
-          {t('accounts.new')}
-        </Button>
+        perm.canCreate && (
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
+            {t('accounts.new')}
+          </Button>
+        )
       }
     >
       <Space wrap style={{ marginBottom: 16 }}>
@@ -122,14 +126,18 @@ export default function AccountsPage() {
             title: t('common.actions'),
             render: (_, r) => (
               <Space>
-                <Button type="link" size="small" onClick={() => openForm(r)}>
-                  {t('common.edit')}
-                </Button>
-                <Popconfirm title={t('common.confirmDelete')} onConfirm={() => remove(r)}>
-                  <Button type="link" size="small" danger>
-                    {t('common.delete')}
+                {perm.canEdit(r) && (
+                  <Button type="link" size="small" onClick={() => openForm(r)}>
+                    {t('common.edit')}
                   </Button>
-                </Popconfirm>
+                )}
+                {perm.canDelete && (
+                  <Popconfirm title={t('common.confirmDelete')} onConfirm={() => remove(r)}>
+                    <Button type="link" size="small" danger>
+                      {t('common.delete')}
+                    </Button>
+                  </Popconfirm>
+                )}
               </Space>
             ),
           },
@@ -167,8 +175,8 @@ export default function AccountsPage() {
             <Form.Item name="website" label={t('accounts.website')}>
               <Input maxLength={254} />
             </Form.Item>
-            <Form.Item name="ownerId" label={t('common.owner')}>
-              <Select allowClear options={owners.map((u) => ({ value: u.id, label: u.name }))} />
+            <Form.Item name="ownerId" label={t('common.owner')} extra={perm.canAssign ? undefined : t('common.ownerLocked')}>
+              <Select allowClear={perm.canAssign} disabled={!perm.canAssign} options={owners.map((u) => ({ value: u.id, label: u.name }))} />
             </Form.Item>
           </div>
           <Form.Item name="address" label={t('accounts.address')}>
@@ -185,7 +193,7 @@ export default function AccountsPage() {
         size={760}
         open={detail !== null}
         onClose={() => setDetail(null)}
-        extra={detail && <Button onClick={() => openForm(detail)}>{t('common.edit')}</Button>}
+        extra={detail && perm.canEdit(detail) && <Button onClick={() => openForm(detail)}>{t('common.edit')}</Button>}
       >
         {detail && (
           <Tabs
@@ -223,6 +231,7 @@ export default function AccountsPage() {
                 label: `${t('accounts.tabContacts')} (${detail.contacts?.length ?? 0})`,
                 children: (
                   <ContactsPanel
+                    editable={perm.canEdit(detail)}
                     accountId={detail.id}
                     contacts={detail.contacts ?? []}
                     onChanged={() => {

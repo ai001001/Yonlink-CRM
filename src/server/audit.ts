@@ -16,7 +16,7 @@ export interface RequestMeta {
 }
 
 /** 审计对象类型 / Audited entity types */
-export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'auth';
+export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'user' | 'auth';
 
 /** 字段策略 / Field policy */
 type Policy = 'plain' | 'mask' | 'redact';
@@ -35,6 +35,7 @@ export const AUDIT_FIELDS: Record<Exclude<AuditEntity, 'auth'>, Record<string, P
     name: 'plain', accountId: 'plain', amount: 'plain', currency: 'plain', stage: 'plain',
     expectedCloseDate: 'plain', description: 'redact', ownerId: 'plain',
   },
+  user: { name: 'plain', email: 'mask', role: 'plain', isActive: 'plain' },
   activity: {
     type: 'plain', subject: 'plain', content: 'redact', dueAt: 'plain', completed: 'plain',
     accountId: 'plain', leadId: 'plain', dealId: 'plain', ownerId: 'plain',

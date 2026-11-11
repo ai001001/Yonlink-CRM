@@ -8,6 +8,7 @@ import { DealStage, LeadStatus } from '@/generated/prisma/enums';
 import { audit, by, diff, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
+import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
 import { amountSchema, CURRENCIES, dateOnly } from './deals';
@@ -53,12 +54,8 @@ const include = {
  * Search leads with pagination.
  */
 export async function listLeads(ctx: AuthContext, query: z.infer<typeof leadListSchema>): Promise<Page<unknown>> {
-  const where: Prisma.LeadWhereInput = {
-    organizationId: ctx.organizationId,
-    status: query.status,
-    source: query.source,
-    ownerId: query.ownerId,
-  };
+  // 可见范围与筛选条件同时满足 / visibility AND filters
+  const where: Prisma.LeadWhereInput = { AND: [visible(ctx), { status: query.status, source: query.source, ownerId: query.ownerId }] };
   if (query.q) {
     const contains = containsText(query.q);
     where.OR = [{ name: contains }, { company: contains }, { email: contains }, { phone: contains }, { mobile: contains }];
@@ -81,7 +78,7 @@ export async function listLeads(ctx: AuthContext, query: z.infer<typeof leadList
  * Get a lead; cross-organization access yields 404.
  */
 export async function getLead(ctx: AuthContext, id: string) {
-  const lead = await prisma.lead.findFirst({ where: { id, organizationId: ctx.organizationId }, include });
+  const lead = await prisma.lead.findFirst({ where: { id, ...visible(ctx) }, include });
   if (!lead) throw notFound();
   return lead;
 }
@@ -92,6 +89,8 @@ export async function getLead(ctx: AuthContext, id: string) {
  */
 export async function createLead(ctx: AuthContext, input: z.infer<typeof leadCreateSchema>) {
   const { ownerId, ...data } = input;
+  requirePermission(ctx, 'record.create');
+  assertOwnerAssignable(ctx, ownerId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
   return prisma.$transaction(async (tx) => {
     const lead = await tx.lead.create({ data: { ...data, organizationId: ctx.organizationId, ownerId: owner }, include });
@@ -106,7 +105,9 @@ export async function createLead(ctx: AuthContext, input: z.infer<typeof leadCre
  */
 export async function updateLead(ctx: AuthContext, id: string, input: z.infer<typeof leadUpdateSchema>) {
   const current = await getLead(ctx, id);
+  assertCanUpdate(ctx, current);
   const { ownerId, ...data } = input;
+  assertOwnerAssignable(ctx, ownerId);
   if (current.convertedAt && data.status !== undefined) {
     throw new ApiError(409, 'CONFLICT', 'Lead already converted', { status: ['Converted leads keep their status'] });
   }
@@ -126,8 +127,9 @@ export async function updateLead(ctx: AuthContext, id: string, input: z.infer<ty
  * Delete a lead: lead-only activities are removed, shared ones are unlinked and kept.
  */
 export async function deleteLead(ctx: AuthContext, id: string): Promise<void> {
+  assertCanDelete(ctx);
   await prisma.$transaction(async (tx) => {
-    const lead = await tx.lead.findFirst({ where: { id, organizationId: ctx.organizationId } });
+    const lead = await tx.lead.findFirst({ where: { id, ...visible(ctx) } });
     if (!lead) throw notFound();
     await detachSharedActivities(tx, ctx.organizationId, 'leadId', id);
     const { count } = await tx.lead.deleteMany({ where: { id, organizationId: ctx.organizationId } });
@@ -168,6 +170,9 @@ export const leadConvertSchema = z.strictObject({
 export async function convertLead(ctx: AuthContext, id: string, input: z.infer<typeof leadConvertSchema>) {
   const org = ctx.organizationId;
   const lead = await getLead(ctx, id);
+  // 转化会修改线索并新建记录 / conversion edits the lead and creates records
+  assertCanUpdate(ctx, lead);
+  requirePermission(ctx, 'record.create');
   if (lead.convertedAt) throw new ApiError(409, 'CONFLICT', 'Lead already converted', { lead: ['Already converted'] });
   const ownerId = lead.ownerId ?? ctx.userId;
 
@@ -176,7 +181,7 @@ export async function convertLead(ctx: AuthContext, id: string, input: z.infer<t
     let account: { id: string; name: string };
     let isNewAccount = false;
     if (input.account.mode === 'existing') {
-      const found = await tx.account.findFirst({ where: { id: input.account.accountId, organizationId: org }, select: { id: true, name: true } });
+      const found = await tx.account.findFirst({ where: { id: input.account.accountId, ...visible(ctx) }, select: { id: true, name: true } });
       if (!found) throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid account', { 'account.accountId': ['Account not found'] });
       account = found;
     } else {

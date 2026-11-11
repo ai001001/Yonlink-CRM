@@ -1,0 +1,40 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 非管理员不能修改任何人的角色（包括自己）/ non-admins cannot change roles, including their own 420ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 新建用户 注入 isDemo / inject isDemo → 400 88ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 新建用户 注入 organizationId → 400 70ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 新建用户 非法角色 / bad role → 400 72ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 新建用户 密码过短 / short password → 400 74ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 新建用户 邮箱非法 / bad email → 400 76ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 新建用户 缺姓名 / missing name → 400 76ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 更新用户非法字段 {"email":"x@yonlink.test"} → 400 72ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 更新用户非法字段 {"password":"Long-Enough-1"} → 400 78ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 更新用户非法字段 {"isDemo":true} → 400 71ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 更新用户非法字段 {"role":"ROOT"} → 400 70ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 更新用户非法字段 {"isActive":"no"} → 400 69ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 邮箱重复 → 409（不区分大小写）/ duplicate email → 409 123ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 销售代表即使带 ownerId 筛选也看不到他人数据 / visibility cannot be bypassed with an ownerId filter 172ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 未分配负责人的记录对销售代表不可见 / unassigned records are invisible to sales reps 119ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 销售代表对他人记录的读/改/删：404/404/403，数据不变 / IDOR between sales reps 113ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 联系人与跟进同样受可见范围约束 / contacts and activities follow visibility 156ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 商机金额合计与全局搜索按可见范围 / deal totals and global search follow visibility 143ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 last-admin protection > 不能修改自己的角色或停用自己 / cannot change own role or deactivate self 83ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 last-admin protection > 两名管理员时可降级其一；并发互相降级后至少保留一名 / concurrent mutual demotion keeps an admin 92ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 last-admin protection > 停用用户后其现有会话立即失效 / deactivation invalidates existing sessions immediately 96ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 cross-organization > 其他组织管理员看不到、改不了本组织用户 / admins of another org cannot see or change users 108ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 cross-organization > 用户管理审计记录：邮箱打码、不含密码 / user audit entries mask email and omit passwords 104ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 demo login edge cases > 非演示账号、停用的演示账号不能一键登录 / non-demo and inactive demo users are rejected 72ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 demo login edge cases > 非法请求 {} → 400 71ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 demo login edge cases > 非法请求 {"userId":"x"} → 400 65ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 demo login edge cases > 非法请求 {"userId":"00000000-0000-4000-8000-000000000000","role":"ADMIN"} → 400 60ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 demo login edge cases > 演示账号的权限与其角色一致（不因演示而放宽）/ demo users get exactly their role permissions 92ms
+
+ Test Files  1 passed (1)
+      Tests  28 passed (28)
+   Start at  23:40:10
+   Duration  5.00s (tests 90%, import 6%, transform 4%)

@@ -5,6 +5,7 @@
 import { z } from 'zod';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
+import { visible } from '../permissions';
 import { containsText } from '../validation';
 import { activityInclude } from './activities';
 
@@ -30,46 +31,47 @@ function toSums(rows: { currency: string; _sum: { amount: { toString(): string }
  * recent activities and my pending items.
  */
 export async function getDashboard(ctx: AuthContext) {
-  const org = ctx.organizationId;
+  // 统计与搜索遵循可见范围（销售代表只统计自己负责的）/ figures and search follow visibility
+  const scope = visible(ctx);
   const now = new Date();
   const [accounts, leads, deals, all, open, won, byStage, recentActivities, myTodos, myTodoCount, myOverdueCount] = await prisma.$transaction([
-    prisma.account.count({ where: { organizationId: org } }),
-    prisma.lead.count({ where: { organizationId: org } }),
-    prisma.deal.count({ where: { organizationId: org } }),
-    prisma.deal.groupBy({ by: ['currency'], where: { organizationId: org }, _sum: { amount: true }, orderBy: { currency: 'asc' } }),
+    prisma.account.count({ where: scope }),
+    prisma.lead.count({ where: scope }),
+    prisma.deal.count({ where: scope }),
+    prisma.deal.groupBy({ by: ['currency'], where: scope, _sum: { amount: true }, orderBy: { currency: 'asc' } }),
     prisma.deal.groupBy({
       by: ['currency'],
-      where: { organizationId: org, stage: { notIn: [...CLOSED] } },
+      where: { ...scope, stage: { notIn: [...CLOSED] } },
       _sum: { amount: true },
       orderBy: { currency: 'asc' },
     }),
     prisma.deal.groupBy({
       by: ['currency'],
-      where: { organizationId: org, stage: 'CLOSED_WON' },
+      where: { ...scope, stage: 'CLOSED_WON' },
       _sum: { amount: true },
       orderBy: { currency: 'asc' },
     }),
     prisma.deal.groupBy({
       by: ['stage', 'currency'],
-      where: { organizationId: org },
+      where: scope,
       _count: { _all: true },
       _sum: { amount: true },
       orderBy: [{ stage: 'asc' }, { currency: 'asc' }],
     }),
     prisma.activity.findMany({
-      where: { organizationId: org },
+      where: scope,
       include: activityInclude,
       orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
       take: 10,
     }),
     prisma.activity.findMany({
-      where: { organizationId: org, ownerId: ctx.userId, completed: false },
+      where: { ...scope, ownerId: ctx.userId, completed: false },
       include: activityInclude,
       orderBy: [{ dueAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }],
       take: 10,
     }),
-    prisma.activity.count({ where: { organizationId: org, ownerId: ctx.userId, completed: false } }),
-    prisma.activity.count({ where: { organizationId: org, ownerId: ctx.userId, completed: false, dueAt: { lt: now } } }),
+    prisma.activity.count({ where: { ...scope, ownerId: ctx.userId, completed: false } }),
+    prisma.activity.count({ where: { ...scope, ownerId: ctx.userId, completed: false, dueAt: { lt: now } } }),
   ]);
 
   return {
@@ -96,23 +98,24 @@ export const searchSchema = z.object({ q: z.string().trim().min(1).max(100) });
  * Search across leads, accounts (including contact names) and deals, up to 10 each.
  */
 export async function globalSearch(ctx: AuthContext, q: string) {
-  const org = ctx.organizationId;
+  // 统计与搜索遵循可见范围（销售代表只统计自己负责的）/ figures and search follow visibility
+  const scope = visible(ctx);
   const c = containsText(q);
   const [leads, accounts, deals] = await prisma.$transaction([
     prisma.lead.findMany({
-      where: { organizationId: org, OR: [{ name: c }, { company: c }, { email: c }, { phone: c }, { mobile: c }] },
+      where: { ...scope, OR: [{ name: c }, { company: c }, { email: c }, { phone: c }, { mobile: c }] },
       select: { id: true, name: true, company: true, status: true },
       orderBy: { createdAt: 'desc' },
       take: 10,
     }),
     prisma.account.findMany({
-      where: { organizationId: org, OR: [{ name: c }, { phone: c }, { contacts: { some: { name: c } } }] },
+      where: { ...scope, OR: [{ name: c }, { phone: c }, { contacts: { some: { name: c } } }] },
       select: { id: true, name: true, industry: true },
       orderBy: { createdAt: 'desc' },
       take: 10,
     }),
     prisma.deal.findMany({
-      where: { organizationId: org, OR: [{ name: c }, { account: { name: c } }] },
+      where: { ...scope, OR: [{ name: c }, { account: { name: c } }] },
       select: { id: true, name: true, stage: true, amount: true, currency: true, account: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'desc' },
       take: 10,

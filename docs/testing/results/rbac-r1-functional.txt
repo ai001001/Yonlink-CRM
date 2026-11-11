@@ -1,0 +1,26 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: me > /api/auth/me 返回角色与权限 / returns role and permissions 471ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: sales representative > 只看到自己负责的记录（列表、详情、工作台、搜索）/ sees own records only 280ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: sales representative > 新建记录负责人为自己，不能指派给他人 / owns new records, cannot assign others 152ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: sales representative > 可编辑自己的记录，不能删除 / edits own records but cannot delete 130ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: sales representative > 可转化自己的线索，并只能关联自己可见的客户 / converts own leads into visible accounts 149ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: sales representative > 跟进只能关联自己可见的记录 / activities can only link visible records 106ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: sales representative > 不能查看审计日志和管理用户 / no audit or user management 77ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: manager > 可查看、编辑、删除、指派全部业务记录 / full business access 118ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: manager > 不能查看审计日志和管理用户 / no audit or user management 71ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: read-only > 可查看全部，不能新建、编辑、删除、转化 / reads everything, writes nothing 102ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: admin user management > 新建用户（可用新密码登录）、改角色立即生效、停用、重置密码 / create, change role, deactivate, reset 345ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: admin user management > 管理员可查看审计日志 / admins read audit logs 77ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: demo one-click login > 开启时列出演示账号并可一键登录，记录审计 / lists demo accounts and logs in when enabled 84ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: demo one-click login > 默认关闭：两个接口均 404 / disabled by default: both endpoints 404 69ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  23:39:15
+   Duration  4.44s (tests 85%, import 7%, transform 7%)

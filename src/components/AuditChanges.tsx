@@ -56,6 +56,7 @@ const ENUM_PREFIX: Record<string, string> = {
   industry: 'industry',
   stage: 'dealStage',
   type: 'activityType',
+  role: 'role',
 };
 
 /**
@@ -75,6 +76,10 @@ const fieldLabel = (field: string, entityType: string): string => {
   if (entityType === 'contact' && field === 'name') return t('contacts.name');
   if (entityType === 'account' && field === 'name') return t('accounts.name');
   if (entityType === 'deal' && field === 'name') return t('deals.name');
+  if (entityType === 'user' && field === 'name') return t('users.name');
+  if (entityType === 'user' && field === 'email') return t('users.email');
+  if (entityType === 'user' && field === 'role') return t('users.role');
+  if (entityType === 'user' && field === 'isActive') return t('users.status');
   if (entityType === 'account' && field === 'phone') return t('accounts.phone');
   const key = FIELD_LABELS[field];
   return key ? t(key) : field;
