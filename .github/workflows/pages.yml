@@ -1,5 +1,5 @@
-# GitHub Pages 静态前端预览部署（尚未接入真实后端，页面会明确提示）
-# Deploy the static frontend preview to GitHub Pages (no real backend yet; the UI says so)
+# GitHub Pages 前端部署，调用 Oracle 服务器上的后端 API（演示环境）
+# Deploy the frontend to GitHub Pages; it calls the backend API on the Oracle server (demo environment)
 name: Pages
 
 on:
@@ -28,9 +28,10 @@ jobs:
       - run: npm ci
       - run: npm run build:pages
         env:
-          # 接入后端后改为 0，并设置 NEXT_PUBLIC_API_BASE=https://<后端域名>
-          # set to 0 and NEXT_PUBLIC_API_BASE=https://<api host> once the backend is public
-          NEXT_PUBLIC_STATIC_PREVIEW: '1'
+          # 已接入 Oracle 服务器上的真实后端（Caddy + Let's Encrypt HTTPS）
+          # connected to the real backend on the Oracle server (Caddy + Let's Encrypt HTTPS)
+          NEXT_PUBLIC_STATIC_PREVIEW: '0'
+          NEXT_PUBLIC_API_BASE: https://132-226-98-75.sslip.io
       - run: touch out/.nojekyll
       - uses: actions/upload-pages-artifact@v4
         with:

@@ -3,7 +3,7 @@
 企业 CRM 最小化 MVP：工作台、线索、客户（含联系人）、商机、跟进管理。
 技术栈：Next.js 16 · TypeScript (strict) · Ant Design 6 · PostgreSQL 18 · Prisma 7 · Vitest 5 · Playwright。
 
-- 演示（静态前端预览，**尚未接入真实后端**）：https://ai001001.github.io/Yonlink-CRM/
+- 演示：https://ai001001.github.io/Yonlink-CRM/（已接入真实后端，登录页可一键登录演示账号；后端 https://132-226-98-75.sslip.io，见 [公网部署](docs/deploy/公网部署.md)）
 - 测试记录：[docs/testing/](docs/testing/README.md)
 - 设计文档：[Zoho 模块研究](docs/mvp/01-Zoho核心模块快速研究.md) · [数据库设计](docs/mvp/02-数据库设计.md) · [ADR-010 MVP 架构](docs/adr/ADR-010-MVP轻量化单体.md)
 
