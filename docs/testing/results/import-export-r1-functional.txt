@@ -1,0 +1,27 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/import-export/import-export.r1-functional.test.ts > CSV read/write > 解析引号、转义引号、字段内换行、CRLF、BOM 与空行 / parses quotes, escapes, newlines, CRLF, BOM 314ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > CSV read/write > 未闭合引号报错 / unterminated quotes throw 76ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > CSV read/write > 生成：BOM + CRLF，需要时加引号，往返一致 / writes BOM + CRLF and round-trips 62ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > CSV read/write > 防公式注入 / neutralises formula injection 53ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > export > 导出线索：中文表头、枚举翻译、负责人邮箱、北京时间 / leads export 182ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > export > 导出遵循列表筛选与搜索 / export follows list filters and search 147ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > export > 导出客户、商机、跟进 / accounts, deals and activities export 231ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > export > 导出写审计（记录数量与筛选，不记搜索词）/ exports are audited without the search text 93ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > import > 预检不写入，返回可导入数量 / dry run writes nothing 73ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > import > 导入线索：中文标签与代码都可识别，负责人默认自己，逐条审计 / imports leads 84ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > import > 英文字段名表头也可导入，未知列被忽略并提示 / English headers work, unknown columns are reported 66ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > import > 查重：与已有记录或文件内重复的默认跳过，可选择仍然创建 / duplicates skipped by default, optionally created 89ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > import > 导入客户并创建主要联系人 / imports accounts with a primary contact 78ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > import > 导入后再导出，数据一致（往返）/ import then export round-trips 82ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > import > 模板：表头可被导入识别（含示例行）/ templates are importable 69ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  23:27:44
+   Duration  3.80s (tests 85%, import 10%, transform 4%, setup 1%)

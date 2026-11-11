@@ -72,6 +72,19 @@ async function assertAccount(ctx: AuthContext, accountId: string): Promise<void>
 }
 
 /**
+ * 列表与导出共用的查询条件（可见范围 + 筛选 + 搜索）。
+ * Query conditions shared by the list and the export (visibility + filters + search).
+ */
+export function dealWhere(ctx: AuthContext, query: Omit<z.infer<typeof dealListSchema>, 'page' | 'pageSize'>): Prisma.DealWhereInput {
+  const where: Prisma.DealWhereInput = { AND: [visible(ctx), { stage: query.stage, accountId: query.accountId, ownerId: query.ownerId }] };
+  if (query.q) {
+    const c = containsText(query.q);
+    where.OR = [{ name: c }, { account: { name: c } }];
+  }
+  return where;
+}
+
+/**
  * 分页搜索商机（名称、客户名称），并返回筛选结果按币种的金额合计。
  * Search deals (name, account name) and return per-currency totals for the filter.
  */
@@ -79,11 +92,7 @@ export async function listDeals(
   ctx: AuthContext,
   query: z.infer<typeof dealListSchema>,
 ): Promise<Page<unknown> & { sums: { currency: string; amount: string }[] }> {
-  const where: Prisma.DealWhereInput = { AND: [visible(ctx), { stage: query.stage, accountId: query.accountId, ownerId: query.ownerId }] };
-  if (query.q) {
-    const c = containsText(query.q);
-    where.OR = [{ name: c }, { account: { name: c } }];
-  }
+  const where = dealWhere(ctx, query);
   const [items, total, sums] = await prisma.$transaction([
     prisma.deal.findMany({
       where,

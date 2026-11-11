@@ -73,15 +73,24 @@ function listInclude(ctx: AuthContext) {
 const contactOrder: Prisma.ContactOrderByWithRelationInput[] = [{ isPrimary: 'desc' }, { createdAt: 'asc' }];
 
 /**
- * 分页搜索客户（名称、电话、网站、地址、联系人姓名）。
- * Search accounts with pagination (name, phone, website, address, contact name).
+ * 列表与导出共用的查询条件（可见范围 + 筛选 + 搜索）。
+ * Query conditions shared by the list and the export (visibility + filters + search).
  */
-export async function listAccounts(ctx: AuthContext, query: z.infer<typeof accountListSchema>): Promise<Page<unknown>> {
+export function accountWhere(ctx: AuthContext, query: Omit<z.infer<typeof accountListSchema>, 'page' | 'pageSize'>): Prisma.AccountWhereInput {
   const where: Prisma.AccountWhereInput = { AND: [visible(ctx), { industry: query.industry, ownerId: query.ownerId }] };
   if (query.q) {
     const c = containsText(query.q);
     where.OR = [{ name: c }, { phone: c }, { website: c }, { address: c }, { contacts: { some: { name: c } } }];
   }
+  return where;
+}
+
+/**
+ * 分页搜索客户（名称、电话、网站、地址、联系人姓名）。
+ * Search accounts with pagination (name, phone, website, address, contact name).
+ */
+export async function listAccounts(ctx: AuthContext, query: z.infer<typeof accountListSchema>): Promise<Page<unknown>> {
+  const where = accountWhere(ctx, query);
   const [items, total] = await prisma.$transaction([
     prisma.account.findMany({
       where,

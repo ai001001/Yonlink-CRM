@@ -28,6 +28,8 @@ async function cellByHeader(page: Page, row: ReturnType<typeof rowOf>, header: s
 
 /** 在列表页搜索框中搜索（数据较多时列表分页，先搜索再断言）/ search before asserting (lists paginate) */
 async function search(page: Page, placeholder: string, text: string): Promise<void> {
+  // 等弹窗完全关闭，避免回车落到打开弹窗的按钮上 / wait for modals to close first
+  await expect(page.locator('.ant-modal-wrap:visible')).toHaveCount(0);
   const box = page.getByPlaceholder(placeholder);
   await box.fill(text);
   await box.press('Enter');

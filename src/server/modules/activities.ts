@@ -76,10 +76,10 @@ export async function assertRelated(
 }
 
 /**
- * 分页查询跟进记录（默认最新优先，可按截止时间排序）。
- * List activities with pagination (newest first by default, or by due date).
+ * 列表与导出共用的查询条件（可见范围 + 筛选 + 搜索）。
+ * Query conditions shared by the list and the export (visibility + filters + search).
  */
-export async function listActivities(ctx: AuthContext, query: z.infer<typeof activityListSchema>): Promise<Page<unknown>> {
+export function activityWhere(ctx: AuthContext, query: Omit<z.infer<typeof activityListSchema>, 'page' | 'pageSize'>): Prisma.ActivityWhereInput {
   // 可见范围必须用 AND 组合，不能被 ownerId 筛选覆盖 / visibility is ANDed so the ownerId filter cannot override it
   const where: Prisma.ActivityWhereInput = {
     AND: [
@@ -98,6 +98,15 @@ export async function listActivities(ctx: AuthContext, query: z.infer<typeof act
     const c = containsText(query.q);
     where.OR = [{ subject: c }, { content: c }];
   }
+  return where;
+}
+
+/**
+ * 分页查询跟进记录（默认最新优先，可按截止时间排序）。
+ * List activities with pagination (newest first by default, or by due date).
+ */
+export async function listActivities(ctx: AuthContext, query: z.infer<typeof activityListSchema>): Promise<Page<unknown>> {
+  const where = activityWhere(ctx, query);
   const [items, total] = await prisma.$transaction([
     prisma.activity.findMany({
       where,

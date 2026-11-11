@@ -1,0 +1,36 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 permissions > 导出仅管理员与经理；销售代表与只读用户 403 / export is admin and manager only 508ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 permissions > 只读用户不能导入；销售代表可导入，负责人只能是自己 / read-only cannot import; sales own only 104ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 permissions > 经理可把导入记录指派给他人 / managers can assign imported records 83ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 permissions > 未登录 401 / unauthenticated → 401 80ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 isolation > 其他组织用户的邮箱不能作为负责人；停用用户也不行 / owners must be active users of this org 112ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 isolation > 查重只在本组织范围；导入记录归属本组织 / duplicates are organization scoped 127ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 isolation > 导出不含其他组织数据 / exports never include other organizations 124ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 逐行错误：必填、邮箱、长度、枚举、已转化状态、联系人邮箱；行号正确 / row errors with correct line numbers 78ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 错误行不写入，有效行写入 / only valid rows are written 88ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 文件级错误：只有表头 / header only → 400 65ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 文件级错误：缺少必填列 / missing name column → 400 67ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 文件级错误：引号未闭合 / unterminated quote → 400 63ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 文件级错误：超过 2000 行 / too many rows → 400 66ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 2000 行边界可导入 / exactly 2000 rows are accepted 3591ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 非法请求 0 → 400 61ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 非法请求 1 → 400 63ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 非法请求 2 → 400 59ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 非法请求 3 → 400 60ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 非法请求 4 → 400 61ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 security & limits > 导出时对公式开头的内容加单引号 / formula-like values are neutralised in exports 82ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 security & limits > 超过 10000 条时只导出前 10000 条并标记截断 / exports cap at 10000 rows and flag truncation 2682ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 security & limits > 导入审计只记数量，不含文件原文 / import audit stores counts only 84ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 security & limits > 预检不写审计，不产生任何记录 / dry runs write nothing at all 67ms
+
+ Test Files  1 passed (1)
+      Tests  23 passed (23)
+   Start at  23:27:48
+   Duration  10.43s (tests 97%, import 3%, transform 1%)
+

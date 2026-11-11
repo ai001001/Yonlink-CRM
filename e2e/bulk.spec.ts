@@ -15,6 +15,8 @@ async function apiPost(page: Page, path: string, data: object) {
 
 /** 在列表中搜索 / search the list */
 async function search(page: Page, placeholder: string, text: string) {
+  // 等弹窗完全关闭，避免回车落到打开弹窗的按钮上 / wait for modals to close first
+  await expect(page.locator('.ant-modal-wrap:visible')).toHaveCount(0);
   await page.getByPlaceholder(placeholder).fill(text);
   await page.getByPlaceholder(placeholder).press('Enter');
 }

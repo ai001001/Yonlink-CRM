@@ -3,7 +3,7 @@
  * Accounts round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
-import { nav, signIn } from './helpers';
+import { nav, searchList, signIn } from './helpers';
 
 const SAVE = /保\s*存/;
 
@@ -62,14 +62,11 @@ test('客户完整业务流程 / full accounts flow', async ({ page }) => {
   await drawer.getByRole('button', { name: '关闭' }).first().click();
 
   // 按联系人姓名搜索客户 / search by contact name
-  await page.getByPlaceholder('搜索客户名称、电话、网站、地址、联系人').fill('欧阳');
-  await page.getByPlaceholder('搜索客户名称、电话、网站、地址、联系人').press('Enter');
+  await searchList(page, '搜索客户名称、电话、网站、地址、联系人', '欧阳');
   await expect(page.getByRole('row', { name: /E2E 远望制造/ })).toBeVisible();
-  await page.getByPlaceholder('搜索客户名称、电话、网站、地址、联系人').fill('不存在的客户');
-  await page.getByPlaceholder('搜索客户名称、电话、网站、地址、联系人').press('Enter');
+  await searchList(page, '搜索客户名称、电话、网站、地址、联系人', '不存在的客户');
   await expect(page.getByRole('row', { name: /E2E 远望制造/ })).toHaveCount(0);
-  await page.getByPlaceholder('搜索客户名称、电话、网站、地址、联系人').fill('');
-  await page.getByPlaceholder('搜索客户名称、电话、网站、地址、联系人').press('Enter');
+  await searchList(page, '搜索客户名称、电话、网站、地址、联系人', '');
 
   // 编辑客户 / edit account
   const row = page.getByRole('row', { name: /E2E 远望制造/ });

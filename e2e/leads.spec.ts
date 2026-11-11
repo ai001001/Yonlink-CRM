@@ -3,7 +3,7 @@
  * Leads round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
-import { nav, signIn } from './helpers';
+import { nav, searchList, signIn } from './helpers';
 
 test('线索完整业务流程 / full leads flow', async ({ page }) => {
   await signIn(page);
@@ -38,8 +38,7 @@ test('线索完整业务流程 / full leads flow', async ({ page }) => {
   await expect(page.getByRole('row', { name: /E2E 线索乙/ })).toBeVisible();
 
   // 搜索 / search
-  await page.getByPlaceholder('搜索姓名、公司、邮箱、电话').fill('永联测试');
-  await page.getByPlaceholder('搜索姓名、公司、邮箱、电话').press('Enter');
+  await searchList(page, '搜索姓名、公司、邮箱、电话', '永联测试');
   await expect(page.getByRole('row', { name: /E2E 线索乙/ })).toHaveCount(0);
   await expect(page.getByRole('row', { name: /E2E 线索甲/ })).toBeVisible();
 

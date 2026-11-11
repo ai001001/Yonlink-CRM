@@ -72,6 +72,7 @@ test('工作台统计与全局搜索 / dashboard figures and global search', asy
 
   // 全局搜索并跳转详情 / global search and open detail
   const searchBox = page.getByPlaceholder('搜索线索、客户、商机');
+  await expect(page.locator('.ant-modal-wrap:visible')).toHaveCount(0);
   await searchBox.fill('E2E 工作台');
   await searchBox.press('Enter');
   const results = page.getByTestId('search-results');
@@ -86,6 +87,7 @@ test('工作台统计与全局搜索 / dashboard figures and global search', asy
   await dealDrawer.getByRole('button', { name: '关闭' }).first().click();
   await expect(dealDrawer).toBeHidden();
 
+  await expect(page.locator('.ant-modal-wrap:visible')).toHaveCount(0);
   await searchBox.fill('不存在的关键字XYZ');
   await searchBox.press('Enter');
   await expect(page.getByText('没有找到匹配的记录')).toBeVisible();

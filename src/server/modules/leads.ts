@@ -50,16 +50,25 @@ const include = {
 } satisfies Prisma.LeadInclude;
 
 /**
- * 分页搜索线索。
- * Search leads with pagination.
+ * 列表与导出共用的查询条件（可见范围 + 筛选 + 搜索）。
+ * Query conditions shared by the list and the export (visibility + filters + search).
  */
-export async function listLeads(ctx: AuthContext, query: z.infer<typeof leadListSchema>): Promise<Page<unknown>> {
+export function leadWhere(ctx: AuthContext, query: Omit<z.infer<typeof leadListSchema>, 'page' | 'pageSize'>): Prisma.LeadWhereInput {
   // 可见范围与筛选条件同时满足 / visibility AND filters
   const where: Prisma.LeadWhereInput = { AND: [visible(ctx), { status: query.status, source: query.source, ownerId: query.ownerId }] };
   if (query.q) {
     const contains = containsText(query.q);
     where.OR = [{ name: contains }, { company: contains }, { email: contains }, { phone: contains }, { mobile: contains }];
   }
+  return where;
+}
+
+/**
+ * 分页搜索线索。
+ * Search leads with pagination.
+ */
+export async function listLeads(ctx: AuthContext, query: z.infer<typeof leadListSchema>): Promise<Page<unknown>> {
+  const where = leadWhere(ctx, query);
   const [items, total] = await prisma.$transaction([
     prisma.lead.findMany({
       where,

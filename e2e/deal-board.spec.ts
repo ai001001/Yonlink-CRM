@@ -4,7 +4,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import { demoSamples } from '../prisma/demo-data';
-import { nav, signIn } from './helpers';
+import { nav, searchList, signIn } from './helpers';
 
 const S = demoSamples();
 
@@ -31,8 +31,7 @@ test('商机看板拖动与移动 / deal board drag and move', async ({ page }) 
   await expect(qualification.getByLabel('E2E 看板商机甲', { exact: true })).toBeVisible();
 
   // 只看本用例数据 / narrow the board to this test's data
-  await page.getByPlaceholder('搜索商机名称、客户名称').fill('E2E 看板商机');
-  await page.getByPlaceholder('搜索商机名称、客户名称').press('Enter');
+  await searchList(page, '搜索商机名称、客户名称', 'E2E 看板商机');
   await expect(qualification.getByTestId('board-col-count')).toHaveText('2');
   await expect(qualification.getByTestId('board-col-sum')).toContainText('¥15,000.00');
 
@@ -51,8 +50,7 @@ test('商机看板拖动与移动 / deal board drag and move', async ({ page }) 
   // 刷新后保持，列表视图一致 / persisted after reload and consistent with the list
   await page.reload();
   await page.getByText('看板', { exact: true }).click();
-  await page.getByPlaceholder('搜索商机名称、客户名称').fill('E2E 看板商机');
-  await page.getByPlaceholder('搜索商机名称、客户名称').press('Enter');
+  await searchList(page, '搜索商机名称、客户名称', 'E2E 看板商机');
   await expect(page.getByTestId('board-col-PROPOSAL').getByLabel('E2E 看板商机甲', { exact: true })).toBeVisible();
   await expect(page.getByTestId('board-col-NEGOTIATION').getByLabel('E2E 看板商机乙', { exact: true })).toBeVisible();
   await page.getByText('列表', { exact: true }).click();

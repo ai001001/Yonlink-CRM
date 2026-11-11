@@ -3,7 +3,7 @@
  * Deals round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
-import { nav, signIn } from './helpers';
+import { nav, searchList, signIn } from './helpers';
 
 const SAVE = /保\s*存/;
 
@@ -43,11 +43,9 @@ test('商机完整业务流程 / full deals flow', async ({ page }) => {
   await expect(row).toContainText('2027-06-30');
   // 合计随筛选变化；按名称筛选后只统计本商机（其他用例可能留有商机）
   // totals follow the filter; filter by name so data from other specs does not interfere
-  await page.getByPlaceholder('搜索商机名称、客户名称').fill('E2E 服务器扩容');
-  await page.getByPlaceholder('搜索商机名称、客户名称').press('Enter');
+  await searchList(page, '搜索商机名称、客户名称', 'E2E 服务器扩容');
   await expect(page.getByTestId('deal-sums')).toHaveText(/金额合计 \(CNY\)\s*¥128,000\.50/);
-  await page.getByPlaceholder('搜索商机名称、客户名称').fill('');
-  await page.getByPlaceholder('搜索商机名称、客户名称').press('Enter');
+  await searchList(page, '搜索商机名称、客户名称', '');
 
   // 详情 → 推进阶段 → 跟进 / detail → advance stage → follow-up
   await page.getByRole('button', { name: 'E2E 服务器扩容' }).click();
@@ -68,8 +66,7 @@ test('商机完整业务流程 / full deals flow', async ({ page }) => {
   await drawer.getByRole('button', { name: '关闭' }).first().click();
 
   // 搜索：按客户名找到商机 / search by account name
-  await page.getByPlaceholder('搜索商机名称、客户名称').fill('海川');
-  await page.getByPlaceholder('搜索商机名称、客户名称').press('Enter');
+  await searchList(page, '搜索商机名称、客户名称', '海川');
   await expect(page.getByRole('row', { name: /E2E 服务器扩容/ })).toContainText('赢单');
 
   // 客户详情显示商机；有商机时不能删客户 / account shows deal and cannot be deleted

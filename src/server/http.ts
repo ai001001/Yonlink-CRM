@@ -34,6 +34,8 @@ function withHeaders(req: Request, res: Response): Response {
     res.headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
     res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
     res.headers.set('Access-Control-Max-Age', '600');
+    // 允许跨域前端读取导出信息 / let the cross-origin frontend read export metadata
+    res.headers.set('Access-Control-Expose-Headers', 'Content-Disposition, X-Export-Count, X-Export-Truncated');
   }
   res.headers.set('Cache-Control', 'no-store');
   res.headers.set('X-Content-Type-Options', 'nosniff');
@@ -158,4 +160,14 @@ export async function routeId(route: RouteParams, name = 'id'): Promise<string> 
   const parsed = uuid.safeParse(value);
   if (!parsed.success) throw notFound();
   return parsed.data;
+}
+
+/**
+ * CSV 文件响应（附件下载）。
+ * CSV attachment response.
+ */
+export function csvResponse(filename: string, csv: string, extra: Record<string, string> = {}): Response {
+  return new Response(csv, {
+    headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${filename}"`, ...extra },
+  });
 }

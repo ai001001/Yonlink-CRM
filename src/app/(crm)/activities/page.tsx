@@ -12,6 +12,7 @@ import { ActivityFormModal, activityTypeOptions } from '@/components/ActivityFor
 import { ActivityRelationFields } from '@/components/ActivityRelationFields';
 import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
+import { ExportButton } from '@/components/ExportButton';
 import { ACTIVITY_TYPE_COLOR, toggleActivity } from '@/components/RelatedActivities';
 import { t, tEnum } from '@/i18n';
 import { api } from '@/lib/api';
@@ -72,11 +73,14 @@ export default function ActivitiesPage() {
     <Card
       title={t('activities.title')}
       extra={
-        perm.canCreate && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setModal({ editing: null })}>
-            {t('activities.new')}
-          </Button>
-        )
+        <Space>
+          <ExportButton resource="activities" filters={{ q, type, completed: status === 'all' ? undefined : status }} />
+          {perm.canCreate && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setModal({ editing: null })}>
+              {t('activities.new')}
+            </Button>
+          )}
+        </Space>
       }
     >
       <Space wrap style={{ marginBottom: 16 }}>

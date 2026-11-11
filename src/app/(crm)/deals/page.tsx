@@ -12,6 +12,7 @@ import { AuditTrail } from '@/components/AuditTrail';
 import { DealBoard } from '@/components/DealBoard';
 import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
+import { ExportButton } from '@/components/ExportButton';
 import { RecordSelect } from '@/components/RecordSelect';
 import { RelatedActivities } from '@/components/RelatedActivities';
 import { t, tEnum } from '@/i18n';
@@ -118,11 +119,14 @@ export default function DealsPage() {
     <Card
       title={t('deals.title')}
       extra={
-        perm.canCreate && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
-            {t('deals.new')}
-          </Button>
-        )
+        <Space>
+          <ExportButton resource="deals" filters={{ q, stage }} />
+          {perm.canCreate && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
+              {t('deals.new')}
+            </Button>
+          )}
+        </Space>
       }
     >
       <Space wrap style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>

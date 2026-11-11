@@ -15,12 +15,13 @@ export type Permission =
   | 'record.delete'
   | 'owner.assign' // 把负责人设为他人 / assign records to others
   | 'audit.read'
+  | 'data.export' // 导出 CSV（批量带走客户数据，仅管理员与经理）/ CSV export (bulk data egress; admins and managers only)
   | 'user.manage';
 
 /** 角色 → 权限 / Role → permissions */
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
-  ADMIN: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'audit.read', 'user.manage'],
-  MANAGER: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign'],
+  ADMIN: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'audit.read', 'user.manage', 'data.export'],
+  MANAGER: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'data.export'],
   SALES: ['record.create', 'record.update.own'],
   READONLY: ['record.read.all'],
 };

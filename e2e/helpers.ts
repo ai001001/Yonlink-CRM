@@ -34,3 +34,16 @@ export async function selectOption(page: Page, scope: Locator, label: string, op
     await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(0, { timeout: 1000 });
   }).toPass({ timeout: 15000 });
 }
+
+/**
+ * 在列表搜索框中搜索。先等待所有弹窗完全关闭：antd 关闭弹窗时会把焦点还给打开它的按钮，
+ * 若在关闭动画期间按 Enter，回车会落在该按钮上而重新打开弹窗（负载高时更容易出现）。
+ * Search in a list search box. Waits for every modal to finish closing first: antd returns focus to the
+ * button that opened a modal, so an Enter pressed during the close animation re-opens the modal.
+ */
+export async function searchList(page: Page, placeholder: string, text: string): Promise<void> {
+  await expect(page.locator('.ant-modal-wrap:visible')).toHaveCount(0);
+  const box = page.getByPlaceholder(placeholder);
+  await box.fill(text);
+  await box.press('Enter');
+}

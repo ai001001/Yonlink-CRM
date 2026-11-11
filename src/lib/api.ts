@@ -91,3 +91,32 @@ export function qs(params: Record<string, string | number | boolean | null | und
   const s = search.toString();
   return s ? `?${s}` : '';
 }
+
+/**
+ * 下载文件（携带 Bearer 令牌），触发浏览器保存，返回响应头供读取导出信息。
+ * Download a file with the Bearer token, trigger a browser save, and return the headers.
+ * @param path 以 /api 开头的路径 / path starting with /api
+ * @param filename 保存的文件名 / file name to save as
+ */
+export async function apiDownload(path: string, filename: string): Promise<Headers> {
+  const token = getToken();
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  } catch {
+    throw new ClientApiError(0, 'NETWORK');
+  }
+  if (!res.ok) {
+    const data = (await res.json().catch(() => null)) as { error?: { code: string } } | null;
+    throw new ClientApiError(res.status, data?.error?.code ?? 'INTERNAL_ERROR');
+  }
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return res.headers;
+}

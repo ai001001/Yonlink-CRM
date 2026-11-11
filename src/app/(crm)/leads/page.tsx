@@ -7,7 +7,7 @@
 import { useCallback, useState } from 'react';
 import { App, Button, Card, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import Link from 'next/link';
-import { PlusOutlined, SwapOutlined } from '@ant-design/icons';
+import { PlusOutlined, SwapOutlined, UploadOutlined } from '@ant-design/icons';
 import { t, tEnum, type MessageKey } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
@@ -15,6 +15,8 @@ import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSelection } f
 import { AuditTrail } from '@/components/AuditTrail';
 import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
+import { ExportButton } from '@/components/ExportButton';
+import { ImportModal } from '@/components/ImportModal';
 import { ConvertLeadModal } from '@/components/ConvertLeadModal';
 import { RelatedActivities } from '@/components/RelatedActivities';
 import type { Ref } from '@/lib/types';
@@ -66,6 +68,7 @@ export default function LeadsPage() {
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<Lead | null>(null);
   const [converting, setConverting] = useState<Lead | null>(null);
+  const [importing, setImporting] = useState(false);
   const editingConverted = editing !== null && editing !== 'new' && editing.convertedAt !== null;
 
   useOpenFromUrl(
@@ -121,11 +124,19 @@ export default function LeadsPage() {
     <Card
       title={t('leads.title')}
       extra={
-        perm.canCreate && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
-            {t('leads.new')}
-          </Button>
-        )
+        <Space>
+          {perm.canCreate && (
+            <Button icon={<UploadOutlined />} onClick={() => setImporting(true)}>
+              {t('import.button')}
+            </Button>
+          )}
+          <ExportButton resource="leads" filters={{ q, status, source }} />
+          {perm.canCreate && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
+              {t('leads.new')}
+            </Button>
+          )}
+        </Space>
       }
     >
       <Space wrap style={{ marginBottom: 16 }}>
@@ -312,6 +323,7 @@ export default function LeadsPage() {
           if (id && detail?.id === id) setDetail(await api<Lead>(`/api/leads/${id}`));
         }}
       />
+      <ImportModal resource="leads" open={importing} onClose={() => setImporting(false)} onImported={() => { setImporting(false); void reload(); }} />
     </Card>
   );
 }

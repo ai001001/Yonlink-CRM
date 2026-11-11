@@ -6,10 +6,12 @@
 
 import { useCallback, useState } from 'react';
 import { App, Button, Card, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tabs, Tag } from 'antd';
-import { PlusOutlined, StarFilled } from '@ant-design/icons';
+import { PlusOutlined, StarFilled, UploadOutlined } from '@ant-design/icons';
 import { AccountDeals } from '@/components/AccountDeals';
 import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
+import { ExportButton } from '@/components/ExportButton';
+import { ImportModal } from '@/components/ImportModal';
 import { AuditTrail } from '@/components/AuditTrail';
 import { ContactsPanel } from '@/components/ContactsPanel';
 import { RelatedActivities } from '@/components/RelatedActivities';
@@ -35,6 +37,7 @@ export default function AccountsPage() {
   const [editing, setEditing] = useState<Account | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<Account | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const openDetail = useCallback(
     async (id: string) => {
@@ -92,11 +95,19 @@ export default function AccountsPage() {
     <Card
       title={t('accounts.title')}
       extra={
-        perm.canCreate && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
-            {t('accounts.new')}
-          </Button>
-        )
+        <Space>
+          {perm.canCreate && (
+            <Button icon={<UploadOutlined />} onClick={() => setImporting(true)}>
+              {t('import.button')}
+            </Button>
+          )}
+          <ExportButton resource="accounts" filters={{ q, industry }} />
+          {perm.canCreate && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
+              {t('accounts.new')}
+            </Button>
+          )}
+        </Space>
       }
     >
       <Space wrap style={{ marginBottom: 16 }}>
@@ -261,6 +272,7 @@ export default function AccountsPage() {
           />
         )}
       </Drawer>
+      <ImportModal resource="accounts" open={importing} onClose={() => setImporting(false)} onImported={() => { setImporting(false); void reload(); }} />
     </Card>
   );
 }
