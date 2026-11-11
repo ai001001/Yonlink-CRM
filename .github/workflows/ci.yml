@@ -42,5 +42,7 @@ jobs:
         env:
           NEXT_PUBLIC_STATIC_PREVIEW: '1'
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
+      # 只下载浏览器，不经 apt 安装系统依赖（runner 镜像已预装所需库；apt 镜像曾出现 DNS 故障）
+      # download the browser only, no apt system deps (the runner image already has them; apt mirrors had DNS failures)
+      - run: npx playwright install chromium
       - run: npx playwright test
