@@ -1,44 +1,53 @@
 /**
- * 演示环境种子数据（幂等）：独立的“演示企业（演示数据）”组织、各角色演示账号与标注【演示】的业务数据。
+ * 演示环境种子数据：独立的虚构涡轮增压器企业组织、各角色演示账号与大量标注【演示】的业务数据（数据见 demo-data.ts）。
  * 演示账号密码随机生成且不输出，只能通过 DEMO_LOGIN_ENABLED=1 时的一键登录使用。
- * Demo seed (idempotent): a separate demo organization, one demo account per role and business data
- * labelled 【演示】. Passwords are random and never printed; accounts are usable only via one-click demo login.
+ * Demo seed: a separate fictional turbocharger company, one demo account per role and a sizeable set of
+ * business data labelled 【演示】 (data in demo-data.ts). Demo passwords are random and never printed.
  *
- * 用法 / Usage: npm run db:seed-demo
+ * 用法 / Usage:
+ *   npm run db:seed-demo            # 组织不存在时创建；已存在时只补齐账号 / create if missing, else ensure accounts
+ *   npm run db:seed-demo -- --reset # 清空演示组织业务数据后重新生成（账号与审计日志保留）/ regenerate business data
  */
 import 'dotenv/config';
 import { randomBytes } from 'node:crypto';
-import type { UserRole } from '../src/generated/prisma/enums';
 import { hashPassword } from '../src/server/auth';
 import { prisma } from '../src/server/db';
+import { buildDemoData, DEMO_ORG_NAME, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
-export const DEMO_ORG_NAME = '演示企业（演示数据）';
+export { DEMO_ORG_NAME };
 
-const USERS: { key: string; name: string; email: string; role: UserRole }[] = [
-  { key: 'admin', name: '林管理', email: 'admin@demo.yonlink.test', role: 'ADMIN' },
-  { key: 'manager', name: '郑经理', email: 'manager@demo.yonlink.test', role: 'MANAGER' },
-  { key: 'sales1', name: '王芳', email: 'sales1@demo.yonlink.test', role: 'SALES' },
-  { key: 'sales2', name: '陈静', email: 'sales2@demo.yonlink.test', role: 'SALES' },
-  { key: 'viewer', name: '周会计', email: 'viewer@demo.yonlink.test', role: 'READONLY' },
-];
+const DAY = 86_400_000;
 
 /**
- * 写入演示数据；组织已存在时只补齐账号，不重复生成业务数据。
- * Seed demo data; when the organization exists only missing accounts are added.
+ * 以今天为基准的日期（UTC 零点 + 偏移天数）。
+ * A date relative to today (UTC midnight plus an offset in days).
  */
-export async function seedDemo(): Promise<void> {
-  let org = await prisma.organization.findFirst({ where: { name: DEMO_ORG_NAME } });
-  const fresh = !org;
-  org ??= await prisma.organization.create({ data: { name: DEMO_ORG_NAME } });
+function dayOffset(days: number): Date {
+  const today = new Date();
+  return new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()) + days * DAY);
+}
 
-  const ids: Record<string, string> = {};
-  for (const u of USERS) {
+/**
+ * 写入演示数据。
+ * Seed demo data.
+ * @param options.reset 清空并重新生成演示组织的业务数据 / wipe and regenerate the demo organization's business data
+ */
+export async function seedDemo(options: { reset?: boolean } = {}): Promise<void> {
+  // 兼容旧名称：改名复用（审计日志只能追加，组织记录不能删除）/ reuse the legacy org (audit logs keep it alive)
+  let org = await prisma.organization.findFirst({ where: { name: { in: [DEMO_ORG_NAME, ...LEGACY_DEMO_ORG_NAMES] } } });
+  const fresh = !org;
+  if (org && org.name !== DEMO_ORG_NAME) org = await prisma.organization.update({ where: { id: org.id }, data: { name: DEMO_ORG_NAME } });
+  org ??= await prisma.organization.create({ data: { name: DEMO_ORG_NAME } });
+  const o = org.id;
+
+  const ids = {} as Record<(typeof DEMO_USERS)[number]['key'], string>;
+  for (const u of DEMO_USERS) {
     const existing = await prisma.user.findUnique({ where: { email: u.email } });
     const user =
       existing ??
       (await prisma.user.create({
         data: {
-          organizationId: org.id,
+          organizationId: o,
           name: u.name,
           email: u.email,
           role: u.role,
@@ -49,33 +58,122 @@ export async function seedDemo(): Promise<void> {
       }));
     ids[u.key] = user.id;
   }
-  if (!fresh) {
-    console.log(`演示组织已存在，已补齐账号 / demo organization exists, accounts ensured: ${DEMO_ORG_NAME}`);
+
+  if (!fresh && !options.reset) {
+    console.log(`演示组织已存在，已补齐账号（如需重建数据请加 --reset）/ demo org exists, accounts ensured: ${DEMO_ORG_NAME}`);
     return;
   }
 
-  const o = org.id;
-  // 每位销售各自负责的数据，用于演示“销售代表只看自己负责的记录” / per-rep data to show own-records visibility
-  const reps = [
-    { owner: ids.sales1!, account: '【演示】杭州远望制造', contact: '【演示】陈经理', lead: '【演示】张先生', company: '上海星河科技', deal: '【演示】远望年度采购', amount: '1280000.00', stage: 'PROPOSAL' as const },
-    { owner: ids.sales2!, account: '【演示】成都锦城物流', contact: '【演示】刘总', lead: '【演示】李女士', company: '南京钟山软件', deal: '【演示】锦城仓储系统', amount: '560000.00', stage: 'NEGOTIATION' as const },
-  ];
-  for (const r of reps) {
-    const account = await prisma.account.create({ data: { organizationId: o, ownerId: r.owner, name: r.account, industry: 'MANUFACTURING' } });
-    await prisma.contact.create({ data: { organizationId: o, accountId: account.id, name: r.contact, isPrimary: true } });
-    const deal = await prisma.deal.create({
-      data: { organizationId: o, ownerId: r.owner, accountId: account.id, name: r.deal, amount: r.amount, stage: r.stage, expectedCloseDate: new Date('2027-03-31T00:00:00Z') },
-    });
-    const lead = await prisma.lead.create({ data: { organizationId: o, ownerId: r.owner, name: r.lead, company: r.company, source: 'EXHIBITION', status: 'CONTACTED' } });
-    await prisma.activity.create({ data: { organizationId: o, ownerId: r.owner, type: 'CALL', subject: '【演示】首次电话沟通', leadId: lead.id, completed: true, completedAt: new Date() } });
-    await prisma.activity.create({ data: { organizationId: o, ownerId: r.owner, type: 'TASK', subject: '【演示】发送报价单', dealId: deal.id, accountId: account.id, dueAt: new Date(Date.now() + 3 * 86400_000) } });
-  }
-  await prisma.lead.create({ data: { organizationId: o, ownerId: ids.manager!, name: '【演示】赵先生', company: '广州珠江贸易', source: 'WEBSITE' } });
-  console.log(`已创建演示组织、${USERS.length} 个演示账号与演示数据 / demo organization, accounts and data created`);
+  const data = buildDemoData();
+  const owner = (k: OwnerKey) => ids[k];
+
+  await prisma.$transaction(
+    async (tx) => {
+      if (options.reset) {
+        // 仅清空演示组织的业务数据 / wipe business data of the demo organization only
+        await tx.activity.deleteMany({ where: { organizationId: o } });
+        await tx.lead.updateMany({ where: { organizationId: o }, data: { convertedAccountId: null, convertedContactId: null, convertedDealId: null } });
+        await tx.deal.deleteMany({ where: { organizationId: o } });
+        await tx.contact.deleteMany({ where: { organizationId: o } });
+        await tx.account.deleteMany({ where: { organizationId: o } });
+        await tx.lead.deleteMany({ where: { organizationId: o } });
+      }
+
+      const accountIds: Record<string, string> = {};
+      for (const a of data.accounts) {
+        const created = await tx.account.create({
+          data: {
+            organizationId: o,
+            ownerId: owner(a.owner),
+            name: a.name,
+            industry: a.industry,
+            phone: a.phone,
+            website: `https://www.${a.domain}`,
+            address: `${a.region} · ${a.city}`,
+            description: `虚构演示客户。主要采购：${a.products.join(' / ')}`,
+          },
+        });
+        accountIds[a.key] = created.id;
+        await tx.contact.createMany({
+          data: a.contacts.map((c, i) => ({
+            organizationId: o,
+            accountId: created.id,
+            name: `【演示】${c.name}`,
+            title: c.title,
+            email: `${c.name.toLowerCase().replace(/[^a-z]+/g, '.').replace(/^\.|\.$/g, '') || `contact${i + 1}`}@${a.domain}`,
+            phone: a.phone.replace(/\d{2}$/, String(10 + i)),
+            isPrimary: i === 0,
+          })),
+        });
+      }
+
+      const dealIds: Record<string, string> = {};
+      for (const d of data.deals) {
+        const created = await tx.deal.create({
+          data: {
+            organizationId: o,
+            ownerId: owner(d.owner),
+            accountId: accountIds[d.account]!,
+            name: d.name,
+            amount: d.amount,
+            currency: d.currency,
+            stage: d.stage,
+            expectedCloseDate: dayOffset(d.closeInDays),
+            description: d.description,
+            createdAt: new Date(Date.now() - (Math.abs(d.closeInDays) % 50 + 20) * DAY),
+          },
+        });
+        dealIds[d.key] = created.id;
+      }
+
+      const leadIds: string[] = [];
+      for (const l of data.leads) {
+        const created = await tx.lead.create({
+          data: {
+            organizationId: o,
+            ownerId: owner(l.owner),
+            name: l.name,
+            company: l.company,
+            title: l.title,
+            email: l.email,
+            phone: l.phone,
+            source: l.source,
+            status: l.status,
+            description: l.description,
+            createdAt: new Date(Date.now() - l.daysAgo * DAY),
+          },
+        });
+        leadIds.push(created.id);
+      }
+
+      await tx.activity.createMany({
+        data: data.activities.map((a) => ({
+          organizationId: o,
+          ownerId: owner(a.owner),
+          type: a.type,
+          subject: a.subject,
+          content: a.content,
+          dealId: a.deal ? dealIds[a.deal] : null,
+          accountId: a.account ? accountIds[a.account] : null,
+          leadId: a.lead !== undefined ? leadIds[a.lead] : null,
+          dueAt: a.dueInDays === null ? null : new Date(dayOffset(a.dueInDays).getTime() + 10 * 3600_000),
+          completed: a.completed,
+          completedAt: a.completed ? new Date(Date.now() - Math.max(0, a.daysAgo - 1) * DAY) : null,
+          createdAt: new Date(Date.now() - a.daysAgo * DAY),
+        })),
+      });
+    },
+    { timeout: 60_000 },
+  );
+
+  console.log(
+    `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length} 客户、${data.accounts.reduce((n, a) => n + a.contacts.length, 0)} 联系人、` +
+      `${data.leads.length} 线索、${data.deals.length} 商机、${data.activities.length} 跟进 / demo data ready`,
+  );
 }
 
 // 直接运行时执行 / run when executed directly
 if (process.argv[1]?.endsWith('seed-demo.ts')) {
-  await seedDemo();
+  await seedDemo({ reset: process.argv.includes('--reset') });
   await prisma.$disconnect();
 }

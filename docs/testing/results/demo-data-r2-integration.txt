@@ -1,0 +1,53 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > 不带 --reset 重复执行不会重复写入 / re-running without reset adds nothing
+演示数据已创建：30 客户、64 联系人、48 线索、48 商机、172 跟进 / demo data ready
+
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > 不带 --reset 重复执行不会重复写入 / re-running without reset adds nothing
+演示组织已存在，已补齐账号（如需重建数据请加 --reset）/ demo org exists, accounts ensured: 演示涡轮增压器有限公司（演示数据）
+
+ ✓ tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > 不带 --reset 重复执行不会重复写入 / re-running without reset adds nothing 1018ms
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > --reset 重建业务数据：数量不变、记录为新、账号保留 / reset regenerates data and keeps users
+演示数据已创建：30 客户、64 联系人、48 线索、48 商机、172 跟进 / demo data ready
+
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > --reset 重建业务数据：数量不变、记录为新、账号保留 / reset regenerates data and keeps users
+演示数据已重建：30 客户、64 联系人、48 线索、48 商机、172 跟进 / demo data ready
+
+ ✓ tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > --reset 重建业务数据：数量不变、记录为新、账号保留 / reset regenerates data and keeps users 786ms
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > 旧演示组织改名复用，账号与审计日志保留，旧业务数据被替换 / legacy org renamed with users and audit kept
+演示数据已重建：30 客户、64 联系人、48 线索、48 商机、172 跟进 / demo data ready
+
+ ✓ tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > 旧演示组织改名复用，账号与审计日志保留，旧业务数据被替换 / legacy org renamed with users and audit kept 462ms
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > 重建只影响演示组织，其他组织数据不变 / reset touches the demo org only
+演示数据已创建：30 客户、64 联系人、48 线索、48 商机、172 跟进 / demo data ready
+
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > 重建只影响演示组织，其他组织数据不变 / reset touches the demo org only
+演示数据已重建：30 客户、64 联系人、48 线索、48 商机、172 跟进 / demo data ready
+
+ ✓ tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > 重建只影响演示组织，其他组织数据不变 / reset touches the demo org only 712ms
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 roles & consistency > 各角色看到的数量符合负责人分配 / counts per role follow ownership
+演示数据已创建：30 客户、64 联系人、48 线索、48 商机、172 跟进 / demo data ready
+
+ ✓ tests/demo/demo-data.r2-integration.test.ts > demo data R2 roles & consistency > 各角色看到的数量符合负责人分配 / counts per role follow ownership 539ms
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 roles & consistency > 看板各列合计与数据集金额一致（按币种精确）/ board totals equal dataset amounts per currency
+演示数据已创建：30 客户、64 联系人、48 线索、48 商机、172 跟进 / demo data ready
+
+ ✓ tests/demo/demo-data.r2-integration.test.ts > demo data R2 roles & consistency > 看板各列合计与数据集金额一致（按币种精确）/ board totals equal dataset amounts per currency 473ms
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 roles & consistency > 工作台：销售代表有待办与逾期提醒 / sales reps get to-dos and overdue items on the dashboard
+演示数据已创建：30 客户、64 联系人、48 线索、48 商机、172 跟进 / demo data ready
+
+ ✓ tests/demo/demo-data.r2-integration.test.ts > demo data R2 roles & consistency > 工作台：销售代表有待办与逾期提醒 / sales reps get to-dos and overdue items on the dashboard 490ms
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 roles & consistency > 不使用真实域名：网站与邮箱都是保留域名 / only reserved domains are used
+演示数据已创建：30 客户、64 联系人、48 线索、48 商机、172 跟进 / demo data ready
+
+ ✓ tests/demo/demo-data.r2-integration.test.ts > demo data R2 roles & consistency > 不使用真实域名：网站与邮箱都是保留域名 / only reserved domains are used 443ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  16:33:32
+   Duration  7.13s (tests 93%, import 4%, transform 3%)

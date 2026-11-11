@@ -3,7 +3,10 @@
  * Deal board round 3: end-to-end regression.
  */
 import { expect, test, type Page } from '@playwright/test';
+import { demoSamples } from '../prisma/demo-data';
 import { nav, signIn } from './helpers';
+
+const S = demoSamples();
 
 /** 用当前登录令牌经 API 准备数据 / seed data through the API with the current token */
 async function seedDeal(page: Page, name: string, amount: string) {
@@ -70,8 +73,8 @@ test('只读用户看板不可拖动、无“移动到” / read-only users cann
   await expect(page.getByTestId('current-role')).toHaveText('只读用户');
   await nav(page, '商机');
   await page.getByText('看板', { exact: true }).click();
-  const card = page.getByLabel('【演示】远望年度采购', { exact: true });
+  const card = page.getByLabel(S.sales1Deal, { exact: true });
   await expect(card).toBeVisible();
   await expect(card).toHaveAttribute('draggable', 'false');
-  await expect(page.getByLabel('移动到 【演示】远望年度采购')).toHaveCount(0);
+  await expect(page.getByLabel(`移动到 ${S.sales1Deal}`)).toHaveCount(0);
 });

@@ -3,7 +3,25 @@
  * RBAC round 3: end-to-end regression (one-click demo login, per-role data and actions, admin user management).
  */
 import { expect, test, type Page } from '@playwright/test';
+import { demoSamples } from '../prisma/demo-data';
 import { nav, selectOption } from './helpers';
+
+// 演示数据中的样本（由数据集推导，调整数据后测试自动跟随）/ samples derived from the demo dataset
+const S = demoSamples();
+const LEADS = '搜索姓名、公司、邮箱、电话';
+const ACCOUNTS_SEARCH = '搜索客户名称、电话、网站、地址、联系人';
+const DEALS = '搜索商机名称、客户名称';
+
+/** 按名称精确匹配表格行 / Table row matching a name literally */
+const rowOf = (page: Page, text: string) => page.getByRole('row', { name: new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) });
+
+/** 在列表页搜索框中搜索（数据较多时列表分页，先搜索再断言）/ search before asserting (lists paginate) */
+async function search(page: Page, placeholder: string, text: string): Promise<void> {
+  const box = page.getByPlaceholder(placeholder);
+  await box.fill(text);
+  await box.press('Enter');
+  await expect(page.locator('.ant-spin-spinning')).toHaveCount(0);
+}
 
 /** 在登录页以演示账号一键登录 / One-click demo login on the sign-in page */
 async function demoLogin(page: Page, name: string): Promise<void> {
@@ -35,7 +53,7 @@ test('演示账号列表与各角色权限 / demo accounts and per-role permissi
   const idOf = (name: string) => demoUsers.find((u) => u.name === name)!.id;
   const managerToken = (await (await page.request.post('/api/auth/demo-login', { data: { userId: idOf('郑经理') } })).json()).token;
   const auth = { Authorization: `Bearer ${managerToken}` };
-  const accountsRes = await (await page.request.get('/api/accounts?q=' + encodeURIComponent('杭州远望'), { headers: auth })).json();
+  const accountsRes = await (await page.request.get('/api/accounts?q=' + encodeURIComponent(S.sales1SingleDealAccount), { headers: auth })).json();
   const created = await page.request.post('/api/deals', {
     headers: auth,
     data: { name: 'E2E 陈静负责的商机', accountId: accountsRes.items[0].id, ownerId: idOf('陈静') },
@@ -49,12 +67,17 @@ test('演示账号列表与各角色权限 / demo accounts and per-role permissi
   await expect(page.getByRole('menu').getByRole('link', { name: '审计日志' })).toHaveCount(0);
   await expect(page.getByRole('menu').getByRole('link', { name: '用户管理' })).toHaveCount(0);
   await nav(page, '线索');
-  await expect(page.getByRole('row', { name: /【演示】张先生/ })).toBeVisible();
-  await expect(page.getByRole('row', { name: /【演示】李女士/ })).toHaveCount(0);
-  await expect(page.getByRole('row', { name: /【演示】赵先生/ })).toHaveCount(0);
-  const own = page.getByRole('row', { name: /【演示】张先生/ });
+  await search(page, LEADS, S.sales1Lead);
+  await expect(rowOf(page, S.sales1Lead)).toBeVisible();
+  const own = rowOf(page, S.sales1Lead);
   await expect(own.getByRole('button', { name: /编\s*辑/ })).toBeVisible();
   await expect(own.getByRole('button', { name: /删\s*除/ })).toHaveCount(0);
+  // 他人负责的线索即使按姓名搜索也看不到 / others' leads stay invisible even when searched by name
+  await search(page, LEADS, S.sales2Lead);
+  await expect(rowOf(page, S.sales2Lead)).toHaveCount(0);
+  await search(page, LEADS, S.managerLead);
+  await expect(rowOf(page, S.managerLead)).toHaveCount(0);
+  await search(page, LEADS, '');
   await page.getByRole('button', { name: '新增线索' }).click();
   const dialog = page.getByRole('dialog', { name: '新增线索' });
   await expect(dialog).toContainText('销售代表只能将记录指派给自己');
@@ -63,17 +86,20 @@ test('演示账号列表与各角色权限 / demo accounts and per-role permissi
   await expect(page.getByRole('row', { name: /E2E 销售自建线索/ })).toContainText('王芳');
   // 客户商机数只统计自己负责的（他人负责的 1 个不计入）/ deal count excludes the deal owned by someone else
   await nav(page, '客户');
-  const accRow = page.getByRole('row', { name: /【演示】杭州远望制造/ });
+  await search(page, ACCOUNTS_SEARCH, S.sales1SingleDealAccount);
+  const accRow = rowOf(page, S.sales1SingleDealAccount);
   await expect(accRow.getByRole('cell').nth(4)).toHaveText('1');
-  await accRow.getByRole('button', { name: '【演示】杭州远望制造' }).click();
+  await accRow.getByRole('button', { name: S.sales1SingleDealAccount }).click();
   const accDrawer = page.getByRole('dialog', { name: /客户详情/ });
   await expect(accDrawer.getByRole('tab', { name: '商机 (1)' })).toBeVisible();
   await accDrawer.getByRole('tab', { name: '商机 (1)' }).click();
   await expect(accDrawer.getByTestId('account-deals')).not.toContainText('E2E 陈静负责的商机');
   await accDrawer.getByRole('button', { name: '关闭' }).first().click();
   await nav(page, '商机');
-  await expect(page.getByRole('row', { name: /【演示】远望年度采购/ })).toBeVisible();
-  await expect(page.getByRole('row', { name: /【演示】锦城仓储系统/ })).toHaveCount(0);
+  await search(page, DEALS, S.sales1Deal);
+  await expect(rowOf(page, S.sales1Deal)).toBeVisible();
+  await search(page, DEALS, S.sales2Deal);
+  await expect(rowOf(page, S.sales2Deal)).toHaveCount(0);
   await page.goto('/audit-logs');
   await expect(page.getByText('没有权限执行该操作').first()).toBeVisible();
   await signOut(page);
@@ -82,17 +108,21 @@ test('演示账号列表与各角色权限 / demo accounts and per-role permissi
   await demoLogin(page, '周会计');
   await expect(page.getByTestId('current-role')).toHaveText('只读用户');
   await nav(page, '线索');
-  await expect(page.getByRole('row', { name: /【演示】李女士/ })).toBeVisible();
-  await expect(page.getByRole('row', { name: /【演示】张先生/ })).toBeVisible();
   await expect(page.getByRole('button', { name: '新增线索' })).toHaveCount(0);
-  await expect(page.getByRole('row', { name: /【演示】张先生/ }).getByRole('button', { name: /编\s*辑/ })).toHaveCount(0);
+  await search(page, LEADS, S.sales2Lead);
+  await expect(rowOf(page, S.sales2Lead)).toBeVisible();
+  await search(page, LEADS, S.sales1Lead);
+  await expect(rowOf(page, S.sales1Lead)).toBeVisible();
+  await expect(rowOf(page, S.sales1Lead).getByRole('button', { name: /编\s*辑/ })).toHaveCount(0);
   await signOut(page);
 
   // 销售经理：全部数据 + 删除，无审计与用户管理 / manager
   await demoLogin(page, '郑经理');
   await nav(page, '客户');
-  await expect(page.getByRole('row', { name: /【演示】杭州远望制造/ }).getByRole('cell').nth(4)).toHaveText('2');
+  await search(page, ACCOUNTS_SEARCH, S.sales1SingleDealAccount);
+  await expect(rowOf(page, S.sales1SingleDealAccount).getByRole('cell').nth(4)).toHaveText('2');
   await nav(page, '线索');
+  await search(page, LEADS, 'E2E 销售自建线索');
   await expect(page.getByRole('row', { name: /E2E 销售自建线索/ })).toBeVisible();
   await expect(page.getByRole('row', { name: /E2E 销售自建线索/ }).getByRole('button', { name: /删\s*除/ })).toBeVisible();
   await expect(page.getByRole('menu').getByRole('link', { name: '用户管理' })).toHaveCount(0);

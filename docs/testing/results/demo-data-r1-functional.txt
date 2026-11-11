@@ -1,0 +1,25 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+stdout | tests/demo/demo-data.r1-functional.test.ts
+演示数据已创建：30 客户、64 联系人、48 线索、48 商机、172 跟进 / demo data ready
+
+ ✓ tests/demo/demo-data.r1-functional.test.ts > demo data R1 > 写入数量与数据集一致，且数据量充足 / counts match the dataset and are substantial 21ms
+ ✓ tests/demo/demo-data.r1-functional.test.ts > demo data R1 > 5 个演示账号角色正确且均标记为演示账号 / five demo users with correct roles 6ms
+ ✓ tests/demo/demo-data.r1-functional.test.ts > demo data R1 > 所有客户、联系人、线索、商机、跟进名称都带【演示】/ every name is labelled 【演示】 14ms
+ ✓ tests/demo/demo-data.r1-functional.test.ts > demo data R1 > 商机覆盖 6 个阶段、3 种币种、3 位负责人 / deals cover all stages, currencies and owners 16ms
+ ✓ tests/demo/demo-data.r1-functional.test.ts > demo data R1 > 日期合理：进行中商机预计成交在未来，已结束的在过去 / open deals close in the future, closed ones in the past 7ms
+ ✓ tests/demo/demo-data.r1-functional.test.ts > demo data R1 > 每个客户恰有 1 位主要联系人 / each account has exactly one primary contact 10ms
+ ✓ tests/demo/demo-data.r1-functional.test.ts > demo data R1 > 跟进含已完成、待办与已逾期，并关联到商机/客户/线索 / activities include done, pending and overdue items 10ms
+ ✓ tests/demo/demo-data.r1-functional.test.ts > demo data R1 > 线索覆盖多种来源与状态（以展会为主）/ leads cover sources and statuses, mostly trade shows 9ms
+ ✓ tests/demo/demo-data.r1-functional.test.ts > demo data R1 > 数据集生成是确定的 / the dataset is deterministic 1ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  16:33:00
+   Duration  3.35s (tests 83%, transform 9%, import 7%, setup 1%)
+
