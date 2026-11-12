@@ -12,7 +12,7 @@ import 'dotenv/config';
 import { randomBytes } from 'node:crypto';
 import { hashPassword } from '../src/server/auth';
 import { prisma } from '../src/server/db';
-import { buildDemoData, dealCreatedDaysAgo, DEMO_ORG_NAME, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, DEMO_ORG_NAME, DEMO_TAGS, demoTagAssignments, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -80,6 +80,8 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.lead.deleteMany({ where: { organizationId: o } });
         // 明细已随商机级联删除，产品随后可删 / line items cascaded with deals, so products can go
         await tx.product.deleteMany({ where: { organizationId: o } });
+        // 标签关联已随记录级联删除 / tag assignments cascaded with the records
+        await tx.tag.deleteMany({ where: { organizationId: o } });
       }
 
       await tx.product.createMany({ data: data.products.map((p) => ({ ...p, organizationId: o })) });
@@ -222,6 +224,16 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         leadIds.push(created.id);
       }
 
+      // 标签 / tags
+      const tagIds: Record<string, string> = {};
+      for (const tag of DEMO_TAGS) {
+        tagIds[tag.key] = (await tx.tag.create({ data: { organizationId: o, name: tag.name, nameKey: tag.name.toLowerCase(), color: tag.color } })).id;
+      }
+      const assigned = demoTagAssignments(data);
+      await tx.accountTag.createMany({ data: assigned.accounts.map((x) => ({ organizationId: o, accountId: accountIds[x.account]!, tagId: tagIds[x.tag]! })) });
+      await tx.dealTag.createMany({ data: assigned.deals.map((x) => ({ organizationId: o, dealId: dealIds[x.deal]!, tagId: tagIds[x.tag]! })) });
+      await tx.leadTag.createMany({ data: assigned.leads.map((x) => ({ organizationId: o, leadId: leadIds[x.lead]!, tagId: tagIds[x.tag]! })) });
+
       await tx.note.createMany({
         data: data.notes.map((n) => ({
           organizationId: o,
@@ -256,7 +268,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length} 客户、${data.accounts.reduce((n, a) => n + a.contacts.length, 0)} 联系人、` +
-      `${data.leads.length} 线索、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单 / demo data ready`,
+      `${data.leads.length} 线索、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${DEMO_TAGS.length} 标签 / demo data ready`,
   );
 }
 

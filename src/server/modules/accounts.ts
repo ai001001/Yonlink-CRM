@@ -10,6 +10,7 @@ import { prisma } from '../db';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, can, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
+import { tagFilter, tagsInclude } from './tags';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
 /** 行业字典 / Industry dictionary */
@@ -44,6 +45,7 @@ export const accountUpdateSchema = accountCreateSchema.partial();
 export const accountListSchema = listQuery.extend({
   industry: z.enum(INDUSTRIES).optional(),
   ownerId: z.uuid().optional(),
+  tagId: z.uuid().optional(),
 });
 
 const contactFields = {
@@ -66,6 +68,7 @@ function listInclude(ctx: AuthContext) {
   const dealScope: Prisma.DealWhereInput = can(ctx, 'record.read.all') ? {} : { ownerId: ctx.userId };
   return {
     owner: { select: { id: true, name: true } },
+    tags: tagsInclude,
     _count: { select: { contacts: true, deals: { where: dealScope } } },
   } satisfies Prisma.AccountInclude;
 }
@@ -77,7 +80,7 @@ const contactOrder: Prisma.ContactOrderByWithRelationInput[] = [{ isPrimary: 'de
  * Query conditions shared by the list and the export (visibility + filters + search).
  */
 export function accountWhere(ctx: AuthContext, query: Omit<z.infer<typeof accountListSchema>, 'page' | 'pageSize'>): Prisma.AccountWhereInput {
-  const where: Prisma.AccountWhereInput = { AND: [visible(ctx), { industry: query.industry, ownerId: query.ownerId }] };
+  const where: Prisma.AccountWhereInput = { AND: [visible(ctx), { industry: query.industry, ownerId: query.ownerId }, tagFilter(query.tagId)] };
   if (query.q) {
     const c = containsText(query.q);
     where.OR = [{ name: c }, { phone: c }, { website: c }, { address: c }, { contacts: { some: { name: c } } }];

@@ -1,0 +1,31 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+Applying migration `20261112162624_tags`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20261112162624_tags/
+    └─ migration.sql
+
+All migrations have been successfully applied.
+ ✓ tests/tags/tags.r1-functional.test.ts > tags R1 definitions > 新建：去空格、默认蓝色；名称不区分大小写唯一（409）/ create and uniqueness 463ms
+ ✓ tests/tags/tags.r1-functional.test.ts > tags R1 definitions > 改名改色：审计记录变化；改名与他人重复 409；改大小写允许 / rename and recolour 133ms
+ ✓ tests/tags/tags.r1-functional.test.ts > tags R1 definitions > 列表按名称排序，含使用次数 / list with usage counts 164ms
+ ✓ tests/tags/tags.r1-functional.test.ts > tags R1 records > 设置记录标签：返回排序后的标签，审计新增/移除的名称，不变不写审计 / set record tags 173ms
+ ✓ tests/tags/tags.r1-functional.test.ts > tags R1 records > 列表返回标签并可按标签筛选（线索/客户/商机）/ lists include tags and filter by tag 243ms
+ ✓ tests/tags/tags.r1-functional.test.ts > tags R1 records > 批量加减标签：已有的不重复，逐条审计 / bulk add and remove 185ms
+ ✓ tests/tags/tags.r1-functional.test.ts > tags R1 records > 删除标签：移除全部关联并审计数量；删除记录时关联随之删除 / delete tag and cascade 180ms
+stdout | tests/tags/tags.r1-functional.test.ts > tags R1 records > 演示数据：6 个标签，分配与推导一致 / demo tags
+演示数据已创建：30 客户、64 联系人、64 线索、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、6 标签 / demo data ready
+
+ ✓ tests/tags/tags.r1-functional.test.ts > tags R1 records > 演示数据：6 个标签，分配与推导一致 / demo tags 844ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  16:32:14
+   Duration  4.89s (tests 80%, transform 11%, import 8%)

@@ -15,12 +15,13 @@ import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSelection } f
 import { AuditTrail } from '@/components/AuditTrail';
 import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
+import { TagEditor, TagFilter, TagList, tagsOf } from '@/components/Tags';
 import { ExportButton } from '@/components/ExportButton';
 import { ImportModal } from '@/components/ImportModal';
 import { NotesPanel } from '@/components/NotesPanel';
 import { ConvertLeadModal } from '@/components/ConvertLeadModal';
 import { RelatedActivities } from '@/components/RelatedActivities';
-import type { Ref } from '@/lib/types';
+import type { RecordTags, Ref } from '@/lib/types';
 
 /** 线索 / Lead */
 interface Lead {
@@ -40,6 +41,7 @@ interface Lead {
   convertedAccount: Ref | null;
   convertedContact: Ref | null;
   convertedDeal: Ref | null;
+  tags?: RecordTags;
   createdAt: string;
   updatedAt: string;
 }
@@ -59,9 +61,10 @@ export default function LeadsPage() {
   const owners = useOwners();
   const perm = usePermissions();
   const [q, setQ] = useState('');
+  const [tagId, setTagId] = useState<string>();
   const [status, setStatus] = useState<string>();
   const [source, setSource] = useState<string>();
-  const { data, loading, reload, pagination } = usePagedList<Lead>('/api/leads', { q, status, source });
+  const { data, loading, reload, pagination } = usePagedList<Lead>('/api/leads', { q, status, source, tagId });
   const sel = useSelection(data.items, perm.can('record.update.own') || perm.canDelete);
 
   const [form] = Form.useForm();
@@ -142,11 +145,13 @@ export default function LeadsPage() {
     >
       <Space wrap style={{ marginBottom: 16 }}>
         <Input.Search allowClear placeholder={t('leads.searchPlaceholder')} style={{ width: 280 }} onSearch={setQ} data-testid="leads-search" />
+        <TagFilter value={tagId} onChange={setTagId} onManaged={() => void reload()} />
         <Select allowClear placeholder={t('leads.status')} style={{ width: 140 }} options={statusOptions} value={status} onChange={setStatus} />
         <Select allowClear placeholder={t('leads.source')} style={{ width: 140 }} options={sourceOptions} value={source} onChange={setSource} />
       </Space>
       <BulkBar
         path="/api/leads"
+        taggable
         selected={sel.selected}
         names={Object.fromEntries(data.items.map((r) => [r.id, r.name]))}
         valueChange={{ action: 'status', field: 'status', options: editableStatusOptions }}
@@ -172,6 +177,7 @@ export default function LeadsPage() {
           { title: t('leads.contact'), render: (_, r) => r.mobile ?? r.phone ?? r.email },
           { title: t('leads.source'), dataIndex: 'source', render: (v: string | null) => tEnum('leadSource', v) },
           { title: t('leads.status'), dataIndex: 'status', render: (v: string) => <Tag color={STATUS_COLOR[v]}>{tEnum('leadStatus', v)}</Tag> },
+          { title: t('tags.title'), render: (_, r) => <TagList tags={tagsOf(r)} /> },
           { title: t('common.owner'), render: (_, r) => r.owner?.name ?? t('common.unassigned') },
           { title: t('common.createdAt'), dataIndex: 'createdAt', render: fmtDateTime },
           {
@@ -287,6 +293,9 @@ export default function LeadsPage() {
               <Descriptions.Item label={t('leads.status')}>{tEnum('leadStatus', detail.status)}</Descriptions.Item>
               <Descriptions.Item label={t('common.owner')}>{detail.owner?.name ?? t('common.unassigned')}</Descriptions.Item>
               <Descriptions.Item label={t('common.createdAt')}>{fmtDateTime(detail.createdAt)}</Descriptions.Item>
+              <Descriptions.Item label={t('tags.title')} span={2}>
+                <TagEditor key={`tags-${detail.id}`} path="/api/leads" record={detail} onChanged={() => void reload()} />
+              </Descriptions.Item>
               <Descriptions.Item label={t('common.description')} span={2}>
                 {detail.description}
               </Descriptions.Item>

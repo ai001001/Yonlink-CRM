@@ -14,22 +14,26 @@ datasource db {
 }
 
 model Organization {
-  id         String          @id @default(uuid()) @db.Uuid
-  name       String          @db.VarChar(200)
-  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
-  users      User[]
-  accounts   Account[]
-  contacts   Contact[]
-  leads      Lead[]
-  deals      Deal[]
-  activities Activity[]
-  auditLogs  AuditLog[]
-  notes      Note[]
-  products   Product[]
-  dealItems  DealLineItem[]
-  quotes     Quote[]
-  quoteItems QuoteLineItem[]
+  id          String          @id @default(uuid()) @db.Uuid
+  name        String          @db.VarChar(200)
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  users       User[]
+  accounts    Account[]
+  contacts    Contact[]
+  leads       Lead[]
+  deals       Deal[]
+  activities  Activity[]
+  auditLogs   AuditLog[]
+  notes       Note[]
+  products    Product[]
+  dealItems   DealLineItem[]
+  quotes      Quote[]
+  quoteItems  QuoteLineItem[]
+  tags        Tag[]
+  leadTags    LeadTag[]
+  accountTags AccountTag[]
+  dealTags    DealTag[]
 
   @@map("organizations")
 }
@@ -125,6 +129,7 @@ model Lead {
   convertedDeal      Deal?        @relation("LeadConvertedDeal", fields: [convertedDealId], references: [id], onDelete: SetNull)
   activities         Activity[]
   notes              Note[]
+  tags               LeadTag[]
 
   @@unique([organizationId, id])
   @@index([organizationId, createdAt(sort: Desc)])
@@ -154,6 +159,7 @@ model Account {
   activities     Activity[]
   notes          Note[]
   convertedLeads Lead[]       @relation("LeadConvertedAccount")
+  tags           AccountTag[]
 
   @@unique([organizationId, id])
   @@index([organizationId, createdAt(sort: Desc)])
@@ -213,6 +219,7 @@ model Deal {
   lineItems         DealLineItem[]
   quotes            Quote[]
   convertedLeads    Lead[]         @relation("LeadConvertedDeal")
+  tags              DealTag[]
 
   @@unique([organizationId, id])
   @@index([organizationId, createdAt(sort: Desc)])
@@ -427,4 +434,69 @@ model QuoteLineItem {
 
   @@unique([organizationId, quoteId, position])
   @@map("quote_line_items")
+}
+
+/// 标签（组织内名称唯一，不区分大小写：name_key = 小写去空格的名称）
+/// Tag; names are unique per organization case-insensitively via name_key (lower-cased, trimmed)
+model Tag {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  name           String       @db.VarChar(30)
+  nameKey        String       @map("name_key") @db.VarChar(30)
+  color          String       @default("blue") @db.VarChar(20)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  leads          LeadTag[]
+  accounts       AccountTag[]
+  deals          DealTag[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, nameKey])
+  @@map("tags")
+}
+
+/// 线索标签 / Lead tag assignment
+model LeadTag {
+  organizationId String       @map("organization_id") @db.Uuid
+  leadId         String       @map("lead_id") @db.Uuid
+  tagId          String       @map("tag_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead           Lead         @relation(fields: [organizationId, leadId], references: [organizationId, id], onDelete: Cascade)
+  tag            Tag          @relation(fields: [organizationId, tagId], references: [organizationId, id], onDelete: Cascade)
+
+  @@id([leadId, tagId])
+  @@index([organizationId, tagId])
+  @@map("lead_tags")
+}
+
+/// 客户标签 / Account tag assignment
+model AccountTag {
+  organizationId String       @map("organization_id") @db.Uuid
+  accountId      String       @map("account_id") @db.Uuid
+  tagId          String       @map("tag_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  account        Account      @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Cascade)
+  tag            Tag          @relation(fields: [organizationId, tagId], references: [organizationId, id], onDelete: Cascade)
+
+  @@id([accountId, tagId])
+  @@index([organizationId, tagId])
+  @@map("account_tags")
+}
+
+/// 商机标签 / Deal tag assignment
+model DealTag {
+  organizationId String       @map("organization_id") @db.Uuid
+  dealId         String       @map("deal_id") @db.Uuid
+  tagId          String       @map("tag_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deal           Deal         @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Cascade)
+  tag            Tag          @relation(fields: [organizationId, tagId], references: [organizationId, id], onDelete: Cascade)
+
+  @@id([dealId, tagId])
+  @@index([organizationId, tagId])
+  @@map("deal_tags")
 }

@@ -1,0 +1,31 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 permissions > 新建标签：能编辑记录的角色可以，只读 403 / create needs edit rights 621ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 permissions > 改名、改色、删除：管理员与经理可以，销售与只读 403 / manage needs tag.manage 172ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 permissions > 打标签遵循记录编辑权限：本人 200、他人 404、只读 403、经理 200 / tagging follows edit rights 169ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 permissions > 使用次数与筛选遵循可见范围 / usage counts and filters follow visibility 163ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 permissions > 批量：他人记录逐条失败，自己的成功 / bulk reports per-record failures 142ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 跨组织：不能使用、修改、筛选他组织标签；批量用他组织标签整批 400 / cross-org isolation 201ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 上限：每条记录 20 个、每组织 200 个 / limits 344ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 非法标签 {"name":""} → 400 / invalid tag input 136ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 非法标签 {"name":"   "} → 400 / invalid tag input 115ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 非法标签 {"name":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 / invalid tag input 107ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 非法标签 {"name":"<b>"} → 400 / invalid tag input 110ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 非法标签 {"name":"a,b"} → 400 / invalid tag input 98ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 非法标签 {"name":"正常","color":"black"} → 400 / invalid tag input 108ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 非法标签 {"name":"正常","organizationId":"00000000-0000-4000-8000-000000000000"} → 400 / invalid tag input 101ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 非法标签 {"name":"正常","nameKey":"hack"} → 400 / invalid tag input 104ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 非法打标签与筛选参数 → 400 / invalid tagging and filter input 110ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 数据库约束：name_key 一致、颜色预设、跨组织关联被复合外键拒绝 / DB constraints 175ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 未登录 401 / unauthenticated 124ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 CORS > 跨域预检允许 PUT（演示前端在另一域名）/ CORS preflight allows PUT 106ms
+
+ Test Files  1 passed (1)
+      Tests  19 passed (19)
+   Start at  16:32:56
+   Duration  5.35s (tests 91%, import 6%, transform 3%)

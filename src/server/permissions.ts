@@ -16,13 +16,14 @@ export type Permission =
   | 'owner.assign' // 把负责人设为他人 / assign records to others
   | 'audit.read'
   | 'product.manage' // 维护产品目录 / maintain the product catalog
+  | 'tag.manage' // 标签改名、改色、删除 / rename, recolour and delete tags
   | 'data.export' // 导出 CSV（批量带走客户数据，仅管理员与经理）/ CSV export (bulk data egress; admins and managers only)
   | 'user.manage';
 
 /** 角色 → 权限 / Role → permissions */
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
-  ADMIN: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'audit.read', 'user.manage', 'data.export', 'product.manage'],
-  MANAGER: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'data.export', 'product.manage'],
+  ADMIN: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'audit.read', 'user.manage', 'data.export', 'product.manage', 'tag.manage'],
+  MANAGER: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'data.export', 'product.manage', 'tag.manage'],
   SALES: ['record.create', 'record.update.own'],
   READONLY: ['record.read.all'],
 };

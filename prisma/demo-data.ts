@@ -556,6 +556,41 @@ export function buildDemoData(seed = 20261111) {
   return { accounts: ACCOUNTS, deals, leads, activities, notes, products: PRODUCT_CATALOG, items, quotes };
 }
 
+/** 演示标签 / Demo tags */
+export const DEMO_TAGS = [
+  { key: 'key', name: '重点客户', color: 'gold' },
+  { key: 'strategic', name: '战略合作', color: 'green' },
+  { key: 'framework', name: '年度框架', color: 'blue' },
+  { key: 'price', name: '价格敏感', color: 'volcano' },
+  { key: 'expo', name: '展会线索', color: 'purple' },
+  { key: 'sample', name: '需要样品', color: 'cyan' },
+] as const;
+type DemoTagKey = (typeof DEMO_TAGS)[number]['key'];
+
+/**
+ * 演示标签分配（由数据集确定性推导）。
+ * Demo tag assignments derived deterministically from the dataset.
+ */
+export function demoTagAssignments(data: ReturnType<typeof buildDemoData>) {
+  const accounts: { account: string; tag: DemoTagKey }[] = [];
+  const deals: { deal: string; tag: DemoTagKey }[] = [];
+  const leads: { lead: number; tag: DemoTagKey }[] = [];
+  const wonAccounts = new Set(data.deals.filter((d) => d.stage === 'CLOSED_WON').map((d) => d.account));
+  data.accounts.forEach((a, i) => {
+    if (wonAccounts.has(a.key) || i % 5 === 0) accounts.push({ account: a.key, tag: 'key' });
+    if (i % 7 === 3) accounts.push({ account: a.key, tag: 'strategic' });
+  });
+  data.deals.forEach((d, i) => {
+    if (d.name.includes('年度框架')) deals.push({ deal: d.key, tag: 'framework' });
+    if (d.stage === 'CLOSED_LOST' || (d.stage === 'NEGOTIATION' && i % 2 === 0)) deals.push({ deal: d.key, tag: 'price' });
+  });
+  data.leads.forEach((l, i) => {
+    if (l.source === 'EXHIBITION') leads.push({ lead: i, tag: 'expo' });
+    if (l.status === 'CONTACTED' && i % 3 === 0) leads.push({ lead: i, tag: 'sample' });
+  });
+  return { accounts, deals, leads };
+}
+
 /**
  * E2E 测试使用的样本（由数据集推导，数据调整后测试自动跟随）。
  * Samples used by the E2E tests (derived from the dataset so tests follow data changes).

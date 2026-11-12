@@ -96,6 +96,8 @@ const fieldLabel = (field: string, entityType: string): string => {
   if (entityType === 'user' && field === 'isActive') return t('users.status');
   if (entityType === 'account' && field === 'phone') return t('accounts.phone');
   if (entityType === 'product' && field === 'name') return t('products.name');
+  if (entityType === 'tag' && field === 'name') return t('tags.name');
+  if (entityType === 'tag' && field === 'color') return t('tags.color');
   if (entityType === 'quote' && field === 'subject') return t('quotes.subject');
   if (entityType === 'quote' && field === 'status') return t('quotes.status');
   const key = FIELD_LABELS[field];
@@ -130,6 +132,12 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     for (const [f, v] of Object.entries(snap)) if (v !== null) lines.push(`${fieldLabel(f, entry.entityType)}：${value(f, v, users, entry.entityType)}`);
   } else if (typeof c.reason === 'string') {
     lines.push(tEnum('auditReason', c.reason));
+  } else if (Array.isArray(c.added) || Array.isArray(c.removed)) {
+    // 标签变化 / tag changes
+    const added = (c.added as string[] | undefined) ?? [];
+    const removed = (c.removed as string[] | undefined) ?? [];
+    if (added.length) lines.push(t('tags.auditAdded', { names: added.join('、') }));
+    if (removed.length) lines.push(t('tags.auditRemoved', { names: removed.join('、') }));
   } else if (entry.action === 'lead.convert') {
     lines.push(`${t('nav.accounts')}：${value('accountId', c.accountId, users)}`);
     if (c.dealId) lines.push(`${t('nav.deals')}：${value('dealId', c.dealId, users)}`);

@@ -15,6 +15,7 @@ import { DealQuotesPanel } from '@/components/DealQuotesPanel';
 import { NotesPanel } from '@/components/NotesPanel';
 import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
+import { TagEditor, TagFilter, TagList, tagsOf } from '@/components/Tags';
 import { ExportButton } from '@/components/ExportButton';
 import { RecordSelect } from '@/components/RecordSelect';
 import { RelatedActivities } from '@/components/RelatedActivities';
@@ -45,10 +46,11 @@ export default function DealsPage() {
   const owners = useOwners();
   const perm = usePermissions();
   const [q, setQ] = useState('');
+  const [tagId, setTagId] = useState<string>();
   const [view, setView] = useState<'list' | 'board'>('list');
   const [boardVersion, setBoardVersion] = useState(0);
   const [stage, setStage] = useState<string>();
-  const { data, loading, reload, pagination } = usePagedList<Deal>('/api/deals', { q, stage });
+  const { data, loading, reload, pagination } = usePagedList<Deal>('/api/deals', { q, stage, tagId });
   const sel = useSelection(data.items, perm.can('record.update.own') || perm.canDelete);
   // 列表与看板一起刷新 / refresh both the list and the board
   const refresh = () => {
@@ -145,6 +147,7 @@ export default function DealsPage() {
             ]}
           />
           <Input.Search allowClear placeholder={t('deals.searchPlaceholder')} style={{ width: 280 }} onSearch={setQ} />
+          {view === 'list' && <TagFilter value={tagId} onChange={setTagId} onManaged={() => refresh()} />}
           {view === 'list' && (
             <Select allowClear placeholder={t('deals.stage')} style={{ width: 140 }} options={stageOptions} value={stage} onChange={setStage} />
           )}
@@ -161,6 +164,7 @@ export default function DealsPage() {
       {view === 'list' && (
         <BulkBar
           path="/api/deals"
+          taggable
           selected={sel.selected}
           names={Object.fromEntries(data.items.map((r) => [r.id, r.name]))}
           valueChange={{ action: 'stage', field: 'stage', options: stageOptions }}
@@ -196,6 +200,7 @@ export default function DealsPage() {
               dataIndex: 'expectedCloseDate',
               render: (v: string | null, r) => <span style={isOverdue(r) ? { color: '#d4380d' } : undefined}>{fmtDate(v?.slice(0, 10))}</span>,
             },
+            { title: t('tags.title'), render: (_, r) => <TagList tags={tagsOf(r)} /> },
             { title: t('common.owner'), render: (_, r) => r.owner?.name ?? t('common.unassigned') },
             {
               title: t('common.actions'),
@@ -305,6 +310,9 @@ export default function DealsPage() {
                     </Descriptions.Item>
                     <Descriptions.Item label={t('common.owner')}>{detail.owner?.name ?? t('common.unassigned')}</Descriptions.Item>
                     <Descriptions.Item label={t('common.createdAt')}>{fmtDateTime(detail.createdAt)}</Descriptions.Item>
+                    <Descriptions.Item label={t('tags.title')} span={2}>
+                      <TagEditor key={`tags-${detail.id}`} path="/api/deals" record={detail} onChanged={() => refresh()} />
+                    </Descriptions.Item>
                     <Descriptions.Item label={t('common.description')} span={2}>
                       {detail.description}
                     </Descriptions.Item>

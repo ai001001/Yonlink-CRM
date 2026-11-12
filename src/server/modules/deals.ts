@@ -11,6 +11,7 @@ import { prisma } from '../db';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
+import { tagFilter, tagsInclude } from './tags';
 import { containsText, listQuery, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
 /** 支持的币种 / Supported currencies */
@@ -55,12 +56,14 @@ export const dealListSchema = listQuery.extend({
   stage: z.enum(DealStage).optional(),
   accountId: z.uuid().optional(),
   ownerId: z.uuid().optional(),
+  tagId: z.uuid().optional(),
 });
 
 const include = {
   owner: { select: { id: true, name: true } },
   account: { select: { id: true, name: true } },
   _count: { select: { lineItems: true } },
+  tags: tagsInclude,
 } satisfies Prisma.DealInclude;
 
 /**
@@ -77,7 +80,7 @@ async function assertAccount(ctx: AuthContext, accountId: string): Promise<void>
  * Query conditions shared by the list and the export (visibility + filters + search).
  */
 export function dealWhere(ctx: AuthContext, query: Omit<z.infer<typeof dealListSchema>, 'page' | 'pageSize'>): Prisma.DealWhereInput {
-  const where: Prisma.DealWhereInput = { AND: [visible(ctx), { stage: query.stage, accountId: query.accountId, ownerId: query.ownerId }] };
+  const where: Prisma.DealWhereInput = { AND: [visible(ctx), { stage: query.stage, accountId: query.accountId, ownerId: query.ownerId }, tagFilter(query.tagId)] };
   if (query.q) {
     const c = containsText(query.q);
     where.OR = [{ name: c }, { account: { name: c } }];

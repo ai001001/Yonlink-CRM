@@ -10,6 +10,7 @@ import { PlusOutlined, StarFilled, UploadOutlined } from '@ant-design/icons';
 import { AccountDeals } from '@/components/AccountDeals';
 import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
+import { TagEditor, TagFilter, TagList, tagsOf } from '@/components/Tags';
 import { ExportButton } from '@/components/ExportButton';
 import { ImportModal } from '@/components/ImportModal';
 import { NotesPanel } from '@/components/NotesPanel';
@@ -30,8 +31,9 @@ export default function AccountsPage() {
   const owners = useOwners();
   const perm = usePermissions();
   const [q, setQ] = useState('');
+  const [tagId, setTagId] = useState<string>();
   const [industry, setIndustry] = useState<string>();
-  const { data, loading, reload, pagination } = usePagedList<Account>('/api/accounts', { q, industry });
+  const { data, loading, reload, pagination } = usePagedList<Account>('/api/accounts', { q, industry, tagId });
   const sel = useSelection(data.items, perm.can('record.update.own') || perm.canDelete);
 
   const [form] = Form.useForm();
@@ -113,10 +115,12 @@ export default function AccountsPage() {
     >
       <Space wrap style={{ marginBottom: 16 }}>
         <Input.Search allowClear placeholder={t('accounts.searchPlaceholder')} style={{ width: 320 }} onSearch={setQ} />
+        <TagFilter value={tagId} onChange={setTagId} onManaged={() => void reload()} />
         <Select allowClear placeholder={t('accounts.industry')} style={{ width: 140 }} options={industryOptions} value={industry} onChange={setIndustry} />
       </Space>
       <BulkBar
         path="/api/accounts"
+        taggable
         selected={sel.selected}
         names={Object.fromEntries(data.items.map((r) => [r.id, r.name]))}
         onDone={() => {
@@ -145,6 +149,7 @@ export default function AccountsPage() {
           { title: t('accounts.phone'), dataIndex: 'phone' },
           { title: t('accounts.contactCount'), render: (_, r) => r._count.contacts },
           { title: t('accounts.dealCount'), render: (_, r) => r._count.deals },
+          { title: t('tags.title'), render: (_, r) => <TagList tags={tagsOf(r)} /> },
           { title: t('common.owner'), render: (_, r) => r.owner?.name ?? t('common.unassigned') },
           { title: t('common.createdAt'), dataIndex: 'createdAt', render: fmtDateTime },
           {
@@ -245,6 +250,9 @@ export default function AccountsPage() {
                     <Descriptions.Item label={t('common.owner')}>{detail.owner?.name ?? t('common.unassigned')}</Descriptions.Item>
                     <Descriptions.Item label={t('accounts.dealCount')}>{detail._count.deals}</Descriptions.Item>
                     <Descriptions.Item label={t('common.createdAt')}>{fmtDateTime(detail.createdAt)}</Descriptions.Item>
+                    <Descriptions.Item label={t('tags.title')} span={2}>
+                      <TagEditor key={`tags-${detail.id}`} path="/api/accounts" record={detail} onChanged={() => void reload()} />
+                    </Descriptions.Item>
                     <Descriptions.Item label={t('common.description')} span={2}>
                       {detail.description}
                     </Descriptions.Item>

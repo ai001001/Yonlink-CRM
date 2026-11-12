@@ -12,16 +12,17 @@ import { t, tEnum } from '@/i18n';
 import { fmtDateTime } from '@/lib/format';
 import { useOwners, usePagedList } from '@/lib/hooks';
 
-const ENTITIES = ['lead', 'account', 'contact', 'deal', 'activity', 'note', 'product', 'quote', 'user', 'auth'];
+const ENTITIES = ['lead', 'account', 'contact', 'deal', 'activity', 'note', 'product', 'quote', 'tag', 'user', 'auth'];
 const ACTIONS: Record<string, string[]> = {
-  lead: ['create', 'update', 'delete', 'convert', 'import', 'export'],
-  account: ['create', 'update', 'delete', 'import', 'export'],
+  lead: ['create', 'update', 'delete', 'convert', 'tags', 'import', 'export'],
+  account: ['create', 'update', 'delete', 'tags', 'import', 'export'],
   contact: ['create', 'update', 'delete'],
-  deal: ['create', 'update', 'delete', 'export', 'add_item', 'update_item', 'remove_item'],
+  deal: ['create', 'update', 'delete', 'tags', 'export', 'add_item', 'update_item', 'remove_item'],
   activity: ['create', 'update', 'delete', 'export'],
   note: ['create', 'update', 'delete'],
   product: ['create', 'update', 'delete'],
   quote: ['create', 'update', 'sync_items', 'status', 'delete'],
+  tag: ['create', 'update', 'delete'],
   user: ['create', 'update', 'reset_password'],
   auth: ['login', 'demo_login', 'login_failed', 'logout'],
 };

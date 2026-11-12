@@ -53,6 +53,7 @@ export interface Account {
   owner: Ref | null;
   _count: { contacts: number; deals: number };
   contacts?: Contact[];
+  tags?: RecordTags;
   createdAt: string;
   updatedAt: string;
 }
@@ -71,6 +72,7 @@ export interface Deal {
   stage: 'QUALIFICATION' | 'NEEDS_ANALYSIS' | 'PROPOSAL' | 'NEGOTIATION' | 'CLOSED_WON' | 'CLOSED_LOST';
   /** 产品明细数量 / number of line items */
   _count?: { lineItems: number };
+  tags?: RecordTags;
   expectedCloseDate: string | null;
   description: string | null;
   ownerId: string | null;
@@ -153,3 +155,14 @@ export interface Quote {
   organization?: { name: string };
   lines?: QuoteLine[];
 }
+
+/** 标签 / Tag */
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
+  _count?: { leads: number; accounts: number; deals: number };
+}
+
+/** 记录上的标签（接口返回结构）/ tags on a record as returned by the API */
+export type RecordTags = { tag: Tag }[];

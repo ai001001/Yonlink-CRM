@@ -1,6 +1,6 @@
 /**
- * 列表批量操作栏：指派负责人、修改状态/阶段、标记完成、删除。按钮按权限显示（服务端仍逐条校验）。
- * List bulk-action bar: assign owner, change status/stage, complete, delete. Buttons follow permissions
+ * 列表批量操作栏：指派负责人、修改状态/阶段、标记完成、加减标签、删除。按钮按权限显示（服务端仍逐条校验）。
+ * List bulk-action bar: assign owner, change status/stage, complete, add/remove tags, delete. Buttons follow permissions
  * (the server still checks every record).
  */
 'use client';
@@ -10,6 +10,7 @@ import { t, type MessageKey } from '@/i18n';
 import { api } from '@/lib/api';
 import { useOwners } from '@/lib/hooks';
 import { usePermissions } from './AuthProvider';
+import { useTags } from './Tags';
 
 /** 服务端批量结果 / Server bulk result */
 interface BulkResult {
@@ -28,15 +29,18 @@ interface Props {
   valueChange?: { action: 'status' | 'stage'; field: 'status' | 'stage'; options: { value: string; label: string }[] };
   /** 跟进：批量完成 / activities: bulk complete */
   completable?: boolean;
+  /** 线索/客户/商机：批量加减标签 / leads, accounts, deals: bulk add/remove tags */
+  taggable?: boolean;
   /** 完成后回调（刷新列表并清空选择）/ called afterwards (reload and clear selection) */
   onDone: () => void;
   onClear: () => void;
 }
 
-export function BulkBar({ path, selected, names, valueChange, completable, onDone, onClear }: Props) {
+export function BulkBar({ path, selected, names, valueChange, completable, taggable, onDone, onClear }: Props) {
   const { message, modal } = App.useApp();
   const perm = usePermissions();
   const owners = useOwners();
+  const [tags, reloadTags] = useTags();
   const n = selected.length;
   if (n === 0) return null;
 
@@ -111,6 +115,26 @@ export function BulkBar({ path, selected, names, valueChange, completable, onDon
           }
         />
       )}
+      {taggable &&
+        perm.can('record.update.own') &&
+        (['tag_add', 'tag_remove'] as const).map((action) => (
+          <Select
+            key={action}
+            aria-label={t(action === 'tag_add' ? 'tags.bulkAdd' : 'tags.bulkRemove')}
+            placeholder={t(action === 'tag_add' ? 'tags.bulkAdd' : 'tags.bulkRemove')}
+            style={{ width: 140 }}
+            value={null}
+            // 每次展开时刷新，包含刚在详情中新建的标签 / refresh on open to include tags just created elsewhere
+            onOpenChange={(open) => open && void reloadTags()}
+            options={tags.map((x) => ({ value: x.id, label: x.name }))}
+            onChange={(v: string) =>
+              confirm(t(action === 'tag_add' ? 'tags.confirmBulkAdd' : 'tags.confirmBulkRemove', { n, name: tags.find((x) => x.id === v)?.name ?? '' }), {
+                action,
+                tagId: v,
+              })
+            }
+          />
+        ))}
       {completable && (
         <>
           <Button size="small" onClick={() => confirm(t('bulk.confirmComplete', { n, value: t('activities.completed') }), { action: 'complete', completed: true })}>

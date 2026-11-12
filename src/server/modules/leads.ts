@@ -12,6 +12,7 @@ import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermiss
 import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
 import { amountSchema, CURRENCIES, dateOnly } from './deals';
+import { tagFilter, tagsInclude } from './tags';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
 /** 线索来源（固定字典，前端用 i18n 显示）/ Lead sources (fixed dictionary, displayed via i18n) */
@@ -40,6 +41,7 @@ export const leadListSchema = listQuery.extend({
   status: z.enum(LeadStatus).optional(),
   source: z.enum(LEAD_SOURCES).optional(),
   ownerId: z.uuid().optional(),
+  tagId: z.uuid().optional(),
 });
 
 const include = {
@@ -47,6 +49,7 @@ const include = {
   convertedAccount: { select: { id: true, name: true } },
   convertedContact: { select: { id: true, name: true } },
   convertedDeal: { select: { id: true, name: true } },
+  tags: tagsInclude,
 } satisfies Prisma.LeadInclude;
 
 /**
@@ -55,7 +58,7 @@ const include = {
  */
 export function leadWhere(ctx: AuthContext, query: Omit<z.infer<typeof leadListSchema>, 'page' | 'pageSize'>): Prisma.LeadWhereInput {
   // 可见范围与筛选条件同时满足 / visibility AND filters
-  const where: Prisma.LeadWhereInput = { AND: [visible(ctx), { status: query.status, source: query.source, ownerId: query.ownerId }] };
+  const where: Prisma.LeadWhereInput = { AND: [visible(ctx), { status: query.status, source: query.source, ownerId: query.ownerId }, tagFilter(query.tagId)] };
   if (query.q) {
     const contains = containsText(query.q);
     where.OR = [{ name: contains }, { company: contains }, { email: contains }, { phone: contains }, { mobile: contains }];

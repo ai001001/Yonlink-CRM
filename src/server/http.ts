@@ -32,7 +32,7 @@ function withHeaders(req: Request, res: Response): Response {
     res.headers.set('Access-Control-Allow-Origin', origin);
     res.headers.set('Vary', 'Origin');
     res.headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-    res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+    res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
     res.headers.set('Access-Control-Max-Age', '600');
     // 允许跨域前端读取导出信息 / let the cross-origin frontend read export metadata
     res.headers.set('Access-Control-Expose-Headers', 'Content-Disposition, X-Export-Count, X-Export-Truncated');
