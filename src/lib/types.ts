@@ -105,3 +105,51 @@ export interface DealItem {
   lineTotal: string;
   product: { unit: string; isActive: boolean };
 }
+
+/** 报价单状态 / Quote status */
+export type QuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED';
+
+/** 报价单明细（快照）/ Quote line (snapshot) */
+export interface QuoteLine {
+  id: string;
+  position: number;
+  productSku: string;
+  productName: string;
+  unit: string;
+  quantity: string;
+  unitPrice: string;
+  discountPercent: string;
+  lineTotal: string;
+}
+
+/** 报价单 / Quote */
+export interface Quote {
+  id: string;
+  dealId: string;
+  quoteNumber: string;
+  subject: string;
+  status: QuoteStatus;
+  currency: string;
+  validUntil: string | null;
+  taxPercent: string;
+  subtotal: string;
+  taxAmount: string;
+  total: string;
+  terms: string | null;
+  notes: string | null;
+  sentAt: string | null;
+  decidedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: { id: string; name: string } | null;
+  deal: {
+    id: string;
+    name: string;
+    ownerId: string | null;
+    stage?: string;
+    owner?: { id: string; name: string } | null;
+    account: { id: string; name: string; phone?: string | null; address?: string | null };
+  };
+  organization?: { name: string };
+  lines?: QuoteLine[];
+}

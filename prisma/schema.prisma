@@ -14,10 +14,10 @@ datasource db {
 }
 
 model Organization {
-  id         String         @id @default(uuid()) @db.Uuid
-  name       String         @db.VarChar(200)
-  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id         String          @id @default(uuid()) @db.Uuid
+  name       String          @db.VarChar(200)
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
   users      User[]
   accounts   Account[]
   contacts   Contact[]
@@ -28,6 +28,8 @@ model Organization {
   notes      Note[]
   products   Product[]
   dealItems  DealLineItem[]
+  quotes     Quote[]
+  quoteItems QuoteLineItem[]
 
   @@map("organizations")
 }
@@ -53,6 +55,7 @@ model User {
   ownedActivities Activity[]   @relation("ActivityOwner")
   auditLogs       AuditLog[]   @relation("AuditActor")
   notes           Note[]       @relation("NoteAuthor")
+  createdQuotes   Quote[]      @relation("QuoteCreator")
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -208,6 +211,7 @@ model Deal {
   activities        Activity[]
   notes             Note[]
   lineItems         DealLineItem[]
+  quotes            Quote[]
   convertedLeads    Lead[]         @relation("LeadConvertedDeal")
 
   @@unique([organizationId, id])
@@ -356,4 +360,71 @@ model DealLineItem {
   @@index([organizationId, dealId, createdAt])
   @@index([organizationId, productId])
   @@map("deal_line_items")
+}
+
+/// 报价单状态 / Quote status
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+
+  @@map("quote_status")
+}
+
+/// 报价单（由商机生成，明细为生成时的快照；草稿可修改，发送后内容冻结）
+/// Quote generated from a deal; line items are a snapshot; drafts are editable, content is frozen once sent
+model Quote {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  dealId         String          @map("deal_id") @db.Uuid
+  /// 组织内唯一的报价单号，如 QT-2026-0001 / per-organization unique number
+  quoteNumber    String          @map("quote_number") @db.VarChar(30)
+  subject        String          @db.VarChar(200)
+  status         QuoteStatus     @default(DRAFT)
+  currency       String          @db.Char(3)
+  validUntil     DateTime?       @map("valid_until") @db.Date
+  taxPercent     Decimal         @default(0) @map("tax_percent") @db.Decimal(5, 2)
+  subtotal       Decimal         @db.Decimal(18, 2)
+  taxAmount      Decimal         @map("tax_amount") @db.Decimal(18, 2)
+  total          Decimal         @db.Decimal(18, 2)
+  terms          String?         @db.Text
+  notes          String?         @db.Text
+  createdById    String?         @map("created_by_id") @db.Uuid
+  sentAt         DateTime?       @map("sent_at") @db.Timestamptz(6)
+  decidedAt      DateTime?       @map("decided_at") @db.Timestamptz(6)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deal           Deal            @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Cascade)
+  createdBy      User?           @relation("QuoteCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  lines          QuoteLineItem[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, quoteNumber])
+  @@index([organizationId, dealId])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, status])
+  @@map("quotes")
+}
+
+/// 报价单明细（纯快照，不引用产品，产品后续变化或删除不影响已出具的报价单）
+/// Quote line item: a pure snapshot without a product reference
+model QuoteLineItem {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  quoteId         String       @map("quote_id") @db.Uuid
+  position        Int
+  productSku      String       @map("product_sku") @db.VarChar(50)
+  productName     String       @map("product_name") @db.VarChar(200)
+  unit            String       @db.VarChar(20)
+  quantity        Decimal      @db.Decimal(18, 2)
+  unitPrice       Decimal      @map("unit_price") @db.Decimal(18, 2)
+  discountPercent Decimal      @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  lineTotal       Decimal      @map("line_total") @db.Decimal(18, 2)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  quote           Quote        @relation(fields: [organizationId, quoteId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([organizationId, quoteId, position])
+  @@map("quote_line_items")
 }

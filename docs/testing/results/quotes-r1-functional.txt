@@ -1,0 +1,28 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 create > 由商机生成：复制明细快照、默认主题、编号、税额与总计 / generate from a deal 720ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 create > 报价单号按组织连续编号，删除草稿后不复用中间号 / sequential numbers 246ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 create > 税额按十进制四舍五入到分 / tax rounding 111ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 create > 快照：之后修改商机明细与产品不影响报价单 / later changes do not affect the quote 189ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 draft editing > 修改草稿：税率变化重算；审计记录变化字段，条款脱敏 / update a draft 145ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 draft editing > 从商机同步明细：明细与金额更新为商机当前明细 / re-sync from the deal 173ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 draft editing > 删除草稿：明细一并删除，写审计 / delete a draft 135ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 status > 草稿 → 已发送 → 已接受，记录发送与答复时间及审计 / draft → sent → accepted 148ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 status > 已发送可退回草稿（清除发送时间）后再修改；也可标记为已拒绝 / sent → draft, sent → rejected 206ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 status > 列表：按状态、商机筛选，按编号/主题/客户搜索 / list filters and search 274ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 status > 删除商机时其报价单随之删除 / quotes cascade with the deal 132ms
+stdout | tests/quotes/quotes.r1-functional.test.ts > quotes R1 demo data > 演示报价单：明细 = 商机明细，金额一致，编号按创建时间递增 / demo quotes are consistent
+演示数据已创建：30 客户、64 联系人、48 线索、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单 / demo data ready
+
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 demo data > 演示报价单：明细 = 商机明细，金额一致，编号按创建时间递增 / demo quotes are consistent 856ms
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  12:06:42
+   Duration  5.78s (tests 88%, import 8%, transform 4%)
+

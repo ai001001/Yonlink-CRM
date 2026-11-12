@@ -149,6 +149,51 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         })),
       });
 
+      // 报价单：明细复制自商机明细，报价单号按年份顺序编号 / quotes: lines copied from the deal items, numbered per year
+      const year = new Date().getUTCFullYear();
+      const units = new Map(data.products.map((p) => [p.sku, p.unit]));
+      const dealOwner = new Map(data.deals.map((d) => [d.key, d.owner]));
+      const ordered = [...data.quotes].sort((a, b) => b.daysAgo - a.daysAgo);
+      for (const [n, q] of ordered.entries()) {
+        const created = new Date(Date.now() - q.daysAgo * DAY);
+        const quote = await tx.quote.create({
+          data: {
+            organizationId: o,
+            dealId: dealIds[q.deal]!,
+            quoteNumber: `QT-${year}-${String(n + 1).padStart(4, '0')}`,
+            subject: data.deals.find((d) => d.key === q.deal)!.name,
+            status: q.status,
+            currency: data.deals.find((d) => d.key === q.deal)!.currency,
+            validUntil: dayOffset(q.validInDays),
+            taxPercent: q.taxPercent,
+            subtotal: q.subtotal,
+            taxAmount: q.taxAmount,
+            total: q.total,
+            terms: q.terms,
+            createdById: owner(dealOwner.get(q.deal)!),
+            sentAt: q.status === 'DRAFT' ? null : new Date(created.getTime() + DAY),
+            decidedAt: q.status === 'ACCEPTED' || q.status === 'REJECTED' ? new Date(created.getTime() + 5 * DAY) : null,
+            createdAt: created,
+          },
+        });
+        await tx.quoteLineItem.createMany({
+          data: data.items
+            .filter((it) => it.deal === q.deal)
+            .map((it, k) => ({
+              organizationId: o,
+              quoteId: quote.id,
+              position: k + 1,
+              productSku: it.sku,
+              productName: catalog.get(it.sku)!.name,
+              unit: units.get(it.sku)!,
+              quantity: it.quantity,
+              unitPrice: it.unitPrice,
+              discountPercent: it.discountPercent,
+              lineTotal: it.lineTotal,
+            })),
+        });
+      }
+
       const leadIds: string[] = [];
       for (const l of data.leads) {
         const created = await tx.lead.create({
@@ -202,7 +247,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length} 客户、${data.accounts.reduce((n, a) => n + a.contacts.length, 0)} 联系人、` +
-      `${data.leads.length} 线索、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细 / demo data ready`,
+      `${data.leads.length} 线索、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单 / demo data ready`,
   );
 }
 

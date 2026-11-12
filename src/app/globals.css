@@ -12,3 +12,26 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   column-gap: 12px;
 }
+
+/* 打印页：白底居中，打印时隐藏工具栏 / print page: white, centred; toolbar hidden when printing */
+.print-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  background: #fff;
+  min-height: 100vh;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-page {
+    max-width: none;
+    padding: 0;
+  }
+}

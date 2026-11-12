@@ -291,6 +291,24 @@ export interface DealItemSeed {
   lineTotal: string;
 }
 
+/** 报价单（明细由商机产品明细生成；报价单号在写入时按年份编号）/ Quote (lines come from the deal items) */
+export interface QuoteSeed {
+  deal: string;
+  status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED';
+  taxPercent: string;
+  subtotal: string;
+  taxAmount: string;
+  total: string;
+  /** 创建于几天前 / created N days ago */
+  daysAgo: number;
+  /** 有效期相对今天（天）/ validity offset from today (days) */
+  validInDays: number;
+  terms: string;
+}
+
+/** 演示报价条款 / Demo quote terms */
+export const DEMO_QUOTE_TERMS = '1. 价格含标准包装，不含运费与保险。\n2. 付款方式：30% 预付款，余款发货前付清。\n3. 交期：收到预付款后 4–6 周。\n4. 质保：整机 12 个月或 10 万公里（以先到者为准）。';
+
 /** 虚构产品目录（美元价，另有 -CN 人民币价）/ fictional catalog (USD, plus -CN CNY variants) */
 const BASE_CATALOG: [string, string, string, string, number][] = [
   ['DT-HD-11L', '重型柴油机涡轮增压器 11L（整机）', '整机增压器', '台', 980],
@@ -461,7 +479,42 @@ export function buildDemoData(seed = 20261111) {
     d.amount = (cents / 100).toFixed(2);
   });
 
-  return { accounts: ACCOUNTS, deals, leads, activities, notes, products: PRODUCT_CATALOG, items };
+  // 报价单（只为带明细的商机生成）：需求分析阶段约半数有草稿；谈判阶段已发送（约三分之一已过有效期）；
+  // 赢单已接受，其中每三个有一张先被拒绝的首版报价。人民币含 13% 增值税，美元出口报价不含税。
+  // quotes (itemised deals only): about half of needs-analysis deals have a draft; negotiation deals have a sent quote
+  // (about a third expired); won deals have an accepted quote, every third with an earlier rejected first version.
+  // CNY quotes include 13% VAT; USD export quotes are tax-free.
+  const quotes: QuoteSeed[] = [];
+  const counters: Partial<Record<Stage, number>> = {};
+  const addQuote = (d: DealSeed, status: QuoteSeed['status'], daysAgo: number, validInDays: number) => {
+    const lines = items.filter((it) => it.deal === d.key);
+    const subtotalCents = lines.reduce((sum, it) => sum + Math.round(Number(it.lineTotal) * 100), 0);
+    const tax = d.currency === 'CNY' ? 13 : 0;
+    const taxCents = Math.round((subtotalCents * tax) / 100);
+    quotes.push({
+      deal: d.key,
+      status,
+      taxPercent: String(tax),
+      subtotal: (subtotalCents / 100).toFixed(2),
+      taxAmount: (taxCents / 100).toFixed(2),
+      total: ((subtotalCents + taxCents) / 100).toFixed(2),
+      daysAgo,
+      validInDays,
+      terms: DEMO_QUOTE_TERMS,
+    });
+  };
+  for (const d of deals) {
+    if (!items.some((it) => it.deal === d.key)) continue;
+    const n = (counters[d.stage] = (counters[d.stage] ?? 0) + 1);
+    if (d.stage === 'NEEDS_ANALYSIS' && n % 2 === 1) addQuote(d, 'DRAFT', 1 + n, 30);
+    if (d.stage === 'NEGOTIATION') addQuote(d, 'SENT', 8 + 3 * n, n % 3 === 0 ? -n : 30 - n);
+    if (d.stage === 'CLOSED_WON') {
+      if (n % 3 === 1) addQuote(d, 'REJECTED', 60 + n, -30);
+      addQuote(d, 'ACCEPTED', 20 + n, 10 - n);
+    }
+  }
+
+  return { accounts: ACCOUNTS, deals, leads, activities, notes, products: PRODUCT_CATALOG, items, quotes };
 }
 
 /**

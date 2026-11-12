@@ -12,14 +12,16 @@ import { t, tEnum } from '@/i18n';
 import { fmtDateTime } from '@/lib/format';
 import { useOwners, usePagedList } from '@/lib/hooks';
 
-const ENTITIES = ['lead', 'account', 'contact', 'deal', 'activity', 'note', 'user', 'auth'];
+const ENTITIES = ['lead', 'account', 'contact', 'deal', 'activity', 'note', 'product', 'quote', 'user', 'auth'];
 const ACTIONS: Record<string, string[]> = {
   lead: ['create', 'update', 'delete', 'convert', 'import', 'export'],
   account: ['create', 'update', 'delete', 'import', 'export'],
   contact: ['create', 'update', 'delete'],
-  deal: ['create', 'update', 'delete', 'export'],
+  deal: ['create', 'update', 'delete', 'export', 'add_item', 'update_item', 'remove_item'],
   activity: ['create', 'update', 'delete', 'export'],
   note: ['create', 'update', 'delete'],
+  product: ['create', 'update', 'delete'],
+  quote: ['create', 'update', 'sync_items', 'status', 'delete'],
   user: ['create', 'update', 'reset_password'],
   auth: ['login', 'demo_login', 'login_failed', 'logout'],
 };
@@ -51,6 +53,9 @@ export default function AuditLogsPage() {
           allowClear
           placeholder={t('audit.entity')}
           style={{ width: 120 }}
+          // 选项固定且较少，关闭虚拟滚动，全部选项始终渲染 / few fixed options: no virtual list, all options always rendered
+          virtual={false}
+          listHeight={360}
           value={entityType}
           onChange={(v) => {
             setEntityType(v);

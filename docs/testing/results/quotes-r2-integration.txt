@@ -1,0 +1,38 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 permissions > 生成：负责人与经理可以；其他销售 404；只读 403 / create follows deal edit rights 911ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 permissions > 查看：只读可看全部；其他销售列表与详情都看不到 / visibility follows the deal 237ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 permissions > 修改/同步/状态/删除：只读 403，其他销售 404 / mutations by others are refused 224ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 permissions > 商机改派后，原负责人看不到报价单，新负责人可以操作 / reassignment moves access 195ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 rules > 非法状态流转 409，状态不变 / invalid transitions 221ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 rules > 非草稿不能修改、同步、删除（409 not_draft）/ only drafts can change 174ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 rules > 商机没有明细时不能生成，也不能把草稿同步为空 / no items 202ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 rules > 并发生成：报价单号不重复且连续 / concurrent creation yields unique numbers 218ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 rules > 并发状态变更：只有一个成功，审计只记一次 / concurrent transitions 173ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 rules > 审计日志可按报价单筛选 / audit log filter by entity 144ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 跨组织：看不到、改不了、不能用他人商机生成，编号各自从 0001 开始 / cross-org isolation 260ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"taxPercent":"100.01"} → 400 / invalid create input 147ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"taxPercent":"-1"} → 400 / invalid create input 119ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"taxPercent":"1.234"} → 400 / invalid create input 126ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"validUntil":"2026-02-30"} → 400 / invalid create input 121ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"validUntil":"31/12/2026"} → 400 / invalid create input 123ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"subject":"   "} → 400 / invalid create input 115ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"subject":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 / invalid create input 111ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"dealId":"not-a-uuid"} → 400 / invalid create input 111ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"organizationId":"00000000-0000-4000-8000-000000000000"} → 400 / invalid create input 115ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"status":"SENT"} → 400 / invalid create input 125ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"quoteNumber":"QT-HACK-1"} → 400 / invalid create input 124ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法修改与状态参数 → 400；未知查询参数与状态 → 400 / invalid update, status and list input 160ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 数据库约束：总计 = 小计 + 税额、税率范围、组织内编号唯一、明细数量 > 0 / DB constraints 194ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 未登录 401 / unauthenticated 114ms
+
+ Test Files  1 passed (1)
+      Tests  25 passed (25)
+   Start at  12:07:31
+   Duration  7.07s (tests 93%, import 4%, transform 2%)
+

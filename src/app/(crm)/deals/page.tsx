@@ -11,6 +11,7 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { AuditTrail } from '@/components/AuditTrail';
 import { DealBoard } from '@/components/DealBoard';
 import { DealItemsPanel } from '@/components/DealItemsPanel';
+import { DealQuotesPanel } from '@/components/DealQuotesPanel';
 import { NotesPanel } from '@/components/NotesPanel';
 import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
@@ -325,6 +326,11 @@ export default function DealsPage() {
                     }}
                   />
                 ),
+              },
+              {
+                key: 'quotes',
+                label: t('quotes.tab'),
+                children: <DealQuotesPanel key={`quotes-${detail.id}`} deal={detail} />,
               },
               {
                 key: 'notes',

@@ -47,6 +47,19 @@ const FIELD_LABELS: Record<string, MessageKey> = {
   completed: 'activities.completed',
   leadId: 'activities.lead',
   dealId: 'activities.deal',
+  sku: 'products.sku',
+  category: 'products.category',
+  unit: 'products.unit',
+  unitPrice: 'products.unitPrice',
+  isActive: 'products.status',
+  quoteNumber: 'quotes.number',
+  validUntil: 'quotes.validUntil',
+  taxPercent: 'quotes.taxPercent',
+  subtotal: 'quotes.subtotal',
+  taxAmount: 'quotes.taxAmount',
+  total: 'quotes.total',
+  terms: 'quotes.terms',
+  notes: 'quotes.notes',
 };
 
 // 枚举字段 → 翻译前缀 / enum field → translation prefix
@@ -82,6 +95,9 @@ const fieldLabel = (field: string, entityType: string): string => {
   if (entityType === 'user' && field === 'role') return t('users.role');
   if (entityType === 'user' && field === 'isActive') return t('users.status');
   if (entityType === 'account' && field === 'phone') return t('accounts.phone');
+  if (entityType === 'product' && field === 'name') return t('products.name');
+  if (entityType === 'quote' && field === 'subject') return t('quotes.subject');
+  if (entityType === 'quote' && field === 'status') return t('quotes.status');
   const key = FIELD_LABELS[field];
   return key ? t(key) : field;
 };
@@ -90,14 +106,15 @@ const fieldLabel = (field: string, entityType: string): string => {
  * 单个值的显示。
  * Display a single value.
  */
-function value(field: string, v: unknown, users: Map<string, string>): string {
+function value(field: string, v: unknown, users: Map<string, string>, entityType = ''): string {
   if (v === null || v === undefined || v === '') return '—';
   if (v === '[redacted]') return t('audit.redacted');
   if (typeof v === 'boolean') return v ? t('common.yes') : t('common.no');
   if (field === 'ownerId') return users.get(String(v)) ?? String(v).slice(0, 8);
   if (field.endsWith('Id')) return String(v).slice(0, 8);
+  if (entityType === 'quote' && field === 'status') return tEnum('quoteStatus', String(v));
   if (ENUM_PREFIX[field]) return tEnum(ENUM_PREFIX[field]!, String(v));
-  if (field === 'expectedCloseDate') return String(v).slice(0, 10);
+  if (field === 'expectedCloseDate' || field === 'validUntil') return String(v).slice(0, 10);
   if (field === 'dueAt') return String(v).replace('T', ' ').slice(0, 16);
   return String(v);
 }
@@ -108,9 +125,9 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
   const fields = c.fields as Record<string, [unknown, unknown]> | undefined;
   const snap = (c.after ?? c.before) as Record<string, unknown> | undefined;
   if (fields) {
-    for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}：${value(f, b, users)} → ${value(f, a, users)}`);
+    for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}：${value(f, b, users, entry.entityType)} → ${value(f, a, users, entry.entityType)}`);
   } else if (snap) {
-    for (const [f, v] of Object.entries(snap)) if (v !== null) lines.push(`${fieldLabel(f, entry.entityType)}：${value(f, v, users)}`);
+    for (const [f, v] of Object.entries(snap)) if (v !== null) lines.push(`${fieldLabel(f, entry.entityType)}：${value(f, v, users, entry.entityType)}`);
   } else if (typeof c.reason === 'string') {
     lines.push(tEnum('auditReason', c.reason));
   } else if (entry.action === 'lead.convert') {
