@@ -50,8 +50,13 @@ test('标签：添加、筛选、移除、批量、管理 / tags: add, filter, r
   await drawer.getByRole('button', { name: '关闭' }).first().click();
   await expect(drawer).toBeHidden();
   await expect(page.getByRole('row', { name: /E2E 标签客户/ })).toHaveCount(0);
-  await page.getByLabel('按标签筛选').click();
-  await page.locator('.ant-select-clear').first().click({ force: true });
+  // 用筛选框自带的清除按钮清空（不展开下拉），并确认没有展开的下拉，避免与批量栏下拉混淆
+  // clear via the filter's own clear button (without opening it) and make sure no dropdown stays open
+  const tagFilter = page.locator('.ant-select', { has: page.getByLabel('按标签筛选') });
+  await tagFilter.hover();
+  await tagFilter.locator('.ant-select-clear').click();
+  await page.keyboard.press('Escape');
+  await expect(dropdown(page)).toHaveCount(0);
 
   // 批量添加 / bulk add
   await searchList(page, ACCOUNTS, 'E2E 标签客户');
