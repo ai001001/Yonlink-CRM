@@ -62,6 +62,14 @@ export function csvCell(value: unknown): string {
 }
 
 /**
+ * 还原导出时为防公式注入添加的单引号（仅当单引号后紧跟公式开头字符时）；用户自己输入的其他单引号保留。
+ * Undo the quote added by csvCell (only when followed by a formula character); other leading quotes are kept.
+ */
+export function uncsvCell(value: string): string {
+  return /^'[=+\-@\t\r]/.test(value) ? value.slice(1) : value;
+}
+
+/**
  * 生成 CSV（UTF-8 BOM + CRLF，便于 Excel 正确识别中文）。
  * Build CSV text (UTF-8 BOM + CRLF so Excel reads Chinese correctly).
  */

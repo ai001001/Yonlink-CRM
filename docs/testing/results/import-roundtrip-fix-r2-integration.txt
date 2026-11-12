@@ -1,0 +1,17 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/import-export/roundtrip-fix.r2-integration.test.ts > round-trip fix R2 > 用户自带的单引号（后面不是公式字符）原样保留 / user quotes not followed by formula chars are kept 470ms
+ ✓ tests/import-export/roundtrip-fix.r2-integration.test.ts > round-trip fix R2 > CSV 中未转义的公式样内容按普通文本保存，导出时再次加单引号 / raw formula-like text is stored as text and escaped again on export 108ms
+ ✓ tests/import-export/roundtrip-fix.r2-integration.test.ts > round-trip fix R2 > 客户导出 → 导入同样一致 / accounts round-trip too 117ms
+ ✓ tests/import-export/roundtrip-fix.r2-integration.test.ts > round-trip fix R2 > 预检阶段同样按还原后的值校验与查重 / dry runs validate and dedupe on the unescaped value 73ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  23:56:04
+   Duration  2.82s (tests 71%, import 19%, transform 8%, setup 1%)
+

@@ -13,7 +13,7 @@ import { t, tEnum } from '@/i18n';
 import { zhCN } from '@/i18n/zh-CN';
 import { audit, by, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
-import { parseCsv, toCsv } from '../csv';
+import { parseCsv, toCsv, uncsvCell } from '../csv';
 import { prisma } from '../db';
 import { ApiError } from '../errors';
 import { can, requirePermission } from '../permissions';
@@ -296,7 +296,8 @@ export async function importCsv(ctx: AuthContext, entity: ImportEntity, input: z
     for (const d of defs) {
       const idx = indexOf[d.field];
       if (idx === undefined) continue;
-      const v = cells[idx] ?? '';
+      // 还原导出时为防公式注入加的单引号，使“导出→导入”数据一致 / undo export escaping so export → import round-trips
+      const v = uncsvCell(cells[idx] ?? '');
       raw[d.field] = d.enumPrefix ? (enumValue(d.enumPrefix, v) ?? '') : v;
     }
     const errors: ImportReport['errors'] = [];

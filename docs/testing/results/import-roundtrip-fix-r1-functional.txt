@@ -1,0 +1,16 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/import-export/roundtrip-fix.r1-functional.test.ts > round-trip fix R1 > uncsvCell 还原 csvCell 加的单引号 / uncsvCell undoes csvCell 248ms
+ ✓ tests/import-export/roundtrip-fix.r1-functional.test.ts > round-trip fix R1 > 含 + 号国际电话与公式样内容：导出 → 导入后与原值完全一致 / export → import round-trips exactly 267ms
+ ✓ tests/import-export/roundtrip-fix.r1-functional.test.ts > round-trip fix R1 > 解析结果中的值未被改动，只有导入时还原 / parsing itself is unchanged; only import unescapes 58ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  23:56:00
+   Duration  2.83s (tests 62%, import 22%, transform 14%, setup 1%, worker 1%)
+
