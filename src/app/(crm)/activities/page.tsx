@@ -7,7 +7,8 @@
 import { useState } from 'react';
 import { App, Button, Card, Checkbox, Descriptions, Drawer, Input, Popconfirm, Segmented, Select, Space, Table, Tag, Typography } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
+import dayjs, { type Dayjs } from 'dayjs';
+import { ActivityCalendar } from '@/components/ActivityCalendar';
 import { ActivityFormModal, activityTypeOptions } from '@/components/ActivityFormModal';
 import { ActivityRelationFields } from '@/components/ActivityRelationFields';
 import { usePermissions } from '@/components/AuthProvider';
@@ -21,6 +22,7 @@ import { usePagedList, useSelection } from '@/lib/hooks';
 import type { Activity } from '@/lib/types';
 
 type StatusFilter = 'all' | 'false' | 'true';
+type View = 'list' | 'calendar';
 
 /**
  * 是否逾期：未完成且截止时间早于现在。
@@ -56,14 +58,21 @@ export default function ActivitiesPage() {
     sort: status === 'false' ? 'dueAt' : 'createdAt',
   });
   const sel = useSelection(data.items, perm.can('record.update.own') || perm.canDelete);
-  const [modal, setModal] = useState<{ editing: Activity | null } | null>(null);
+  const [modal, setModal] = useState<{
+    editing: Activity | null;
+    dueAt?: Dayjs;
+  } | null>(null);
   const [detail, setDetail] = useState<Activity | null>(null);
+  const [view, setView] = useState<View>('list');
+  // 日历在数据变化后重新加载 / the calendar reloads after changes
+  const [calendarVersion, setCalendarVersion] = useState(0);
 
   const run = async (fn: () => Promise<unknown>, ok?: string) => {
     try {
       await fn();
       if (ok) message.success(ok);
       void reload();
+      setCalendarVersion((v) => v + 1);
     } catch (err) {
       message.error((err as Error).message);
     }
@@ -74,7 +83,24 @@ export default function ActivitiesPage() {
       title={t('activities.title')}
       extra={
         <Space>
-          <ExportButton resource="activities" filters={{ q, type, completed: status === 'all' ? undefined : status }} />
+          <Segmented<View>
+            value={view}
+            onChange={setView}
+            options={[
+              { value: 'list', label: t('activities.viewList') },
+              { value: 'calendar', label: t('activities.viewCalendar') },
+            ]}
+          />
+          {view === 'list' && (
+            <ExportButton
+              resource="activities"
+              filters={{
+                q,
+                type,
+                completed: status === 'all' ? undefined : status,
+              }}
+            />
+          )}
           {perm.canCreate && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setModal({ editing: null })}>
               {t('activities.new')}
@@ -83,104 +109,139 @@ export default function ActivitiesPage() {
         </Space>
       }
     >
-      <Space wrap style={{ marginBottom: 16 }}>
-        <Segmented<StatusFilter>
-          value={status}
-          onChange={setStatus}
-          options={[
-            { value: 'false', label: t('activities.pending') },
-            { value: 'true', label: t('activities.completed') },
-            { value: 'all', label: t('common.all') },
-          ]}
-        />
-        <Select allowClear placeholder={t('activities.type')} style={{ width: 140 }} options={activityTypeOptions} value={type} onChange={setType} />
-        <Input.Search allowClear placeholder={t('activities.searchPlaceholder')} style={{ width: 240 }} onSearch={setQ} />
-      </Space>
-      <BulkBar
-        path="/api/activities"
-        selected={sel.selected}
-        names={Object.fromEntries(data.items.map((r) => [r.id, r.subject]))}
-        completable
-        onDone={() => {
-          sel.clear();
-          void reload();
-        }}
-        onClear={sel.clear}
-      />
-      <Table<Activity>
-        rowKey="id"
-        rowSelection={sel.rowSelection}
-        loading={loading}
-        dataSource={data.items}
-        pagination={{ ...pagination, showTotal: (total) => t('common.total', { total }) }}
-        columns={[
-          {
-            title: t('activities.completed'),
-            width: 72,
-            render: (_, r) => (
-              <Checkbox
-                checked={r.completed}
-                disabled={!perm.canEdit(r)}
-                aria-label={`${t('activities.markDone')} ${r.subject}`}
-                onChange={() => run(() => toggleActivity(r))}
-              />
-            ),
-          },
-          { title: t('activities.type'), dataIndex: 'type', render: (v: string) => <Tag color={ACTIVITY_TYPE_COLOR[v]}>{tEnum('activityType', v)}</Tag> },
-          {
-            title: t('activities.subject'),
-            dataIndex: 'subject',
-            render: (v: string, r) => (
-              <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setDetail(r)}>
-                {v}
-              </Button>
-            ),
-          },
-          { title: t('activities.related'), render: (_, r) => <RelatedTags a={r} /> },
-          {
-            title: t('activities.dueAt'),
-            dataIndex: 'dueAt',
-            render: (v: string | null, r) =>
-              v && (
-                <Space size={4}>
-                  <span>{fmtDateTime(v)}</span>
-                  {isOverdue(r) && <Tag color="red">{t('activities.overdue')}</Tag>}
-                </Space>
-              ),
-          },
-          { title: t('common.owner'), render: (_, r) => r.owner?.name ?? t('common.unassigned') },
-          { title: t('common.createdAt'), dataIndex: 'createdAt', render: fmtDateTime },
-          {
-            title: t('common.actions'),
-            render: (_, r) => (
-              <Space>
-                {perm.canEdit(r) && (
-                  <Button type="link" size="small" onClick={() => setModal({ editing: r })}>
-                    {t('common.edit')}
+      {view === 'calendar' && <ActivityCalendar version={calendarVersion} onOpen={setDetail} onCreate={(dueAt) => setModal({ editing: null, dueAt })} />}
+      {view === 'list' && (
+        <>
+          <Space wrap style={{ marginBottom: 16 }}>
+            <Segmented<StatusFilter>
+              value={status}
+              onChange={setStatus}
+              options={[
+                { value: 'false', label: t('activities.pending') },
+                { value: 'true', label: t('activities.completed') },
+                { value: 'all', label: t('common.all') },
+              ]}
+            />
+            <Select allowClear placeholder={t('activities.type')} style={{ width: 140 }} options={activityTypeOptions} value={type} onChange={setType} />
+            <Input.Search allowClear placeholder={t('activities.searchPlaceholder')} style={{ width: 240 }} onSearch={setQ} />
+          </Space>
+          <BulkBar
+            path="/api/activities"
+            selected={sel.selected}
+            names={Object.fromEntries(data.items.map((r) => [r.id, r.subject]))}
+            completable
+            onDone={() => {
+              sel.clear();
+              void reload();
+            }}
+            onClear={sel.clear}
+          />
+          <Table<Activity>
+            rowKey="id"
+            rowSelection={sel.rowSelection}
+            loading={loading}
+            dataSource={data.items}
+            pagination={{
+              ...pagination,
+              showTotal: (total) => t('common.total', { total }),
+            }}
+            columns={[
+              {
+                title: t('activities.completed'),
+                width: 72,
+                render: (_, r) => (
+                  <Checkbox
+                    checked={r.completed}
+                    disabled={!perm.canEdit(r)}
+                    aria-label={`${t('activities.markDone')} ${r.subject}`}
+                    onChange={() => run(() => toggleActivity(r))}
+                  />
+                ),
+              },
+              {
+                title: t('activities.type'),
+                dataIndex: 'type',
+                render: (v: string) => <Tag color={ACTIVITY_TYPE_COLOR[v]}>{tEnum('activityType', v)}</Tag>,
+              },
+              {
+                title: t('activities.subject'),
+                dataIndex: 'subject',
+                render: (v: string, r) => (
+                  <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setDetail(r)}>
+                    {v}
                   </Button>
-                )}
-                {perm.canDelete && (
-                  <Popconfirm title={t('common.confirmDelete')} onConfirm={() => run(() => api(`/api/activities/${r.id}`, { method: 'DELETE' }), t('common.deleted'))}>
-                    <Button type="link" size="small" danger>
-                      {t('common.delete')}
-                    </Button>
-                  </Popconfirm>
-                )}
-              </Space>
-            ),
-          },
-        ]}
-      />
+                ),
+              },
+              {
+                title: t('activities.related'),
+                render: (_, r) => <RelatedTags a={r} />,
+              },
+              {
+                title: t('activities.dueAt'),
+                dataIndex: 'dueAt',
+                render: (v: string | null, r) =>
+                  v && (
+                    <Space size={4}>
+                      <span>{fmtDateTime(v)}</span>
+                      {isOverdue(r) && <Tag color="red">{t('activities.overdue')}</Tag>}
+                    </Space>
+                  ),
+              },
+              {
+                title: t('common.owner'),
+                render: (_, r) => r.owner?.name ?? t('common.unassigned'),
+              },
+              {
+                title: t('common.createdAt'),
+                dataIndex: 'createdAt',
+                render: fmtDateTime,
+              },
+              {
+                title: t('common.actions'),
+                render: (_, r) => (
+                  <Space>
+                    {perm.canEdit(r) && (
+                      <Button type="link" size="small" onClick={() => setModal({ editing: r })}>
+                        {t('common.edit')}
+                      </Button>
+                    )}
+                    {perm.canDelete && (
+                      <Popconfirm
+                        title={t('common.confirmDelete')}
+                        onConfirm={() =>
+                          run(
+                            () =>
+                              api(`/api/activities/${r.id}`, {
+                                method: 'DELETE',
+                              }),
+                            t('common.deleted'),
+                          )
+                        }
+                      >
+                        <Button type="link" size="small" danger>
+                          {t('common.delete')}
+                        </Button>
+                      </Popconfirm>
+                    )}
+                  </Space>
+                ),
+              },
+            ]}
+          />
+        </>
+      )}
 
       <ActivityFormModal
         open={modal !== null}
         editing={modal?.editing}
+        defaultDueAt={modal?.dueAt}
         extra={<ActivityRelationFields editing={modal?.editing} />}
         onClose={() => setModal(null)}
         onSaved={(saved) => {
           setModal(null);
           if (detail?.id === saved.id) setDetail(saved);
           void reload();
+          setCalendarVersion((v) => v + 1);
         }}
       />
 
@@ -189,7 +250,17 @@ export default function ActivitiesPage() {
         size={560}
         open={detail !== null}
         onClose={() => setDetail(null)}
-        extra={detail && perm.canEdit(detail) && <Button onClick={() => setModal({ editing: detail })}>{t('common.edit')}</Button>}
+        extra={
+          detail &&
+          perm.canEdit(detail) && (
+            <Space>
+              <Button onClick={() => run(async () => setDetail(await toggleActivity(detail)), t('common.saved'))}>
+                {detail.completed ? t('activities.markUndone') : t('activities.markDone')}
+              </Button>
+              <Button onClick={() => setModal({ editing: detail })}>{t('common.edit')}</Button>
+            </Space>
+          )
+        }
       >
         {detail && (
           <Descriptions column={1} bordered size="small">

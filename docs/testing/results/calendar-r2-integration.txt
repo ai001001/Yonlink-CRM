@@ -1,0 +1,29 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 visibility > 销售代表只看到自己的；指定他人为负责人为空 / sales reps see their own only 578ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 visibility > 只读与管理员看到全部，可按负责人筛选 / read-only and admins see everything 116ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 visibility > 改期权限：本人可以；他人 404；只读 403；经理可以 / reschedule rights 226ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 visibility > 跨组织：看不到，改不了 / cross-org isolation 141ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"from":""} → 400 / invalid query 83ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"from":"2026-11-01"} → 400 / invalid query 80ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"from":"2026-11-01T00:00:00"} → 400 / invalid query 86ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"to":"2026-11-01T00:00:00Z"} → 400 / invalid query 89ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"to":"2026-10-01T00:00:00Z"} → 400 / invalid query 79ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"to":"2026-12-14T00:00:01Z"} → 400 / invalid query 79ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"type":"EMAIL"} → 400 / invalid query 84ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"completed":"yes"} → 400 / invalid query 77ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"ownerId":"nobody"} → 400 / invalid query 80ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"organizationId":"00000000-0000-4000-8000-000000000000"} → 400 / invalid query 82ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"page":"2"} → 400 / invalid query 79ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 43 天以内（含夏令时余量）可查询；缺少参数 400；未登录 401 / limits, missing params, auth 85ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 改期输入：非法时间 400，不能借改期修改负责人越权 / reschedule input 94ms
+
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+   Start at  15:56:43
+   Duration  4.28s (tests 88%, import 7%, transform 4%)

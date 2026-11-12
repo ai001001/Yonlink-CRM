@@ -1,0 +1,21 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/calendar/calendar.r1-functional.test.ts > calendar R1 range > 按截止时间 [from, to) 返回，含开始、不含结束，排除无截止时间，升序 / half-open range, ascending 487ms
+ ✓ tests/calendar/calendar.r1-functional.test.ts > calendar R1 range > 筛选：类型、完成状态、负责人 / filters 176ms
+ ✓ tests/calendar/calendar.r1-functional.test.ts > calendar R1 range > 超过 1000 条：只返回前 1000 条并标记 truncated / limit 528ms
+ ✓ tests/calendar/calendar.r1-functional.test.ts > calendar R1 reschedule & view maths > 拖动改期：PATCH dueAt 保留时间点，写审计 / reschedule keeps the time of day 262ms
+ ✓ tests/calendar/calendar.r1-functional.test.ts > calendar R1 reschedule & view maths > 周一起始；月视图 42 天覆盖整月；周视图 7 天 / Monday-based views 157ms
+stdout | tests/calendar/calendar.r1-functional.test.ts > calendar R1 reschedule & view maths > 演示数据：当前月视图范围内有跟进 / demo data has activities in the current month view
+演示数据已创建：30 客户、64 联系人、64 线索、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单 / demo data ready
+
+ ✓ tests/calendar/calendar.r1-functional.test.ts > calendar R1 reschedule & view maths > 演示数据：当前月视图范围内有跟进 / demo data has activities in the current month view 1043ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  15:56:12
+   Duration  8.03s (import 53%, tests 43%, transform 4%)

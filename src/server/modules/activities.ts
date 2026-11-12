@@ -123,6 +123,50 @@ export async function listActivities(ctx: AuthContext, query: z.infer<typeof act
   return { items, total, page: query.page, pageSize: query.pageSize };
 }
 
+/** 日历最长范围（月视图 6 周 = 42 天，另留 1 天应对夏令时）/ longest calendar range: 6 weeks + 1 day for DST */
+const CALENDAR_MAX_MS = 43 * 86_400_000;
+/** 日历单次最多返回条数 / maximum items per calendar request */
+export const CALENDAR_LIMIT = 1000;
+
+/** 日历查询：按截止时间范围 [from, to) / Calendar query by due-time range [from, to) */
+export const activityCalendarSchema = z
+  .strictObject({
+    from: z.iso.datetime({ offset: true }),
+    to: z.iso.datetime({ offset: true }),
+    type: z.enum(ActivityType).optional(),
+    completed: z.enum(['true', 'false']).optional(),
+    ownerId: z.uuid().optional(),
+  })
+  .superRefine((v, c) => {
+    const span = new Date(v.to).getTime() - new Date(v.from).getTime();
+    if (span <= 0) c.addIssue({ code: 'custom', path: ['to'], message: 'to must be after from' });
+    else if (span > CALENDAR_MAX_MS) c.addIssue({ code: 'custom', path: ['to'], message: 'Range too long' });
+  });
+
+/**
+ * 日历：截止时间在 [from, to) 内的跟进（遵循可见范围），按截止时间升序；超过上限时标记 truncated。
+ * Calendar: visible activities due within [from, to), ascending by due time; `truncated` when over the limit.
+ */
+export async function listCalendar(ctx: AuthContext, query: z.infer<typeof activityCalendarSchema>) {
+  const items = await prisma.activity.findMany({
+    where: {
+      AND: [
+        visible(ctx),
+        {
+          dueAt: { gte: new Date(query.from), lt: new Date(query.to) },
+          type: query.type,
+          completed: query.completed === undefined ? undefined : query.completed === 'true',
+          ownerId: query.ownerId,
+        },
+      ],
+    },
+    include: activityInclude,
+    orderBy: [{ dueAt: 'asc' }, { id: 'asc' }],
+    take: CALENDAR_LIMIT + 1,
+  });
+  return { items: items.slice(0, CALENDAR_LIMIT), truncated: items.length > CALENDAR_LIMIT };
+}
+
 /**
  * 新建跟进记录；负责人默认当前用户；已完成时记录完成时间。
  * Create an activity; owner defaults to me; completed activities get completedAt.

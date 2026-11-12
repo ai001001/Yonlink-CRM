@@ -234,7 +234,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
       });
 
       await tx.activity.createMany({
-        data: data.activities.map((a) => ({
+        data: data.activities.map((a, i) => ({
           organizationId: o,
           ownerId: owner(a.owner),
           type: a.type,
@@ -243,7 +243,8 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
           dealId: a.deal ? dealIds[a.deal] : null,
           accountId: a.account ? accountIds[a.account] : null,
           leadId: a.lead !== undefined ? leadIds[a.lead] : null,
-          dueAt: a.dueInDays === null ? null : new Date(dayOffset(a.dueInDays).getTime() + 10 * 3600_000),
+          // 截止时间分布在北京时间 09:00–17:30（UTC 01:00–09:30）/ due times spread over 09:00–17:30 Beijing time
+          dueAt: a.dueInDays === null ? null : new Date(dayOffset(a.dueInDays).getTime() + (1 + (i % 9)) * 3600_000 + (i % 2) * 1800_000),
           completed: a.completed,
           completedAt: a.completed ? new Date(Date.now() - Math.max(0, a.daysAgo - 1) * DAY) : null,
           createdAt: new Date(Date.now() - a.daysAgo * DAY),

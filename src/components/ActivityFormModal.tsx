@@ -25,6 +25,8 @@ interface Props {
   relation?: ActivityRelation;
   /** 额外表单项（如关联对象选择）/ extra form items (e.g. relation pickers) */
   extra?: React.ReactNode;
+  /** 新建时的默认截止时间（如从日历某天新建）/ default due time when creating (e.g. from a calendar day) */
+  defaultDueAt?: Dayjs | null;
   onClose: () => void;
   onSaved: (activity: Activity) => void;
 }
@@ -41,7 +43,7 @@ interface FormValues {
   dealId?: string | null;
 }
 
-export function ActivityFormModal({ open, editing, relation, extra, onClose, onSaved }: Props) {
+export function ActivityFormModal({ open, editing, relation, extra, defaultDueAt, onClose, onSaved }: Props) {
   const { message } = App.useApp();
   const owners = useOwners();
   const perm = usePermissions();
@@ -52,7 +54,8 @@ export function ActivityFormModal({ open, editing, relation, extra, onClose, onS
     if (!open) return;
     form.resetFields();
     if (editing) form.setFieldsValue({ ...editing, content: editing.content ?? undefined, dueAt: editing.dueAt ? dayjs(editing.dueAt) : null });
-  }, [open, editing, form]);
+    else if (defaultDueAt) form.setFieldsValue({ dueAt: defaultDueAt });
+  }, [open, editing, defaultDueAt, form]);
 
   const save = async () => {
     const v = await form.validateFields();
