@@ -111,7 +111,7 @@ export default function DealsPage() {
   const remove = async (deal: Deal) => {
     try {
       await api(`/api/deals/${deal.id}`, { method: 'DELETE' });
-      message.success(t('common.deleted'));
+      message.success(t('recycle.moved', { days: 30 }));
       if (detail?.id === deal.id) setDetail(null);
       refresh();
     } catch (err) {
@@ -212,7 +212,7 @@ export default function DealsPage() {
                     </Button>
                   )}
                   {perm.canDelete && (
-                    <Popconfirm title={t('common.confirmDelete')} onConfirm={() => remove(r)}>
+                    <Popconfirm title={t('recycle.confirmDelete')} onConfirm={() => remove(r)}>
                       <Button type="link" size="small" danger>
                         {t('common.delete')}
                       </Button>

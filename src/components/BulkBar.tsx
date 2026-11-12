@@ -146,7 +146,7 @@ export function BulkBar({ path, selected, names, valueChange, completable, tagga
         </>
       )}
       {perm.canDelete && (
-        <Popconfirm title={t('bulk.confirmDelete', { n })} onConfirm={() => run({ action: 'delete' })}>
+        <Popconfirm title={t(path === '/api/activities' ? 'bulk.confirmDelete' : 'recycle.confirmBulkDelete', { n })} onConfirm={() => run({ action: 'delete' })}>
           <Button size="small" danger>
             {t('bulk.delete')}
           </Button>

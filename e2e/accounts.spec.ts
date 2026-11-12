@@ -82,6 +82,6 @@ test('客户完整业务流程 / full accounts flow', async ({ page }) => {
   await expect(saved).toBeVisible();
   await saved.getByRole('button', { name: /删\s*除/ }).click();
   await page.getByRole('button', { name: /确\s*定|OK/ }).click();
-  await expect(page.getByText('删除成功').first()).toBeVisible();
+  await expect(page.getByText('已移入回收站').first()).toBeVisible();
   await expect(page.getByRole('row', { name: /E2E 远望集团/ })).toHaveCount(0);
 });

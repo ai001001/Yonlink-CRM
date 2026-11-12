@@ -14,10 +14,10 @@ datasource db {
 }
 
 model Organization {
-  id          String          @id @default(uuid()) @db.Uuid
-  name        String          @db.VarChar(200)
-  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id          String           @id @default(uuid()) @db.Uuid
+  name        String           @db.VarChar(200)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
   users       User[]
   accounts    Account[]
   contacts    Contact[]
@@ -34,32 +34,34 @@ model Organization {
   leadTags    LeadTag[]
   accountTags AccountTag[]
   dealTags    DealTag[]
+  recycleBin  RecycleBinItem[]
 
   @@map("organizations")
 }
 
 model User {
-  id              String       @id @default(uuid()) @db.Uuid
-  organizationId  String       @map("organization_id") @db.Uuid
-  email           String       @db.VarChar(254)
-  name            String       @db.VarChar(100)
-  passwordHash    String       @map("password_hash")
+  id              String           @id @default(uuid()) @db.Uuid
+  organizationId  String           @map("organization_id") @db.Uuid
+  email           String           @db.VarChar(254)
+  name            String           @db.VarChar(100)
+  passwordHash    String           @map("password_hash")
   /// 角色（服务端每个请求从数据库读取）/ role (read from the DB on every request)
-  role            UserRole     @default(SALES)
-  isActive        Boolean      @default(true) @map("is_active")
+  role            UserRole         @default(SALES)
+  isActive        Boolean          @default(true) @map("is_active")
   /// 演示账号：仅在 DEMO_LOGIN_ENABLED=1 时可免密一键登录 / demo account: password-less login only when DEMO_LOGIN_ENABLED=1
-  isDemo          Boolean      @default(false) @map("is_demo")
-  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  isDemo          Boolean          @default(false) @map("is_demo")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   sessions        Session[]
-  ownedLeads      Lead[]       @relation("LeadOwner")
-  ownedAccounts   Account[]    @relation("AccountOwner")
-  ownedDeals      Deal[]       @relation("DealOwner")
-  ownedActivities Activity[]   @relation("ActivityOwner")
-  auditLogs       AuditLog[]   @relation("AuditActor")
-  notes           Note[]       @relation("NoteAuthor")
-  createdQuotes   Quote[]      @relation("QuoteCreator")
+  ownedLeads      Lead[]           @relation("LeadOwner")
+  ownedAccounts   Account[]        @relation("AccountOwner")
+  ownedDeals      Deal[]           @relation("DealOwner")
+  ownedActivities Activity[]       @relation("ActivityOwner")
+  auditLogs       AuditLog[]       @relation("AuditActor")
+  notes           Note[]           @relation("NoteAuthor")
+  createdQuotes   Quote[]          @relation("QuoteCreator")
+  deletedItems    RecycleBinItem[] @relation("RecycleDeleter")
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -499,4 +501,39 @@ model DealTag {
   @@id([dealId, tagId])
   @@index([organizationId, tagId])
   @@map("deal_tags")
+}
+
+/// 回收站对象类型 / Recycle-bin entity type
+enum RecycleEntity {
+  lead
+  account
+  deal
+
+  @@map("recycle_entity")
+}
+
+/// 回收站条目：删除时保存记录及随之删除的附属数据快照（payload），原记录已真正删除；30 天内可恢复。
+/// reserved_numbers 记录快照中报价单的编号，避免被新报价单复用而导致恢复冲突。
+/// Recycle-bin entry: a snapshot of the record and the data deleted with it (the rows themselves are gone);
+/// restorable for 30 days. reserved_numbers keeps the snapshot's quote numbers from being reused.
+model RecycleBinItem {
+  id              String        @id @default(uuid()) @db.Uuid
+  organizationId  String        @map("organization_id") @db.Uuid
+  entityType      RecycleEntity @map("entity_type")
+  entityId        String        @map("entity_id") @db.Uuid
+  displayName     String        @map("display_name") @db.VarChar(200)
+  /// 附属数据数量摘要 / counts of the related data
+  summary         Json
+  payload         Json
+  reservedNumbers String[]      @default([]) @map("reserved_numbers")
+  deletedById     String?       @map("deleted_by_id") @db.Uuid
+  deletedAt       DateTime      @default(now()) @map("deleted_at") @db.Timestamptz(6)
+  expiresAt       DateTime      @map("expires_at") @db.Timestamptz(6)
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deletedBy       User?         @relation("RecycleDeleter", fields: [organizationId, deletedById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organizationId, entityType, entityId])
+  @@index([organizationId, deletedAt(sort: Desc)])
+  @@index([organizationId, expiresAt])
+  @@map("recycle_bin_items")
 }

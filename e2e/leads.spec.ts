@@ -63,7 +63,7 @@ test('线索完整业务流程 / full leads flow', async ({ page }) => {
   // 删除 / delete
   await page.getByRole('row', { name: /E2E 线索甲/ }).getByRole('button', { name: /删\s*除/ }).click();
   await page.getByRole('button', { name: /确\s*定|OK/ }).click();
-  await expect(page.getByText('删除成功').first()).toBeVisible();
+  await expect(page.getByText('已移入回收站').first()).toBeVisible();
   await expect(page.getByRole('row', { name: /E2E 线索甲/ })).toHaveCount(0);
   await page.reload();
   await expect(page.getByRole('row', { name: /E2E 线索乙/ })).toBeVisible();

@@ -116,7 +116,7 @@ export default function LeadsPage() {
   const remove = async (lead: Lead) => {
     try {
       await api(`/api/leads/${lead.id}`, { method: 'DELETE' });
-      message.success(t('common.deleted'));
+      message.success(t('recycle.moved', { days: 30 }));
       if (detail?.id === lead.id) setDetail(null);
       void reload();
     } catch (err) {
@@ -195,7 +195,7 @@ export default function LeadsPage() {
                   </Button>
                 )}
                 {perm.canDelete && (
-                  <Popconfirm title={t('common.confirmDelete')} onConfirm={() => remove(r)}>
+                  <Popconfirm title={t('recycle.confirmDelete')} onConfirm={() => remove(r)}>
                     <Button type="link" size="small" danger>
                       {t('common.delete')}
                     </Button>

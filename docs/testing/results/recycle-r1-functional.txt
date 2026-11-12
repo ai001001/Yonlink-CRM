@@ -1,0 +1,21 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/recycle/recycle.r1-functional.test.ts > recycle R1 leads > 删除线索进入回收站：快照摘要，原记录与附属数据不在系统中 / delete moves to the bin 897ms
+ ✓ tests/recycle/recycle.r1-functional.test.ts > recycle R1 leads > 恢复线索：原 ID 与时间、备注、跟进、标签、共享跟进重新关联，条目移除并审计 / restore everything 248ms
+ ✓ tests/recycle/recycle.r1-functional.test.ts > recycle R1 leads > 恢复时已不存在的标签与转化商机被跳过并说明 / vanished links are skipped and reported 247ms
+ ✓ tests/recycle/recycle.r1-functional.test.ts > recycle R1 accounts & deals > 恢复客户：联系人与转化来源线索重新关联 / account restore relinks contacts and conversions 199ms
+ ✓ tests/recycle/recycle.r1-functional.test.ts > recycle R1 accounts & deals > 恢复商机：产品明细、报价单（含明细与原编号）、金额；回收期间报价单号不被复用 / deal restore with items and quotes 274ms
+ ✓ tests/recycle/recycle.r1-functional.test.ts > recycle R1 accounts & deals > 依赖缺失时拒绝恢复且条目保留：客户已删 / 产品已删 / missing parents block the restore 200ms
+ ✓ tests/recycle/recycle.r1-functional.test.ts > recycle R1 accounts & deals > 批量删除进入回收站；按类型与名称筛选 / bulk delete and filters 136ms
+ ✓ tests/recycle/recycle.r1-functional.test.ts > recycle R1 purge & expiry > 彻底删除单条与清空，均写审计 / purge and empty 156ms
+ ✓ tests/recycle/recycle.r1-functional.test.ts > recycle R1 purge & expiry > 过期条目：访问时清除并审计，不能再恢复 / expired entries are removed 128ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  22:31:50
+   Duration  4.66s (tests 86%, import 7%, transform 6%)

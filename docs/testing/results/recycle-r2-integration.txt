@@ -1,0 +1,21 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/recycle/recycle.r2-integration.test.ts > recycle R2 permissions > 销售代表与只读：不能查看、恢复、彻底删除、清空（403）/ sales and read-only are refused 611ms
+ ✓ tests/recycle/recycle.r2-integration.test.ts > recycle R2 permissions > 经理：可查看与恢复，不能彻底删除与清空 / managers restore but cannot purge 149ms
+ ✓ tests/recycle/recycle.r2-integration.test.ts > recycle R2 permissions > 恢复后保持原负责人：销售代表重新看到自己的线索 / the owner sees the restored lead again 193ms
+ ✓ tests/recycle/recycle.r2-integration.test.ts > recycle R2 isolation & robustness > 跨组织：看不到、不能恢复或彻底删除他组织的条目 / cross-org isolation 173ms
+ ✓ tests/recycle/recycle.r2-integration.test.ts > recycle R2 isolation & robustness > 快照中的组织 ID 不可信：恢复时一律写入当前组织 / the snapshot organization id is never trusted 160ms
+ ✓ tests/recycle/recycle.r2-integration.test.ts > recycle R2 isolation & robustness > 并发恢复同一条目：只成功一次 / concurrent restores succeed once 131ms
+ ✓ tests/recycle/recycle.r2-integration.test.ts > recycle R2 isolation & robustness > 恢复后再次删除：重新进入回收站 / delete again after a restore 147ms
+ ✓ tests/recycle/recycle.r2-integration.test.ts > recycle R2 isolation & robustness > 删除审计标记已放入回收站；恢复后审计记录名称 / audit details 120ms
+ ✓ tests/recycle/recycle.r2-integration.test.ts > recycle R2 isolation & robustness > 非法参数与未登录 / invalid input and authentication 145ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  22:33:51
+   Duration  3.92s (tests 85%, import 9%, transform 5%)

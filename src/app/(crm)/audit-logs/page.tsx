@@ -14,10 +14,10 @@ import { useOwners, usePagedList } from '@/lib/hooks';
 
 const ENTITIES = ['lead', 'account', 'contact', 'deal', 'activity', 'note', 'product', 'quote', 'tag', 'user', 'auth'];
 const ACTIONS: Record<string, string[]> = {
-  lead: ['create', 'update', 'delete', 'convert', 'tags', 'import', 'export'],
-  account: ['create', 'update', 'delete', 'tags', 'import', 'export'],
+  lead: ['create', 'update', 'delete', 'restore', 'purge', 'expire', 'convert', 'tags', 'import', 'export'],
+  account: ['create', 'update', 'delete', 'restore', 'purge', 'expire', 'tags', 'import', 'export'],
   contact: ['create', 'update', 'delete'],
-  deal: ['create', 'update', 'delete', 'tags', 'export', 'add_item', 'update_item', 'remove_item'],
+  deal: ['create', 'update', 'delete', 'restore', 'purge', 'expire', 'tags', 'export', 'add_item', 'update_item', 'remove_item'],
   activity: ['create', 'update', 'delete', 'export'],
   note: ['create', 'update', 'delete'],
   product: ['create', 'update', 'delete'],

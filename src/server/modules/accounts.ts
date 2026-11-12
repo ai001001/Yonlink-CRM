@@ -10,6 +10,7 @@ import { prisma } from '../db';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, can, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
+import { recycle } from './recycle-bin';
 import { tagFilter, tagsInclude } from './tags';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
@@ -172,6 +173,8 @@ export async function deleteAccount(ctx: AuthContext, id: string): Promise<void>
   // 若并发新建了商机，数据库 RESTRICT 外键仍会拒绝（P2003 → 409）
   // a concurrently created deal is still blocked by the RESTRICT FK (P2003 → 409)
   await prisma.$transaction(async (tx) => {
+    // 先放入回收站（快照，含联系人），再删除 / snapshot (with contacts) into the recycle bin, then delete
+    await recycle(tx, ctx, 'account', account.id, account.name);
     await detachSharedActivities(tx, ctx.organizationId, 'accountId', account.id);
     await tx.account.delete({ where: { id: account.id } });
     await audit(tx, {
@@ -180,7 +183,7 @@ export async function deleteAccount(ctx: AuthContext, id: string): Promise<void>
       entityType: 'account',
       entityId: account.id,
       // 联系人随客户级联删除，记录数量 / contacts cascade with the account; record how many
-      changes: { before: snapshot('account', account), cascadedContacts: account._count.contacts },
+      changes: { before: snapshot('account', account), cascadedContacts: account._count.contacts, recycled: true },
     });
   });
 }

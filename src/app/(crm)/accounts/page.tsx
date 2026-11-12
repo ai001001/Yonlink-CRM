@@ -84,7 +84,7 @@ export default function AccountsPage() {
   const remove = async (account: Account) => {
     try {
       await api(`/api/accounts/${account.id}`, { method: 'DELETE' });
-      message.success(t('common.deleted'));
+      message.success(t('recycle.moved', { days: 30 }));
       if (detail?.id === account.id) setDetail(null);
       void reload();
     } catch (err) {
@@ -162,7 +162,7 @@ export default function AccountsPage() {
                   </Button>
                 )}
                 {perm.canDelete && (
-                  <Popconfirm title={t('common.confirmDelete')} onConfirm={() => remove(r)}>
+                  <Popconfirm title={t('recycle.confirmDelete')} onConfirm={() => remove(r)}>
                     <Button type="link" size="small" danger>
                       {t('common.delete')}
                     </Button>

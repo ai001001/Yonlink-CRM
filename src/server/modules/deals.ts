@@ -11,6 +11,7 @@ import { prisma } from '../db';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
+import { recycle } from './recycle-bin';
 import { tagFilter, tagsInclude } from './tags';
 import { containsText, listQuery, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
@@ -185,10 +186,12 @@ export async function deleteDeal(ctx: AuthContext, id: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const deal = await tx.deal.findFirst({ where: { id, ...visible(ctx) } });
     if (!deal) throw notFound();
+    // 先放入回收站（快照，含产品明细与报价单），再删除 / snapshot (items and quotes) into the recycle bin, then delete
+    await recycle(tx, ctx, 'deal', id, deal.name);
     await detachSharedActivities(tx, ctx.organizationId, 'dealId', id);
     const { count } = await tx.deal.deleteMany({ where: { id, organizationId: ctx.organizationId } });
     if (count === 0) throw notFound();
-    await audit(tx, { ...by(ctx), action: 'deal.delete', entityType: 'deal', entityId: id, changes: { before: snapshot('deal', deal) } });
+    await audit(tx, { ...by(ctx), action: 'deal.delete', entityType: 'deal', entityId: id, changes: { before: snapshot('deal', deal), recycled: true } });
   });
 }
 

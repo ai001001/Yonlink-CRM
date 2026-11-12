@@ -12,6 +12,7 @@ import {
   BankOutlined,
   BarChartOutlined,
   DashboardOutlined,
+  DeleteOutlined,
   FileTextOutlined,
   FundOutlined,
   LogoutOutlined,
@@ -34,6 +35,7 @@ const NAV: { key: string; icon: React.ReactNode; label: string; permission?: str
   { key: '/quotes', icon: <FileTextOutlined />, label: t('nav.quotes') },
   { key: '/reports', icon: <BarChartOutlined />, label: t('nav.reports') },
   { key: '/products', icon: <AppstoreOutlined />, label: t('nav.products') },
+  { key: '/recycle-bin', icon: <DeleteOutlined />, label: t('nav.recycleBin'), permission: 'record.delete' },
   { key: '/audit-logs', icon: <AuditOutlined />, label: t('nav.audit'), permission: 'audit.read' },
   { key: '/users', icon: <TeamOutlined />, label: t('nav.users'), permission: 'user.manage' },
 ];

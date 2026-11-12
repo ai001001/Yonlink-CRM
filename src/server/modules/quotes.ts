@@ -144,9 +144,14 @@ async function nextNumber(tx: Prisma.TransactionClient, organizationId: string):
   // 起始位置必须显式转为 int：未定型参数会被解析为 text，substring(text FROM text) 是正则版本
   // the start position must be cast to int: an untyped parameter resolves to text, and substring(text FROM text) is the regex form
   const start = prefix.length + 1;
+  // 回收站快照中的报价单号保留占用，避免恢复时冲突 / numbers held by recycle-bin snapshots stay reserved
   const rows = await tx.$queryRaw<{ max: number | null }[]>`
-    SELECT max(substring(quote_number FROM ${start}::int)::int) AS max
-    FROM quotes WHERE organization_id = ${organizationId}::uuid AND quote_number LIKE ${`${prefix}%`} AND substring(quote_number FROM ${start}::int) ~ '^[0-9]+$'`;
+    SELECT max(substring(n FROM ${start}::int)::int) AS max FROM (
+      SELECT quote_number AS n FROM quotes WHERE organization_id = ${organizationId}::uuid
+      UNION ALL
+      SELECT unnest(reserved_numbers) AS n FROM recycle_bin_items WHERE organization_id = ${organizationId}::uuid
+    ) AS used
+    WHERE n LIKE ${`${prefix}%`} AND substring(n FROM ${start}::int) ~ '^[0-9]+$'`;
   return `${prefix}${String((rows[0]?.max ?? 0) + 1).padStart(4, '0')}`;
 }
 

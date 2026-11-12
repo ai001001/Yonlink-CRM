@@ -82,6 +82,8 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.product.deleteMany({ where: { organizationId: o } });
         // 标签关联已随记录级联删除 / tag assignments cascaded with the records
         await tx.tag.deleteMany({ where: { organizationId: o } });
+        // 回收站中的旧快照对应已不存在的旧数据，一并清空 / old snapshots refer to the wiped data
+        await tx.recycleBinItem.deleteMany({ where: { organizationId: o } });
       }
 
       await tx.product.createMany({ data: data.products.map((p) => ({ ...p, organizationId: o })) });

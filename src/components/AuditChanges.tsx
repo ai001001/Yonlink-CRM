@@ -132,6 +132,9 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     for (const [f, v] of Object.entries(snap)) if (v !== null) lines.push(`${fieldLabel(f, entry.entityType)}：${value(f, v, users, entry.entityType)}`);
   } else if (typeof c.reason === 'string') {
     lines.push(tEnum('auditReason', c.reason));
+  } else if (typeof c.name === 'string' && /\.(restore|purge|expire)$/.test(entry.action)) {
+    // 回收站操作 / recycle-bin actions
+    lines.push(`${t('recycle.record')}：${c.name}`);
   } else if (Array.isArray(c.added) || Array.isArray(c.removed)) {
     // 标签变化 / tag changes
     const added = (c.added as string[] | undefined) ?? [];

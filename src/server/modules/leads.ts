@@ -12,6 +12,7 @@ import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermiss
 import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
 import { amountSchema, CURRENCIES, dateOnly } from './deals';
+import { recycle } from './recycle-bin';
 import { tagFilter, tagsInclude } from './tags';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
@@ -143,10 +144,12 @@ export async function deleteLead(ctx: AuthContext, id: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const lead = await tx.lead.findFirst({ where: { id, ...visible(ctx) } });
     if (!lead) throw notFound();
+    // 先放入回收站（快照），再删除 / snapshot into the recycle bin, then delete
+    await recycle(tx, ctx, 'lead', id, lead.company ? `${lead.name}（${lead.company}）` : lead.name);
     await detachSharedActivities(tx, ctx.organizationId, 'leadId', id);
     const { count } = await tx.lead.deleteMany({ where: { id, organizationId: ctx.organizationId } });
     if (count === 0) throw notFound();
-    await audit(tx, { ...by(ctx), action: 'lead.delete', entityType: 'lead', entityId: id, changes: { before: snapshot('lead', lead) } });
+    await audit(tx, { ...by(ctx), action: 'lead.delete', entityType: 'lead', entityId: id, changes: { before: snapshot('lead', lead), recycled: true } });
   });
 }
 
