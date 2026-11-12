@@ -1,0 +1,30 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 visibility > 销售代表只统计自己负责的数据（各部分）/ sales reps only see their own figures 724ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 visibility > 销售代表指定他人为负责人：结果为空，不泄露他人数据 / sales reps cannot query others 167ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 visibility > 只读用户与管理员看到全部，并可按负责人筛选 / read-only and admins see everything 227ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 visibility > 与工作台进行中商机金额一致 / matches the dashboard open amount 218ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 跨组织：看不到他组织数据；用他组织用户 ID 筛选结果为空 / cross-org isolation 186ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 非法参数 {"currency":"GBP"} → 400 / invalid query 109ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 非法参数 {"from":"2026-02-30"} → 400 / invalid query 102ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 非法参数 {"to":"2026/06/30"} → 400 / invalid query 107ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 非法参数 {"from":"2026-07-01","to":"2026-06-30"} → 400 / invalid query 108ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 非法参数 {"from":"2024-01-01","to":"2026-01-01"} → 400 / invalid query 106ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 非法参数 {"ownerId":"nobody"} → 400 / invalid query 107ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 非法参数 {"organizationId":"00000000-0000-4000-8000-000000000000"} → 400 / invalid query 102ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 非法参数 {"stage":"CLOSED_WON"} → 400 / invalid query 104ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 未登录 401 / unauthenticated 106ms
+stdout | tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 演示数据：报表与数据库直接汇总一致 / demo data matches direct aggregates
+演示数据已创建：30 客户、64 联系人、48 线索、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单 / demo data ready
+
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 演示数据：报表与数据库直接汇总一致 / demo data matches direct aggregates 860ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  12:41:44
+   Duration  5.49s (tests 91%, import 5%, transform 3%)

@@ -3,7 +3,7 @@
  * Leads round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
-import { nav, searchList, signIn } from './helpers';
+import { nav, searchList, selectOption, signIn } from './helpers';
 
 test('线索完整业务流程 / full leads flow', async ({ page }) => {
   await signIn(page);
@@ -17,8 +17,7 @@ test('线索完整业务流程 / full leads flow', async ({ page }) => {
   await dialog.getByLabel('公司').fill('永联测试有限公司');
   await dialog.getByLabel('手机').fill('13912345678');
   await dialog.getByLabel('邮箱').fill('e2e-lead@example.com');
-  await dialog.getByLabel('线索来源').click();
-  await page.getByTitle('展会').click();
+  await selectOption(page, dialog, '线索来源', '展会');
   await dialog.getByRole('button', { name: /保\s*存/ }).click();
   await expect(page.getByText('保存成功').first()).toBeVisible();
   const row = page.getByRole('row', { name: /E2E 线索甲/ });
@@ -52,8 +51,7 @@ test('线索完整业务流程 / full leads flow', async ({ page }) => {
   // 编辑状态 / edit status
   await drawer.getByRole('button', { name: /编\s*辑/ }).click();
   dialog = page.getByRole('dialog', { name: '编辑线索' });
-  await dialog.getByLabel('线索状态').click();
-  await page.getByTitle('已确认').click();
+  await selectOption(page, dialog, '线索状态', '已确认');
   await dialog.getByRole('button', { name: /保\s*存/ }).click();
   await expect(drawer).toContainText('已确认');
   await drawer.getByRole('button', { name: '关闭' }).first().click();

@@ -10,6 +10,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Avatar, Dropdown, Layout, Menu, Spin, Tag, Typography } from 'antd';
 import {
   BankOutlined,
+  BarChartOutlined,
   DashboardOutlined,
   FileTextOutlined,
   FundOutlined,
@@ -31,6 +32,7 @@ const NAV: { key: string; icon: React.ReactNode; label: string; permission?: str
   { key: '/deals', icon: <FundOutlined />, label: t('nav.deals') },
   { key: '/activities', icon: <ScheduleOutlined />, label: t('nav.activities') },
   { key: '/quotes', icon: <FileTextOutlined />, label: t('nav.quotes') },
+  { key: '/reports', icon: <BarChartOutlined />, label: t('nav.reports') },
   { key: '/products', icon: <AppstoreOutlined />, label: t('nav.products') },
   { key: '/audit-logs', icon: <AuditOutlined />, label: t('nav.audit'), permission: 'audit.read' },
   { key: '/users', icon: <TeamOutlined />, label: t('nav.users'), permission: 'user.manage' },

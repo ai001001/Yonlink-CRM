@@ -206,6 +206,8 @@ export interface LeadSeed {
   phone: string;
   description: string;
   daysAgo: number;
+  /** 已转化为该商机（演示转化结果）/ converted into this deal (demo conversion result) */
+  convertedDeal?: string;
 }
 
 /** 商机 / Deals */
@@ -254,8 +256,9 @@ const STAGE_PLAN: { stage: Stage; close: [number, number] }[] = [
   { stage: 'NEEDS_ANALYSIS', close: [45, 150] },
   { stage: 'PROPOSAL', close: [20, 90] },
   { stage: 'NEGOTIATION', close: [7, 45] },
-  { stage: 'CLOSED_WON', close: [-90, -3] },
-  { stage: 'CLOSED_LOST', close: [-120, -10] },
+  // 已结束商机分布在过去约 11 个月，报表按月趋势更有意义 / closed deals spread over ~11 months for monthly trends
+  { stage: 'CLOSED_WON', close: [-330, -3] },
+  { stage: 'CLOSED_LOST', close: [-330, -10] },
 ];
 
 /** 客户简称（用于商机名称）/ Account short names used in deal names */
@@ -289,6 +292,15 @@ export interface DealItemSeed {
   unitPrice: string;
   discountPercent: string;
   lineTotal: string;
+}
+
+/**
+ * 商机创建于几天前：进行中商机 20–69 天前；已结束商机在预计成交日期之前 20–69 天。
+ * Days since a deal was created: 20–69 days for open deals; 20–69 days before the close date for closed deals.
+ */
+export function dealCreatedDaysAgo(d: Pick<DealSeed, 'closeInDays'>): number {
+  const lead = (Math.abs(d.closeInDays) % 50) + 20;
+  return d.closeInDays < 0 ? -d.closeInDays + lead : lead;
 }
 
 /** 报价单（明细由商机产品明细生成；报价单号在写入时按年份编号）/ Quote (lines come from the deal items) */
@@ -486,7 +498,9 @@ export function buildDemoData(seed = 20261111) {
   // CNY quotes include 13% VAT; USD export quotes are tax-free.
   const quotes: QuoteSeed[] = [];
   const counters: Partial<Record<Stage, number>> = {};
-  const addQuote = (d: DealSeed, status: QuoteSeed['status'], daysAgo: number, validInDays: number) => {
+  const addQuote = (d: DealSeed, status: QuoteSeed['status'], wantedDaysAgo: number, validInDays: number) => {
+    // 报价单不早于商机创建 / a quote is never older than its deal
+    const daysAgo = Math.min(wantedDaysAgo, dealCreatedDaysAgo(d) - 1);
     const lines = items.filter((it) => it.deal === d.key);
     const subtotalCents = lines.reduce((sum, it) => sum + Math.round(Number(it.lineTotal) * 100), 0);
     const tax = d.currency === 'CNY' ? 13 : 0;
@@ -509,10 +523,35 @@ export function buildDemoData(seed = 20261111) {
     if (d.stage === 'NEEDS_ANALYSIS' && n % 2 === 1) addQuote(d, 'DRAFT', 1 + n, 30);
     if (d.stage === 'NEGOTIATION') addQuote(d, 'SENT', 8 + 3 * n, n % 3 === 0 ? -n : 30 - n);
     if (d.stage === 'CLOSED_WON') {
-      if (n % 3 === 1) addQuote(d, 'REJECTED', 60 + n, -30);
-      addQuote(d, 'ACCEPTED', 20 + n, 10 - n);
+      // 在成交日期前出具：被拒的首版更早 / issued before the close date; the rejected first version is older
+      const closedAgo = -d.closeInDays;
+      if (n % 3 === 1) addQuote(d, 'REJECTED', closedAgo + 10 + n, -closedAgo - 10);
+      addQuote(d, 'ACCEPTED', closedAgo + 2 + (n % 5), 30 - closedAgo);
     }
   }
+
+  // 已转化线索：赢单与谈判中商机各有一条来源线索（追加在末尾，不影响前面的样本）
+  // converted leads: one source lead per won or negotiating deal (appended so earlier samples are unchanged)
+  const CONVERTED_SOURCES: LeadSource[] = ['EXHIBITION', 'REFERRAL', 'WEBSITE', 'EXHIBITION', 'COLD_CALL'];
+  deals
+    .filter((d) => d.stage === 'CLOSED_WON' || d.stage === 'NEGOTIATION')
+    .forEach((d, k) => {
+      const acc = ACCOUNTS.find((x) => x.key === d.account)!;
+      const contact = acc.contacts[0]!;
+      leads.push({
+        name: `【演示】${contact.name}`,
+        company: acc.name,
+        title: contact.title,
+        owner: d.owner,
+        source: CONVERTED_SOURCES[k % CONVERTED_SOURCES.length]!,
+        status: 'CONVERTED',
+        email: `lead${k + 1}@${acc.domain}`,
+        phone: acc.phone,
+        description: '来源线索，已转化为客户与商机。',
+        daysAgo: dealCreatedDaysAgo(d) + 5,
+        convertedDeal: d.key,
+      });
+    });
 
   return { accounts: ACCOUNTS, deals, leads, activities, notes, products: PRODUCT_CATALOG, items, quotes };
 }

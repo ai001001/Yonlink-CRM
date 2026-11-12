@@ -12,7 +12,7 @@ import 'dotenv/config';
 import { randomBytes } from 'node:crypto';
 import { hashPassword } from '../src/server/auth';
 import { prisma } from '../src/server/db';
-import { buildDemoData, DEMO_ORG_NAME, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, DEMO_ORG_NAME, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -128,7 +128,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
             stage: d.stage,
             expectedCloseDate: dayOffset(d.closeInDays),
             description: d.description,
-            createdAt: new Date(Date.now() - (Math.abs(d.closeInDays) % 50 + 20) * DAY),
+            createdAt: new Date(Date.now() - dealCreatedDaysAgo(d) * DAY),
           },
         });
         dealIds[d.key] = created.id;
@@ -209,6 +209,14 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
             status: l.status,
             description: l.description,
             createdAt: new Date(Date.now() - l.daysAgo * DAY),
+            // 演示转化结果：关联客户与商机，转化时间 = 商机创建时间 / demo conversion: linked account and deal, converted when the deal was created
+            ...(l.convertedDeal
+              ? {
+                  convertedAccountId: accountIds[data.deals.find((d) => d.key === l.convertedDeal)!.account],
+                  convertedDealId: dealIds[l.convertedDeal],
+                  convertedAt: new Date(Date.now() - dealCreatedDaysAgo(data.deals.find((d) => d.key === l.convertedDeal)!) * DAY),
+                }
+              : {}),
           },
         });
         leadIds.push(created.id);

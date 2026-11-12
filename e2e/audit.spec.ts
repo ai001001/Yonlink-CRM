@@ -3,7 +3,7 @@
  * Audit log round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
-import { nav, signIn } from './helpers';
+import { nav, selectOption, signIn } from './helpers';
 
 const SAVE = /保\s*存/;
 
@@ -22,8 +22,7 @@ test('审计日志完整流程 / full audit flow', async ({ page }) => {
   await expect(row).toBeVisible();
   await row.getByRole('button', { name: /编\s*辑/ }).click();
   dialog = page.getByRole('dialog', { name: '编辑线索' });
-  await dialog.getByLabel('线索状态').click();
-  await page.getByTitle('已联系').click();
+  await selectOption(page, dialog, '线索状态', '已联系');
   await dialog.getByRole('button', { name: SAVE }).click();
   await expect(row).toContainText('已联系');
 

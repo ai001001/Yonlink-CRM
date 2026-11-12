@@ -1,0 +1,73 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 deals > 漏斗：进行中商机按阶段（补零、只算所选币种、不受时间段影响）/ funnel 706ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 deals > 期间赢单/输单与赢单率（按预计成交日期，含边界日，排除无日期）/ won and lost in the period 116ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 deals > 按月：时间段内每月一行（补零），赢单金额与输单数 / monthly rows 120ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 deals > 币种：USD 单独统计；返回可选币种列表 / currencies are separate 120ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 owners, leads, quotes > 负责人排行：按赢单金额排序，含在手、输单、赢单率与期间跟进数；未分配单列 / owner ranking 126ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 owners, leads, quotes > 负责人筛选：只统计该负责人 / owner filter 149ms
+ × tests/reports/reports.r1-functional.test.ts > reports R1 owners, leads, quotes > 线索来源：期间内创建（UTC 边界），转化数与转化率，按数量排序 / lead sources 98ms
+   → 
+Invalid `prisma.lead.create()` invocation in
+/home/ai/Desktop/CRM/Yonlink-CRM/tests/reports/fixtures.ts:33:19
+
+  30   }),
+  31 /** 线索 / lead */
+  32 lead: (source: string | null, status: 'NEW' | 'CONVERTED' | 'CONTACTED', createdAt: string, ownerId: string | null = null) =>
+→ 33   prisma.lead.create(
+Database error. Code: `23514`. Message: `new row for relation "leads" violates check constraint "leads_converted_consistent"`
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 owners, leads, quotes > 报价单：期间内、所选币种的状态数量与金额，接受率 / quotes 139ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 period & helpers > 默认时间段：最近 12 个月（含本月），结束为今天 / default period 148ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 period & helpers > 跨年与 24 个月上限 / year boundaries and the 24-month limit 66ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 period & helpers > 比率：1 位小数，分母为 0 时为 null / rates 59ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 period & helpers > 空组织：全部为零，比率为 null / empty organization 73ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/reports/reports.r1-functional.test.ts > reports R1 owners, leads, quotes > 线索来源：期间内创建（UTC 边界），转化数与转化率，按数量排序 / lead sources
+PrismaClientKnownRequestError: 
+Invalid `prisma.lead.create()` invocation in
+/home/ai/Desktop/CRM/Yonlink-CRM/tests/reports/fixtures.ts:33:19
+
+  30   }),
+  31 /** 线索 / lead */
+  32 lead: (source: string | null, status: 'NEW' | 'CONVERTED' | 'CONTACTED', createdAt: string, ownerId: string | null = null) =>
+→ 33   prisma.lead.create(
+Database error. Code: `23514`. Message: `new row for relation "leads" violates check constraint "leads_converted_consistent"`
+ ❯ vn.handleRequestError node_modules/@prisma/client/src/runtime/RequestHandler.ts:238:13
+ ❯ vn.handleAndLogRequestError node_modules/@prisma/client/src/runtime/RequestHandler.ts:184:12
+ ❯ vn.request node_modules/@prisma/client/src/runtime/RequestHandler.ts:153:12
+ ❯ a node_modules/@prisma/client/src/runtime/getPrismaClient.ts:1012:24
+ ❯ tests/reports/reports.r1-functional.test.ts:108:5
+    106|
+    107|   it('线索来源：期间内创建（UTC 边界），转化数与转化率，按数量排序 / lead sources', async () => {
+    108|     await f.lead('EXHIBITION', 'CONVERTED', '2026-01-01T00:00:00Z');
+       |     ^
+    109|     await f.lead('EXHIBITION', 'NEW', '2026-03-01T00:00:00Z');
+    110|     await f.lead('EXHIBITION', 'CONTACTED', '2026-06-30T23:59:59Z');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'P2039', meta: { modelName: 'Lead', driverAdapterError: { stack: 'DriverAdapterError: new row for relation "leads" violates check constraint "leads_converted_consistent"
+    at PrismaPgAdapter.onError (file:///home/ai/Desktop/CRM/Yonlink-CRM/node_modules/@prisma/adapter-pg/dist/index.mjs:666:11)
+    at PrismaPgAdapter.performIO (file:///home/ai/Desktop/CRM/Yonlink-CRM/node_modules/@prisma/adapter-pg/dist/index.mjs:661:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async PrismaPgAdapter.queryRaw (file:///home/ai/Desktop/CRM/Yonlink-CRM/node_modules/@prisma/adapter-pg/dist/index.mjs:595:30)
+    at async /home/ai/Desktop/CRM/Yonlink-CRM/node_modules/@prisma/client/runtime/client.js:11:70479
+    at async e.interpretNode (/home/ai/Desktop/CRM/Yonlink-CRM/node_modules/@prisma/client/runtime/client.js:11:70920)
+    at async e.interpretNode (/home/ai/Desktop/CRM/Yonlink-CRM/node_modules/@prisma/client/runtime/client.js:11:71857)
+    at async e.run (/home/ai/Desktop/CRM/Yonlink-CRM/node_modules/@prisma/client/runtime/client.js:11:69273)
+    at async e.execute (/home/ai/Desktop/CRM/Yonlink-CRM/node_modules/@prisma/client/runtime/client.js:57:815)
+    at async yr.request (/home/ai/Desktop/CRM/Yonlink-CRM/node_modules/@prisma/client/runtime/client.js:58:2425)', message: 'new row for relation "leads" violates check constraint "leads_converted_consistent"', name: 'DriverAdapterError', cause: { originalCode: '23514', originalMessage: 'new row for relation "leads" violates check constraint "leads_converted_consistent"', kind: 'postgres', code: '23514', severity: 'ERROR', message: 'new row for relation "leads" violates check constraint "leads_converted_consistent"', detail: 'Failing row contains (eb7c0b7a-e8f0-4355-aeb0-f2b1ce440e5c, 868b91f8-696c-4993-b201-1a07e460a56f, null, 线索1, null, null, null, null, null, EXHIBITION, CONVERTED, null, 2026-01-01 00:00:00+00, 2026-11-12 12:40:43.217+00, null, null, null, null).', column: undefined, hint: undefined }, constructor: 'Function<DriverAdapterError>', toString: 'Function<toString>' } }, clientVersion: '7.10.1', batchRequestIdx: undefined }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 11 passed (12)
+   Start at  12:40:39
+   Duration  4.12s (tests 85%, import 8%, transform 7%)
+

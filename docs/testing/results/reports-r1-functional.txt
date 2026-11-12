@@ -1,0 +1,25 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 deals > 漏斗：进行中商机按阶段（补零、只算所选币种、不受时间段影响）/ funnel 695ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 deals > 期间赢单/输单与赢单率（按预计成交日期，含边界日，排除无日期）/ won and lost in the period 117ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 deals > 按月：时间段内每月一行（补零），赢单金额与输单数 / monthly rows 136ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 deals > 币种：USD 单独统计；返回可选币种列表 / currencies are separate 126ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 owners, leads, quotes > 负责人排行：按赢单金额排序，含在手、输单、赢单率与期间跟进数；未分配单列 / owner ranking 125ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 owners, leads, quotes > 负责人筛选：只统计该负责人 / owner filter 153ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 owners, leads, quotes > 线索来源：期间内创建（UTC 边界），转化数与转化率，按数量排序 / lead sources 112ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 owners, leads, quotes > 报价单：期间内、所选币种的状态数量与金额，接受率 / quotes 125ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 period & helpers > 默认时间段：最近 12 个月（含本月），结束为今天 / default period 72ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 period & helpers > 跨年与 24 个月上限 / year boundaries and the 24-month limit 66ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 period & helpers > 比率：1 位小数，分母为 0 时为 null / rates 61ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 period & helpers > 空组织：全部为零，比率为 null / empty organization 76ms
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  12:40:55
+   Duration  4.02s (tests 86%, import 8%, transform 4%, setup 1%)
+
