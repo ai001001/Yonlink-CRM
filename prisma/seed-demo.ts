@@ -78,7 +78,14 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.contact.deleteMany({ where: { organizationId: o } });
         await tx.account.deleteMany({ where: { organizationId: o } });
         await tx.lead.deleteMany({ where: { organizationId: o } });
+        // 明细已随商机级联删除，产品随后可删 / line items cascaded with deals, so products can go
+        await tx.product.deleteMany({ where: { organizationId: o } });
       }
+
+      await tx.product.createMany({ data: data.products.map((p) => ({ ...p, organizationId: o })) });
+      const productIds = new Map(
+        (await tx.product.findMany({ where: { organizationId: o }, select: { id: true, sku: true } })).map((p) => [p.sku, p.id]),
+      );
 
       const accountIds: Record<string, string> = {};
       for (const a of data.accounts) {
@@ -126,6 +133,21 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         });
         dealIds[d.key] = created.id;
       }
+
+      const catalog = new Map(data.products.map((p) => [p.sku, p]));
+      await tx.dealLineItem.createMany({
+        data: data.items.map((it) => ({
+          organizationId: o,
+          dealId: dealIds[it.deal]!,
+          productId: productIds.get(it.sku)!,
+          productName: catalog.get(it.sku)!.name,
+          productSku: it.sku,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice,
+          discountPercent: it.discountPercent,
+          lineTotal: it.lineTotal,
+        })),
+      });
 
       const leadIds: string[] = [];
       for (const l of data.leads) {
@@ -180,7 +202,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length} 客户、${data.accounts.reduce((n, a) => n + a.contacts.length, 0)} 联系人、` +
-      `${data.leads.length} 线索、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注 / demo data ready`,
+      `${data.leads.length} 线索、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细 / demo data ready`,
   );
 }
 

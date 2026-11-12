@@ -69,10 +69,39 @@ export interface Deal {
   amount: string;
   currency: string;
   stage: 'QUALIFICATION' | 'NEEDS_ANALYSIS' | 'PROPOSAL' | 'NEGOTIATION' | 'CLOSED_WON' | 'CLOSED_LOST';
+  /** 产品明细数量 / number of line items */
+  _count?: { lineItems: number };
   expectedCloseDate: string | null;
   description: string | null;
   ownerId: string | null;
   owner: Ref | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** 产品 / Product */
+export interface Product {
+  id: string;
+  sku: string;
+  name: string;
+  category: string | null;
+  unit: string;
+  unitPrice: string;
+  currency: string;
+  description: string | null;
+  isActive: boolean;
+  _count?: { lineItems: number };
+}
+
+/** 商机产品明细 / Deal line item */
+export interface DealItem {
+  id: string;
+  productId: string;
+  productName: string;
+  productSku: string;
+  quantity: string;
+  unitPrice: string;
+  discountPercent: string;
+  lineTotal: string;
+  product: { unit: string; isActive: boolean };
 }

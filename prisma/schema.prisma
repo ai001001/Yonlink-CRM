@@ -14,10 +14,10 @@ datasource db {
 }
 
 model Organization {
-  id         String     @id @default(uuid()) @db.Uuid
-  name       String     @db.VarChar(200)
-  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id         String         @id @default(uuid()) @db.Uuid
+  name       String         @db.VarChar(200)
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
   users      User[]
   accounts   Account[]
   contacts   Contact[]
@@ -26,6 +26,8 @@ model Organization {
   activities Activity[]
   auditLogs  AuditLog[]
   notes      Note[]
+  products   Product[]
+  dealItems  DealLineItem[]
 
   @@map("organizations")
 }
@@ -187,25 +189,26 @@ enum DealStage {
 }
 
 model Deal {
-  id                String       @id @default(uuid()) @db.Uuid
-  organizationId    String       @map("organization_id") @db.Uuid
-  ownerId           String?      @map("owner_id") @db.Uuid
-  accountId         String       @map("account_id") @db.Uuid
-  name              String       @db.VarChar(200)
-  amount            Decimal      @default(0) @db.Decimal(18, 2)
-  currency          String       @default("CNY") @db.Char(3)
-  stage             DealStage    @default(QUALIFICATION)
-  expectedCloseDate DateTime?    @map("expected_close_date") @db.Date
-  description       String?      @db.Text
-  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner             User?        @relation("DealOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  id                String         @id @default(uuid()) @db.Uuid
+  organizationId    String         @map("organization_id") @db.Uuid
+  ownerId           String?        @map("owner_id") @db.Uuid
+  accountId         String         @map("account_id") @db.Uuid
+  name              String         @db.VarChar(200)
+  amount            Decimal        @default(0) @db.Decimal(18, 2)
+  currency          String         @default("CNY") @db.Char(3)
+  stage             DealStage      @default(QUALIFICATION)
+  expectedCloseDate DateTime?      @map("expected_close_date") @db.Date
+  description       String?        @db.Text
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization      Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner             User?          @relation("DealOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
   // 有商机的客户不能删除 / accounts with deals cannot be deleted
-  account           Account      @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Restrict)
+  account           Account        @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Restrict)
   activities        Activity[]
   notes             Note[]
-  convertedLeads    Lead[]       @relation("LeadConvertedDeal")
+  lineItems         DealLineItem[]
+  convertedLeads    Lead[]         @relation("LeadConvertedDeal")
 
   @@unique([organizationId, id])
   @@index([organizationId, createdAt(sort: Desc)])
@@ -305,4 +308,52 @@ model Note {
   @@index([organizationId, accountId, createdAt(sort: Desc)])
   @@index([organizationId, dealId, createdAt(sort: Desc)])
   @@map("notes")
+}
+
+/// 产品目录（组织内 SKU 唯一；被商机使用的产品不能删除，只能停用）
+/// Product catalog (SKU unique per organization; products in use cannot be deleted, only deactivated)
+model Product {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  sku            String         @db.VarChar(50)
+  name           String         @db.VarChar(200)
+  category       String?        @db.VarChar(50)
+  unit           String         @default("件") @db.VarChar(20)
+  unitPrice      Decimal        @default(0) @map("unit_price") @db.Decimal(18, 2)
+  currency       String         @default("CNY") @db.Char(3)
+  description    String?        @db.Text
+  isActive       Boolean        @default(true) @map("is_active")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lineItems      DealLineItem[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, sku])
+  @@index([organizationId, name])
+  @@map("products")
+}
+
+/// 商机产品明细（保存下单时的产品名称与 SKU；小计由服务端按十进制精确计算）
+/// Deal line item (keeps the product name and SKU at the time; totals computed server-side in decimal)
+model DealLineItem {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  dealId          String       @map("deal_id") @db.Uuid
+  productId       String       @map("product_id") @db.Uuid
+  productName     String       @map("product_name") @db.VarChar(200)
+  productSku      String       @map("product_sku") @db.VarChar(50)
+  quantity        Decimal      @db.Decimal(18, 2)
+  unitPrice       Decimal      @map("unit_price") @db.Decimal(18, 2)
+  discountPercent Decimal      @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  lineTotal       Decimal      @map("line_total") @db.Decimal(18, 2)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deal            Deal         @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Cascade)
+  product         Product      @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([organizationId, dealId, createdAt])
+  @@index([organizationId, productId])
+  @@map("deal_line_items")
 }

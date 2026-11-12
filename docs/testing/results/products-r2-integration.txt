@@ -1,0 +1,41 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/products/products.r2-integration.test.ts > products R2 permissions > 只有管理员与经理能维护产品；所有角色可查看 / only admins and managers maintain products 611ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 permissions > 明细：销售代表只能改自己的商机，只读不能改，经理可改 / line items follow deal edit rights 207ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 business rules > 有明细时不能手工改金额或币种；金额不变的保存允许；明细清空后恢复手工 / amount and currency lock 212ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 business rules > 币种不一致与停用产品不能添加 / currency mismatch and inactive products are rejected 140ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 business rules > 停用产品不影响已有明细，明细仍可修改 / deactivation keeps existing items editable 143ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 business rules > 使用中的产品不能删除（409），数据库 RESTRICT 兜底 / products in use cannot be deleted 147ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 business rules > SKU 组织内唯一且不区分大小写（409）；其他组织可用同一 SKU / SKU uniqueness 174ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 business rules > 批量改阶段不影响由明细计算的金额 / bulk stage changes keep computed amounts 140ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 其他组织的产品不能用于本组织商机；明细与产品跨组织 404 / cross-org isolation 171ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法明细 {"quantity":"0"} → 400 / invalid line items 105ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法明细 {"quantity":"-1"} → 400 / invalid line items 93ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法明细 {"quantity":"1.234"} → 400 / invalid line items 105ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法明细 {"quantity":"abc"} → 400 / invalid line items 108ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法明细 {"quantity":"1","discountPercent":"100.01"} → 400 / invalid line items 102ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法明细 {"quantity":"1","discountPercent":"-5"} → 400 / invalid line items 94ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法明细 {"quantity":"1","unitPrice":"-1"} → 400 / invalid line items 99ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法明细 {"quantity":"1","lineTotal":"1"} → 400 / invalid line items 105ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法明细 {} → 400 / invalid line items 97ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 折扣 100% 小计为 0；数量小数可用 / 100% discount and decimal quantities 115ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法产品 {"sku":"","name":"x"} → 400 / invalid products 94ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法产品 {"sku":"a b","name":"x"} → 400 / invalid products 101ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法产品 {"sku":"中文","name":"x"} → 400 / invalid products 110ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法产品 {"sku":"X","name":""} → 400 / invalid products 96ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法产品 {"sku":"X","name":"x","unitPrice":"-1"} → 400 / invalid products 99ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法产品 {"sku":"X","name":"x","currency":"GBP"} → 400 / invalid products 105ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法产品 {"sku":"X","name":"x","organizationId":"00000000-0000-4000-8000-000000000000"} → 400 / invalid products 104ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 数据库约束：数量 > 0、折扣 0–100、单价非负 / DB CHECK constraints 124ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 未登录 401 / unauthenticated 117ms
+
+ Test Files  1 passed (1)
+      Tests  28 passed (28)
+   Start at  11:36:04
+   Duration  6.51s (tests 92%, import 5%, transform 3%)
+

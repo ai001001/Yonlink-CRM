@@ -60,6 +60,7 @@ export const dealListSchema = listQuery.extend({
 const include = {
   owner: { select: { id: true, name: true } },
   account: { select: { id: true, name: true } },
+  _count: { select: { lineItems: true } },
 } satisfies Prisma.DealInclude;
 
 /**
@@ -149,6 +150,17 @@ export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<ty
   assertCanUpdate(ctx, current);
   const { ownerId, ...data } = input;
   assertOwnerAssignable(ctx, ownerId);
+  // 有产品明细时金额由明细计算，币种需与明细一致 / with line items the amount is computed and the currency is locked
+  if (data.amount !== undefined || (data.currency !== undefined && data.currency !== current.currency)) {
+    const items = await prisma.dealLineItem.count({ where: { organizationId: ctx.organizationId, dealId: id } });
+    if (items > 0) {
+      const details: Record<string, string[]> = {};
+      if (data.amount !== undefined && !current.amount.equals(data.amount)) details.amount = ['calculated_from_items'];
+      if (data.currency !== undefined && data.currency !== current.currency) details.currency = ['locked_by_items'];
+      if (Object.keys(details).length) throw new ApiError(409, 'CONFLICT', 'Deal has line items', details);
+      delete data.amount;
+    }
+  }
   if (data.accountId) await assertAccount(ctx, data.accountId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
   return prisma.$transaction(async (tx) => {

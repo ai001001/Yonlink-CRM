@@ -220,6 +220,8 @@ export interface DealSeed {
   closeInDays: number;
   owner: OwnerKey;
   description: string;
+  /** 产品线（用于生成产品明细）/ product line (used for line items) */
+  productLine: (typeof PRODUCTS)[number]['key'];
 }
 
 /** 备注 / Notes */
@@ -269,6 +271,57 @@ const SHORT_NAMES: Record<string, string> = {
 const DEAL_QUALIFIERS = ['年度框架采购', '首批试单', '季度补货', '新车型配套项目', '库存补充订单', '替换供应商项目'];
 const LOST_REASONS = ['价格高于竞争对手约 8%', '客户预算推迟到下一年度', '交期无法满足旺季需求', '客户选择了本地供应商'];
 
+/** 产品 / Product */
+export interface ProductSeed {
+  sku: string;
+  name: string;
+  category: string;
+  unit: string;
+  unitPrice: string;
+  currency: 'USD' | 'CNY';
+}
+
+/** 商机产品明细 / Deal line item */
+export interface DealItemSeed {
+  deal: string;
+  sku: string;
+  quantity: string;
+  unitPrice: string;
+  discountPercent: string;
+  lineTotal: string;
+}
+
+/** 虚构产品目录（美元价，另有 -CN 人民币价）/ fictional catalog (USD, plus -CN CNY variants) */
+const BASE_CATALOG: [string, string, string, string, number][] = [
+  ['DT-HD-11L', '重型柴油机涡轮增压器 11L（整机）', '整机增压器', '台', 980],
+  ['DT-HD-13L', '重型柴油机涡轮增压器 13L（整机）', '整机增压器', '台', 1150],
+  ['DT-PC-20D', '乘用车柴油机涡轮增压器 2.0L（整机）', '整机增压器', '台', 420],
+  ['DT-PT-15T', '汽油机涡轮增压器 1.5T（整机）', '整机增压器', '台', 360],
+  ['DT-CHRA-HD', '重卡中间体（CHRA）', '中间体', '件', 310],
+  ['DT-CHRA-PC', '乘用车中间体（CHRA）', '中间体', '件', 145],
+  ['DT-SW-01', '涡轮轴轮总成', '核心部件', '件', 68],
+  ['DT-CW-01', '压气机轮', '核心部件', '件', 42],
+  ['DT-NR-01', '可变截面喷嘴环', '核心部件', '件', 95],
+  ['DT-GK-01', '涡轮增压器垫片套件', '配件', '套', 12],
+  ['DT-OP-01', '增压器进回油管', '配件', '件', 18],
+  ['DT-TL-BAL', '中间体动平衡检测工具', '维修工具', '套', 1650],
+];
+export const PRODUCT_CATALOG: ProductSeed[] = BASE_CATALOG.flatMap(([sku, name, category, unit, usd]) => [
+  { sku, name: `【演示】${name}`, category, unit, unitPrice: usd.toFixed(2), currency: 'USD' as const },
+  { sku: `${sku}-CN`, name: `【演示】${name}`, category, unit, unitPrice: Math.round(usd * 7.1).toFixed(2), currency: 'CNY' as const },
+]);
+
+/** 产品线 → 可用 SKU（基础 SKU，人民币商机自动用 -CN）/ product line → base SKUs */
+const LINE_SKUS: Record<(typeof PRODUCTS)[number]['key'], string[]> = {
+  hd: ['DT-HD-11L', 'DT-HD-13L', 'DT-GK-01'],
+  pc: ['DT-PC-20D', 'DT-GK-01', 'DT-OP-01'],
+  petrol: ['DT-PT-15T', 'DT-GK-01'],
+  chra: ['DT-CHRA-HD', 'DT-CHRA-PC'],
+  parts: ['DT-SW-01', 'DT-CW-01', 'DT-NR-01'],
+  acc: ['DT-GK-01', 'DT-OP-01'],
+  tools: ['DT-TL-BAL'],
+};
+
 /**
  * 生成完整演示数据集（确定性：同一种子结果相同）。
  * Generate the full demo dataset (deterministic for a given seed).
@@ -302,6 +355,7 @@ export function buildDemoData(seed = 20261111) {
         closeInDays: between(plan.close[0], plan.close[1]),
         owner: acc.owner,
         description: `产品线：${product.label}。区域：${acc.region}（${acc.city}）${lost}`,
+        productLine: product.key,
       });
     }
   }
@@ -387,7 +441,27 @@ export function buildDemoData(seed = 20261111) {
     if (i % 3 === 0) notes.push({ owner: acc.owner, account: acc.key, content: `客户主营${acc.region}市场，采购决策需总经理审批。`, daysAgo: between(5, 60) });
   });
 
-  return { accounts: ACCOUNTS, deals, leads, activities, notes };
+  // 产品明细：部分美元/人民币商机按产品目录生成明细，商机金额 = 明细合计
+  // line items: some USD/CNY deals get items from the catalog; the deal amount equals the item total
+  const items: DealItemSeed[] = [];
+  deals.forEach((d, i) => {
+    if (d.currency === 'EUR' || i % 3 === 2) return;
+    const skus = LINE_SKUS[d.productLine];
+    const count = Math.min(skus.length, between(1, 3));
+    let cents = 0;
+    for (const base of skus.slice(0, count)) {
+      const product = PRODUCT_CATALOG.find((p) => p.sku === (d.currency === 'CNY' ? `${base}-CN` : base))!;
+      const quantity = base.startsWith('DT-TL') ? between(1, 6) : between(10, 300);
+      const discount = pick([0, 0, 3, 5, 8]);
+      const priceCents = Math.round(Number(product.unitPrice) * 100);
+      const lineCents = Math.round((quantity * priceCents * (100 - discount)) / 100);
+      cents += lineCents;
+      items.push({ deal: d.key, sku: product.sku, quantity: String(quantity), unitPrice: product.unitPrice, discountPercent: String(discount), lineTotal: (lineCents / 100).toFixed(2) });
+    }
+    d.amount = (cents / 100).toFixed(2);
+  });
+
+  return { accounts: ACCOUNTS, deals, leads, activities, notes, products: PRODUCT_CATALOG, items };
 }
 
 /**

@@ -5,11 +5,12 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { App, Button, Card, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Segmented, Select, Space, Statistic, Table, Tabs, Tag } from 'antd';
+import { App, Button, Card, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Segmented, Select, Space, Statistic, Table, Tabs, Tag, Typography } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { AuditTrail } from '@/components/AuditTrail';
 import { DealBoard } from '@/components/DealBoard';
+import { DealItemsPanel } from '@/components/DealItemsPanel';
 import { NotesPanel } from '@/components/NotesPanel';
 import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
@@ -59,6 +60,8 @@ export default function DealsPage() {
   const [editing, setEditing] = useState<Deal | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<Deal | null>(null);
+  // 有产品明细时金额由明细计算、币种锁定 / with line items the amount is computed and the currency locked
+  const amountLocked = editing !== null && editing !== 'new' && (editing._count?.lineItems ?? 0) > 0;
 
   useOpenFromUrl(
     useCallback(
@@ -244,12 +247,13 @@ export default function DealsPage() {
               label={t('deals.amount')}
               rules={[{ pattern: /^\d{1,16}(\.\d{1,2})?$/, message: t('deals.invalidAmount') }]}
             >
-              <InputNumber<string> stringMode min="0" precision={2} style={{ width: '100%' }} />
+              <InputNumber<string> stringMode min="0" precision={2} style={{ width: '100%' }} disabled={amountLocked} />
             </Form.Item>
             <Form.Item name="currency" label={t('deals.currency')}>
-              <Select options={currencyOptions} />
+              <Select options={currencyOptions} disabled={amountLocked} />
             </Form.Item>
           </div>
+          {amountLocked && <Typography.Paragraph type="secondary">{t('items.amountLocked')}</Typography.Paragraph>}
           <div className="form-row">
             <Form.Item name="stage" label={t('deals.stage')}>
               <Select options={stageOptions} />
@@ -304,6 +308,22 @@ export default function DealsPage() {
                       {detail.description}
                     </Descriptions.Item>
                   </Descriptions>
+                ),
+              },
+              {
+                key: 'items',
+                label: t('items.tab'),
+                children: (
+                  <DealItemsPanel
+                    key={`items-${detail.id}`}
+                    deal={detail}
+                    onChanged={() => {
+                      api<Deal>(`/api/deals/${detail.id}`)
+                        .then(setDetail)
+                        .catch(() => undefined);
+                      refresh();
+                    }}
+                  />
                 ),
               },
               {
