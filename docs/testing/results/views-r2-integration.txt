@@ -1,0 +1,31 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/views/views.r2-integration.test.ts > views R2 permissions > 私有视图人人可建；共享仅管理员与经理 / private for all, sharing for admins and managers 600ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 permissions > 只有创建者能修改；他人私有视图不可见（404）/ only the creator edits 148ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 permissions > 删除：创建者可以；共享视图也可由管理员/经理删除；销售不能删他人共享视图 / delete rules 154ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 permissions > 默认视图只能设为自己可见的视图 / defaults must be visible 162ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 permissions > 共享视图不扩大可见范围：销售套用含他人负责人的视图仍看不到 / sharing never widens visibility 186ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 跨组织：看不到、改不了、删不了、不能设为默认 / cross-org isolation 148ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 每人每个列表最多 50 个 / limit per user and list 146ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":""} → 400 / invalid view input 87ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":"   "} → 400 / invalid view input 88ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 / invalid view input 88ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":"ok","entity":"quotes"} → 400 / invalid view input 83ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":"ok","filters":[]} → 400 / invalid view input 85ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":"ok","filters":"status=NEW"} → 400 / invalid view input 92ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":"ok","filters":{"status":"NEW","page":"2"}} → 400 / invalid view input 90ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":"ok","shared":"yes"} → 400 / invalid view input 83ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":"ok","ownerId":"00000000-0000-4000-8000-000000000000"} → 400 / invalid view input 85ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":"ok","organizationId":"00000000-0000-4000-8000-000000000000"} → 400 / invalid view input 85ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法查询、默认与修改参数 → 400；未登录 401 / invalid queries and auth 102ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 数据库约束：筛选必须是对象、名称非空、默认视图不能跨组织 / DB constraints 175ms
+
+ Test Files  1 passed (1)
+      Tests  19 passed (19)
+   Start at  23:12:15
+   Duration  4.85s (tests 89%, import 7%, transform 4%)

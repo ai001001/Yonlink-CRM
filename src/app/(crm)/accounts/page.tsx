@@ -10,6 +10,7 @@ import { PlusOutlined, StarFilled, UploadOutlined } from '@ant-design/icons';
 import { AccountDeals } from '@/components/AccountDeals';
 import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
+import { SavedViews } from '@/components/SavedViews';
 import { TagEditor, TagFilter, TagList, tagsOf } from '@/components/Tags';
 import { ExportButton } from '@/components/ExportButton';
 import { ImportModal } from '@/components/ImportModal';
@@ -20,7 +21,7 @@ import { RelatedActivities } from '@/components/RelatedActivities';
 import { t, tEnum } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
-import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSelection } from '@/lib/hooks';
+import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch, useSelection } from '@/lib/hooks';
 import type { Account } from '@/lib/types';
 
 const INDUSTRIES = ['MANUFACTURING', 'IT', 'FINANCE', 'RETAIL', 'EDUCATION', 'HEALTHCARE', 'CONSTRUCTION', 'LOGISTICS', 'GOVERNMENT', 'OTHER'];
@@ -30,10 +31,17 @@ export default function AccountsPage() {
   const { message } = App.useApp();
   const owners = useOwners();
   const perm = usePermissions();
-  const [q, setQ] = useState('');
+  const search = useSearch();
+  const q = search.q;
   const [tagId, setTagId] = useState<string>();
   const [industry, setIndustry] = useState<string>();
   const { data, loading, reload, pagination } = usePagedList<Account>('/api/accounts', { q, industry, tagId });
+  /** 套用视图（null 恢复列表默认筛选）/ apply a saved view (null resets the list filters) */
+  const applyView = (f: Record<string, string> | null) => {
+    search.set(f?.q ?? '');
+    setIndustry(f?.industry);
+    setTagId(f?.tagId);
+  };
   const sel = useSelection(data.items, perm.can('record.update.own') || perm.canDelete);
 
   const [form] = Form.useForm();
@@ -114,9 +122,10 @@ export default function AccountsPage() {
       }
     >
       <Space wrap style={{ marginBottom: 16 }}>
-        <Input.Search allowClear placeholder={t('accounts.searchPlaceholder')} style={{ width: 320 }} onSearch={setQ} />
+        <SavedViews entity="accounts" filters={{ q, industry, tagId }} onApply={applyView} />
+        <Input.Search allowClear placeholder={t('accounts.searchPlaceholder')} style={{ width: 320 }} {...search.inputProps} />
         <TagFilter value={tagId} onChange={setTagId} onManaged={() => void reload()} />
-        <Select allowClear placeholder={t('accounts.industry')} style={{ width: 140 }} options={industryOptions} value={industry} onChange={setIndustry} />
+        <Select allowClear aria-label={t('accounts.industry')} placeholder={t('accounts.industry')} style={{ width: 140 }} options={industryOptions} value={industry} onChange={setIndustry} />
       </Space>
       <BulkBar
         path="/api/accounts"

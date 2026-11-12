@@ -14,54 +14,58 @@ datasource db {
 }
 
 model Organization {
-  id          String           @id @default(uuid()) @db.Uuid
-  name        String           @db.VarChar(200)
-  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
-  users       User[]
-  accounts    Account[]
-  contacts    Contact[]
-  leads       Lead[]
-  deals       Deal[]
-  activities  Activity[]
-  auditLogs   AuditLog[]
-  notes       Note[]
-  products    Product[]
-  dealItems   DealLineItem[]
-  quotes      Quote[]
-  quoteItems  QuoteLineItem[]
-  tags        Tag[]
-  leadTags    LeadTag[]
-  accountTags AccountTag[]
-  dealTags    DealTag[]
-  recycleBin  RecycleBinItem[]
+  id           String            @id @default(uuid()) @db.Uuid
+  name         String            @db.VarChar(200)
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  users        User[]
+  accounts     Account[]
+  contacts     Contact[]
+  leads        Lead[]
+  deals        Deal[]
+  activities   Activity[]
+  auditLogs    AuditLog[]
+  notes        Note[]
+  products     Product[]
+  dealItems    DealLineItem[]
+  quotes       Quote[]
+  quoteItems   QuoteLineItem[]
+  tags         Tag[]
+  leadTags     LeadTag[]
+  accountTags  AccountTag[]
+  dealTags     DealTag[]
+  recycleBin   RecycleBinItem[]
+  savedViews   SavedView[]
+  viewDefaults UserViewDefault[]
 
   @@map("organizations")
 }
 
 model User {
-  id              String           @id @default(uuid()) @db.Uuid
-  organizationId  String           @map("organization_id") @db.Uuid
-  email           String           @db.VarChar(254)
-  name            String           @db.VarChar(100)
-  passwordHash    String           @map("password_hash")
+  id              String            @id @default(uuid()) @db.Uuid
+  organizationId  String            @map("organization_id") @db.Uuid
+  email           String            @db.VarChar(254)
+  name            String            @db.VarChar(100)
+  passwordHash    String            @map("password_hash")
   /// 角色（服务端每个请求从数据库读取）/ role (read from the DB on every request)
-  role            UserRole         @default(SALES)
-  isActive        Boolean          @default(true) @map("is_active")
+  role            UserRole          @default(SALES)
+  isActive        Boolean           @default(true) @map("is_active")
   /// 演示账号：仅在 DEMO_LOGIN_ENABLED=1 时可免密一键登录 / demo account: password-less login only when DEMO_LOGIN_ENABLED=1
-  isDemo          Boolean          @default(false) @map("is_demo")
-  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  isDemo          Boolean           @default(false) @map("is_demo")
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   sessions        Session[]
-  ownedLeads      Lead[]           @relation("LeadOwner")
-  ownedAccounts   Account[]        @relation("AccountOwner")
-  ownedDeals      Deal[]           @relation("DealOwner")
-  ownedActivities Activity[]       @relation("ActivityOwner")
-  auditLogs       AuditLog[]       @relation("AuditActor")
-  notes           Note[]           @relation("NoteAuthor")
-  createdQuotes   Quote[]          @relation("QuoteCreator")
-  deletedItems    RecycleBinItem[] @relation("RecycleDeleter")
+  ownedLeads      Lead[]            @relation("LeadOwner")
+  ownedAccounts   Account[]         @relation("AccountOwner")
+  ownedDeals      Deal[]            @relation("DealOwner")
+  ownedActivities Activity[]        @relation("ActivityOwner")
+  auditLogs       AuditLog[]        @relation("AuditActor")
+  notes           Note[]            @relation("NoteAuthor")
+  createdQuotes   Quote[]           @relation("QuoteCreator")
+  deletedItems    RecycleBinItem[]  @relation("RecycleDeleter")
+  savedViews      SavedView[]
+  viewDefaults    UserViewDefault[]
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -536,4 +540,53 @@ model RecycleBinItem {
   @@index([organizationId, deletedAt(sort: Desc)])
   @@index([organizationId, expiresAt])
   @@map("recycle_bin_items")
+}
+
+/// 视图所属列表 / list a saved view belongs to
+enum ViewEntity {
+  leads
+  accounts
+  deals
+  activities
+
+  @@map("view_entity")
+}
+
+/// 保存的视图：列表筛选条件（服务端按列表白名单校验）；私有或共享给全组织。
+/// 视图只保存筛选条件，数据仍按查看者的权限过滤，共享视图不会扩大可见范围。
+/// Saved view: list filters (validated against a per-list whitelist), private or shared with the organization;
+/// records are still filtered by the viewer's permissions, so sharing never widens visibility.
+model SavedView {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  ownerId        String            @map("owner_id") @db.Uuid
+  entity         ViewEntity
+  name           String            @db.VarChar(50)
+  filters        Json
+  shared         Boolean           @default(false)
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner          User              @relation(fields: [organizationId, ownerId], references: [organizationId, id], onDelete: Cascade)
+  defaults       UserViewDefault[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, ownerId, entity, name])
+  @@index([organizationId, entity, shared])
+  @@map("saved_views")
+}
+
+/// 用户在某个列表的默认视图 / a user's default view for a list
+model UserViewDefault {
+  organizationId String       @map("organization_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  entity         ViewEntity
+  viewId         String       @map("view_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [organizationId, userId], references: [organizationId, id], onDelete: Cascade)
+  view           SavedView    @relation(fields: [organizationId, viewId], references: [organizationId, id], onDelete: Cascade)
+
+  @@id([userId, entity])
+  @@index([organizationId, viewId])
+  @@map("user_view_defaults")
 }

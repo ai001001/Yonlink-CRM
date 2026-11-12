@@ -15,6 +15,7 @@ import { DealQuotesPanel } from '@/components/DealQuotesPanel';
 import { NotesPanel } from '@/components/NotesPanel';
 import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
+import { SavedViews } from '@/components/SavedViews';
 import { TagEditor, TagFilter, TagList, tagsOf } from '@/components/Tags';
 import { ExportButton } from '@/components/ExportButton';
 import { RecordSelect } from '@/components/RecordSelect';
@@ -22,7 +23,7 @@ import { RelatedActivities } from '@/components/RelatedActivities';
 import { t, tEnum } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
-import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSelection, type PageResult } from '@/lib/hooks';
+import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch, useSelection, type PageResult } from '@/lib/hooks';
 import type { Deal } from '@/lib/types';
 
 const DEAL_STAGES = ['QUALIFICATION', 'NEEDS_ANALYSIS', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST'] as const;
@@ -45,12 +46,19 @@ export default function DealsPage() {
   const { message } = App.useApp();
   const owners = useOwners();
   const perm = usePermissions();
-  const [q, setQ] = useState('');
+  const search = useSearch();
+  const q = search.q;
   const [tagId, setTagId] = useState<string>();
   const [view, setView] = useState<'list' | 'board'>('list');
   const [boardVersion, setBoardVersion] = useState(0);
   const [stage, setStage] = useState<string>();
   const { data, loading, reload, pagination } = usePagedList<Deal>('/api/deals', { q, stage, tagId });
+  /** 套用视图（null 恢复列表默认筛选）/ apply a saved view (null resets the list filters) */
+  const applyView = (f: Record<string, string> | null) => {
+    search.set(f?.q ?? '');
+    setStage(f?.stage);
+    setTagId(f?.tagId);
+  };
   const sel = useSelection(data.items, perm.can('record.update.own') || perm.canDelete);
   // 列表与看板一起刷新 / refresh both the list and the board
   const refresh = () => {
@@ -146,10 +154,11 @@ export default function DealsPage() {
               { value: 'board', label: t('deals.viewBoard') },
             ]}
           />
-          <Input.Search allowClear placeholder={t('deals.searchPlaceholder')} style={{ width: 280 }} onSearch={setQ} />
+          {view === 'list' && <SavedViews entity="deals" filters={{ q, stage, tagId }} onApply={applyView} />}
+          <Input.Search allowClear placeholder={t('deals.searchPlaceholder')} style={{ width: 280 }} {...search.inputProps} />
           {view === 'list' && <TagFilter value={tagId} onChange={setTagId} onManaged={() => refresh()} />}
           {view === 'list' && (
-            <Select allowClear placeholder={t('deals.stage')} style={{ width: 140 }} options={stageOptions} value={stage} onChange={setStage} />
+            <Select allowClear aria-label={t('deals.stage')} placeholder={t('deals.stage')} style={{ width: 140 }} options={stageOptions} value={stage} onChange={setStage} />
           )}
         </Space>
         {view === 'list' && (

@@ -1,0 +1,19 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/views/views.r1-functional.test.ts > views R1 basics > 新建：名称去空格、去掉空筛选值、默认私有 / create normalises 837ms
+ ✓ tests/views/views.r1-functional.test.ts > views R1 basics > 各列表白名单：允许的字段与取值；不属于该列表的字段或非法取值 400 / per-list whitelist 360ms
+ ✓ tests/views/views.r1-functional.test.ts > views R1 basics > 列表：自己的与共享的，私有在前、按名称排序；同名 409 / list and uniqueness 167ms
+ ✓ tests/views/views.r1-functional.test.ts > views R1 basics > 更新筛选、重命名（重名 409）、删除 / update, rename, delete 160ms
+ ✓ tests/views/views.r1-functional.test.ts > views R1 basics > 默认视图：设置、替换、取消；删除视图时默认随之清除 / default views 147ms
+ ✓ tests/views/views.r1-functional.test.ts > views R1 sharing & applying > 共享：他人可见可设为默认；取消共享后移除他人的默认；共享视图的增改删写审计 / sharing 159ms
+ ✓ tests/views/views.r1-functional.test.ts > views R1 sharing & applying > 套用视图的筛选条件与直接查询列表结果一致 / applying a view equals querying with its filters 159ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  23:11:39
+   Duration  4.13s (tests 86%, import 9%, transform 4%)

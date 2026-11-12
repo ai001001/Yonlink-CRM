@@ -16,7 +16,7 @@ export interface RequestMeta {
 }
 
 /** 审计对象类型 / Audited entity types */
-export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'tag' | 'user' | 'auth';
+export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'tag' | 'view' | 'user' | 'auth';
 
 /** 字段策略 / Field policy */
 type Policy = 'plain' | 'mask' | 'redact';
@@ -39,6 +39,7 @@ export const AUDIT_FIELDS: Record<Exclude<AuditEntity, 'auth'>, Record<string, P
   note: { content: 'redact', leadId: 'plain', accountId: 'plain', dealId: 'plain' },
   product: { sku: 'plain', name: 'plain', category: 'plain', unit: 'plain', unitPrice: 'plain', currency: 'plain', isActive: 'plain', description: 'redact' },
   tag: { name: 'plain', color: 'plain' },
+  view: { name: 'plain', entity: 'plain', shared: 'plain', filters: 'plain' },
   quote: {
     quoteNumber: 'plain', subject: 'plain', status: 'plain', dealId: 'plain', currency: 'plain', validUntil: 'plain',
     taxPercent: 'plain', subtotal: 'plain', taxAmount: 'plain', total: 'plain', terms: 'redact', notes: 'redact',

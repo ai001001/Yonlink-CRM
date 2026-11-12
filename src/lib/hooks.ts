@@ -130,3 +130,22 @@ export function useSelection<T extends { id: string }>(items: T[], enabled: bool
     rowSelection: enabled ? { selectedRowKeys: selected, onChange: (keys: React.Key[]) => setSelected(keys as string[]) } : undefined,
   };
 }
+
+/**
+ * 受控搜索框：输入文字与已提交的搜索词分开保存，可由外部（如套用视图）同时设置。
+ * Controlled search box: typed text and the submitted term are kept separately and can both be set externally
+ * (e.g. when a saved view is applied).
+ */
+export function useSearch(initial = '') {
+  const [q, setQ] = useState(initial);
+  const [text, setText] = useState(initial);
+  const set = useCallback((v: string) => {
+    setQ(v);
+    setText(v);
+  }, []);
+  return {
+    q,
+    set,
+    inputProps: { value: text, onChange: (e: { target: { value: string } }) => setText(e.target.value), onSearch: set },
+  };
+}

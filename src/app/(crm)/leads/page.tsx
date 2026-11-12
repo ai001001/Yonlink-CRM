@@ -11,10 +11,11 @@ import { PlusOutlined, SwapOutlined, UploadOutlined } from '@ant-design/icons';
 import { t, tEnum, type MessageKey } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
-import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSelection } from '@/lib/hooks';
+import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch, useSelection } from '@/lib/hooks';
 import { AuditTrail } from '@/components/AuditTrail';
 import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
+import { SavedViews } from '@/components/SavedViews';
 import { TagEditor, TagFilter, TagList, tagsOf } from '@/components/Tags';
 import { ExportButton } from '@/components/ExportButton';
 import { ImportModal } from '@/components/ImportModal';
@@ -60,11 +61,19 @@ export default function LeadsPage() {
   const { message } = App.useApp();
   const owners = useOwners();
   const perm = usePermissions();
-  const [q, setQ] = useState('');
+  const search = useSearch();
+  const q = search.q;
   const [tagId, setTagId] = useState<string>();
   const [status, setStatus] = useState<string>();
   const [source, setSource] = useState<string>();
   const { data, loading, reload, pagination } = usePagedList<Lead>('/api/leads', { q, status, source, tagId });
+  /** 套用视图（null 恢复列表默认筛选）/ apply a saved view (null resets the list filters) */
+  const applyView = (f: Record<string, string> | null) => {
+    search.set(f?.q ?? '');
+    setStatus(f?.status);
+    setSource(f?.source);
+    setTagId(f?.tagId);
+  };
   const sel = useSelection(data.items, perm.can('record.update.own') || perm.canDelete);
 
   const [form] = Form.useForm();
@@ -144,10 +153,11 @@ export default function LeadsPage() {
       }
     >
       <Space wrap style={{ marginBottom: 16 }}>
-        <Input.Search allowClear placeholder={t('leads.searchPlaceholder')} style={{ width: 280 }} onSearch={setQ} data-testid="leads-search" />
+        <SavedViews entity="leads" filters={{ q, status, source, tagId }} onApply={applyView} />
+        <Input.Search allowClear placeholder={t('leads.searchPlaceholder')} style={{ width: 280 }} {...search.inputProps} data-testid="leads-search" />
         <TagFilter value={tagId} onChange={setTagId} onManaged={() => void reload()} />
-        <Select allowClear placeholder={t('leads.status')} style={{ width: 140 }} options={statusOptions} value={status} onChange={setStatus} />
-        <Select allowClear placeholder={t('leads.source')} style={{ width: 140 }} options={sourceOptions} value={source} onChange={setSource} />
+        <Select allowClear aria-label={t('leads.status')} placeholder={t('leads.status')} style={{ width: 140 }} options={statusOptions} value={status} onChange={setStatus} />
+        <Select allowClear aria-label={t('leads.source')} placeholder={t('leads.source')} style={{ width: 140 }} options={sourceOptions} value={source} onChange={setSource} />
       </Space>
       <BulkBar
         path="/api/leads"

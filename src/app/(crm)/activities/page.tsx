@@ -13,12 +13,13 @@ import { ActivityFormModal, activityTypeOptions } from '@/components/ActivityFor
 import { ActivityRelationFields } from '@/components/ActivityRelationFields';
 import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
+import { SavedViews } from '@/components/SavedViews';
 import { ExportButton } from '@/components/ExportButton';
 import { ACTIVITY_TYPE_COLOR, toggleActivity } from '@/components/RelatedActivities';
 import { t, tEnum } from '@/i18n';
 import { api } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
-import { usePagedList, useSelection } from '@/lib/hooks';
+import { usePagedList, useSearch, useSelection } from '@/lib/hooks';
 import type { Activity } from '@/lib/types';
 
 type StatusFilter = 'all' | 'false' | 'true';
@@ -47,7 +48,8 @@ function RelatedTags({ a }: { a: Activity }) {
 export default function ActivitiesPage() {
   const { message } = App.useApp();
   const perm = usePermissions();
-  const [q, setQ] = useState('');
+  const search = useSearch();
+  const q = search.q;
   const [type, setType] = useState<string>();
   const [status, setStatus] = useState<StatusFilter>('false');
   const { data, loading, reload, pagination } = usePagedList<Activity>('/api/activities', {
@@ -58,6 +60,13 @@ export default function ActivitiesPage() {
     sort: status === 'false' ? 'dueAt' : 'createdAt',
   });
   const sel = useSelection(data.items, perm.can('record.update.own') || perm.canDelete);
+  /** 套用视图（null 恢复列表默认筛选）/ apply a saved view (null resets the list filters) */
+  const applyView = (f: Record<string, string> | null) => {
+    search.set(f?.q ?? '');
+    setType(f?.type);
+    // 未保存完成状态的视图表示“全部”；恢复默认时为“未完成”/ a view without `completed` means all; the list default is pending
+    setStatus(f ? ((f.completed as StatusFilter | undefined) ?? 'all') : 'false');
+  };
   const [modal, setModal] = useState<{
     editing: Activity | null;
     dueAt?: Dayjs;
@@ -122,8 +131,9 @@ export default function ActivitiesPage() {
                 { value: 'all', label: t('common.all') },
               ]}
             />
-            <Select allowClear placeholder={t('activities.type')} style={{ width: 140 }} options={activityTypeOptions} value={type} onChange={setType} />
-            <Input.Search allowClear placeholder={t('activities.searchPlaceholder')} style={{ width: 240 }} onSearch={setQ} />
+            <Select allowClear aria-label={t('activities.type')} placeholder={t('activities.type')} style={{ width: 140 }} options={activityTypeOptions} value={type} onChange={setType} />
+            <SavedViews entity="activities" filters={{ q, type, completed: status === 'all' ? undefined : status }} onApply={applyView} />
+            <Input.Search allowClear placeholder={t('activities.searchPlaceholder')} style={{ width: 240 }} {...search.inputProps} />
           </Space>
           <BulkBar
             path="/api/activities"
