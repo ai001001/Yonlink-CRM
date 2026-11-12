@@ -25,6 +25,7 @@ model Organization {
   deals      Deal[]
   activities Activity[]
   auditLogs  AuditLog[]
+  notes      Note[]
 
   @@map("organizations")
 }
@@ -49,6 +50,7 @@ model User {
   ownedDeals      Deal[]       @relation("DealOwner")
   ownedActivities Activity[]   @relation("ActivityOwner")
   auditLogs       AuditLog[]   @relation("AuditActor")
+  notes           Note[]       @relation("NoteAuthor")
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -117,6 +119,7 @@ model Lead {
   convertedContact   Contact?     @relation("LeadConvertedContact", fields: [convertedContactId], references: [id], onDelete: SetNull)
   convertedDeal      Deal?        @relation("LeadConvertedDeal", fields: [convertedDealId], references: [id], onDelete: SetNull)
   activities         Activity[]
+  notes              Note[]
 
   @@unique([organizationId, id])
   @@index([organizationId, createdAt(sort: Desc)])
@@ -144,6 +147,7 @@ model Account {
   contacts       Contact[]
   deals          Deal[]
   activities     Activity[]
+  notes          Note[]
   convertedLeads Lead[]       @relation("LeadConvertedAccount")
 
   @@unique([organizationId, id])
@@ -200,6 +204,7 @@ model Deal {
   // 有商机的客户不能删除 / accounts with deals cannot be deleted
   account           Account      @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Restrict)
   activities        Activity[]
+  notes             Note[]
   convertedLeads    Lead[]       @relation("LeadConvertedDeal")
 
   @@unique([organizationId, id])
@@ -274,4 +279,30 @@ model AuditLog {
   @@index([organizationId, entityType, entityId, createdAt(sort: Desc)])
   @@index([organizationId, actorId, createdAt(sort: Desc)])
   @@map("audit_logs")
+}
+
+/// 备注：只属于一条线索、客户或商机（CHECK 保证恰好一个）；随所属记录级联删除。
+/// Note attached to exactly one lead, account or deal (enforced by CHECK); deleted with its record.
+model Note {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  authorId       String       @map("author_id") @db.Uuid
+  content        String       @db.Text
+  /// 内容最后一次被修改的时间（未修改为空）/ when the content was last changed (null if never)
+  editedAt       DateTime?    @map("edited_at") @db.Timestamptz(6)
+  leadId         String?      @map("lead_id") @db.Uuid
+  accountId      String?      @map("account_id") @db.Uuid
+  dealId         String?      @map("deal_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author         User         @relation("NoteAuthor", fields: [organizationId, authorId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  lead           Lead?        @relation(fields: [organizationId, leadId], references: [organizationId, id], onDelete: Cascade)
+  account        Account?     @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Cascade)
+  deal           Deal?        @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Cascade)
+
+  @@index([organizationId, leadId, createdAt(sort: Desc)])
+  @@index([organizationId, accountId, createdAt(sort: Desc)])
+  @@index([organizationId, dealId, createdAt(sort: Desc)])
+  @@map("notes")
 }

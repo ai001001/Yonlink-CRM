@@ -16,7 +16,7 @@ export default async function setup(): Promise<void> {
   const { Client } = await import('pg');
   const client = new Client({ connectionString: url });
   await client.connect();
-  await client.query('TRUNCATE audit_logs, activities, deals, contacts, accounts, leads, sessions, users, organizations CASCADE');
+  await client.query('TRUNCATE audit_logs, notes, activities, deals, contacts, accounts, leads, sessions, users, organizations CASCADE');
   await client.end();
   execSync('npx tsx prisma/seed.ts', {
     stdio: 'inherit',

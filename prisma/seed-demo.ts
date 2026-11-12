@@ -71,6 +71,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
     async (tx) => {
       if (options.reset) {
         // 仅清空演示组织的业务数据 / wipe business data of the demo organization only
+        await tx.note.deleteMany({ where: { organizationId: o } });
         await tx.activity.deleteMany({ where: { organizationId: o } });
         await tx.lead.updateMany({ where: { organizationId: o }, data: { convertedAccountId: null, convertedContactId: null, convertedDealId: null } });
         await tx.deal.deleteMany({ where: { organizationId: o } });
@@ -146,6 +147,17 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         leadIds.push(created.id);
       }
 
+      await tx.note.createMany({
+        data: data.notes.map((n) => ({
+          organizationId: o,
+          authorId: owner(n.owner),
+          content: `【演示】${n.content}`,
+          dealId: n.deal ? dealIds[n.deal] : null,
+          accountId: n.account ? accountIds[n.account] : null,
+          createdAt: new Date(Date.now() - n.daysAgo * DAY),
+        })),
+      });
+
       await tx.activity.createMany({
         data: data.activities.map((a) => ({
           organizationId: o,
@@ -168,7 +180,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length} 客户、${data.accounts.reduce((n, a) => n + a.contacts.length, 0)} 联系人、` +
-      `${data.leads.length} 线索、${data.deals.length} 商机、${data.activities.length} 跟进 / demo data ready`,
+      `${data.leads.length} 线索、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注 / demo data ready`,
   );
 }
 

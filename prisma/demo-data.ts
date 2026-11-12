@@ -222,6 +222,15 @@ export interface DealSeed {
   description: string;
 }
 
+/** 备注 / Notes */
+export interface NoteSeed {
+  owner: OwnerKey;
+  deal?: string;
+  account?: string;
+  content: string;
+  daysAgo: number;
+}
+
 /** 跟进 / Activities */
 export interface ActivitySeed {
   type: ActivityType;
@@ -361,7 +370,24 @@ export function buildDemoData(seed = 20261111) {
     });
   });
 
-  return { accounts: ACCOUNTS, deals, leads, activities };
+  // 备注：进行中/已结束商机各一条，部分客户一条 / notes: one per progressed deal, one for some accounts
+  const DEAL_NOTES: Record<string, string[]> = {
+    NEEDS_ANALYSIS: ['客户关注发动机排量与年用量，需提供适配清单。', '对方技术主管要求提供 OE 对照表和质保条款。'],
+    PROPOSAL: ['已报阶梯价，客户希望首单享受试单价格。', '样品已签收，等待客户台架测试结果。'],
+    NEGOTIATION: ['客户要求 60 天账期，财务建议 30% 预付款。', '竞争对手报价低约 5%，需强调交期与质保优势。'],
+    CLOSED_WON: ['合同已签署，首批货预计四周内发运。', '客户确认年度框架，按季度下单。'],
+    CLOSED_LOST: ['复盘：价格与交期均不占优，半年后再跟进。', '客户转向本地供应商，保持季度回访。'],
+  };
+  const notes: NoteSeed[] = [];
+  for (const d of deals) {
+    const pool = DEAL_NOTES[d.stage];
+    if (pool) notes.push({ owner: d.owner, deal: d.key, content: pick(pool), daysAgo: between(1, 30) });
+  }
+  ACCOUNTS.forEach((acc, i) => {
+    if (i % 3 === 0) notes.push({ owner: acc.owner, account: acc.key, content: `客户主营${acc.region}市场，采购决策需总经理审批。`, daysAgo: between(5, 60) });
+  });
+
+  return { accounts: ACCOUNTS, deals, leads, activities, notes };
 }
 
 /**

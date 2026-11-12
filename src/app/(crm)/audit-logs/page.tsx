@@ -12,13 +12,14 @@ import { t, tEnum } from '@/i18n';
 import { fmtDateTime } from '@/lib/format';
 import { useOwners, usePagedList } from '@/lib/hooks';
 
-const ENTITIES = ['lead', 'account', 'contact', 'deal', 'activity', 'user', 'auth'];
+const ENTITIES = ['lead', 'account', 'contact', 'deal', 'activity', 'note', 'user', 'auth'];
 const ACTIONS: Record<string, string[]> = {
-  lead: ['create', 'update', 'delete', 'convert'],
-  account: ['create', 'update', 'delete'],
+  lead: ['create', 'update', 'delete', 'convert', 'import', 'export'],
+  account: ['create', 'update', 'delete', 'import', 'export'],
   contact: ['create', 'update', 'delete'],
-  deal: ['create', 'update', 'delete'],
-  activity: ['create', 'update', 'delete'],
+  deal: ['create', 'update', 'delete', 'export'],
+  activity: ['create', 'update', 'delete', 'export'],
+  note: ['create', 'update', 'delete'],
   user: ['create', 'update', 'reset_password'],
   auth: ['login', 'demo_login', 'login_failed', 'logout'],
 };

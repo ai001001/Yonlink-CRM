@@ -1,0 +1,31 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+Applying migration `20261112110919_notes_edited_at`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20261112110919_notes_edited_at/
+    └─ migration.sql
+
+All migrations have been successfully applied.
+ ✓ tests/notes/notes.r1-functional.test.ts > notes R1 > 线索、客户、商机都可新增备注，返回作者 / notes can be added to leads, accounts and deals 642ms
+ ✓ tests/notes/notes.r1-functional.test.ts > notes R1 > 列表只返回该记录的备注，最新在前 / list returns the record’s notes, newest first 158ms
+ ✓ tests/notes/notes.r1-functional.test.ts > notes R1 > 作者可修改，内容保留换行 / the author edits and line breaks are kept 131ms
+ ✓ tests/notes/notes.r1-functional.test.ts > notes R1 > 删除备注 / delete a note 129ms
+ ✓ tests/notes/notes.r1-functional.test.ts > notes R1 > 新增/修改/删除都写审计，正文脱敏 / create, update and delete are audited with redacted content 105ms
+ ✓ tests/notes/notes.r1-functional.test.ts > notes R1 > 未修改内容的保存不写审计 / saving unchanged content writes no audit entry 103ms
+ ✓ tests/notes/notes.r1-functional.test.ts > notes R1 > 删除所属客户时其备注一并删除 / notes are removed with their account 104ms
+stdout | tests/notes/notes.r1-functional.test.ts > notes R1 > 演示数据包含备注，作者为记录负责人 / demo data includes notes authored by record owners
+演示数据已创建：30 客户、64 联系人、48 线索、48 商机、172 跟进、50 备注 / demo data ready
+
+ ✓ tests/notes/notes.r1-functional.test.ts > notes R1 > 演示数据包含备注，作者为记录负责人 / demo data includes notes authored by record owners 736ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  11:09:45
+   Duration  4.28s (tests 84%, import 8%, transform 7%)

@@ -26,6 +26,7 @@
 | CI 失败产物上传 + 登录页文字 | ✅ | ✅ | ✅ | [ci-artifacts.md](ci-artifacts.md) |
 | 批量操作 | ✅ | ✅ | ✅ | [bulk.md](bulk.md) |
 | 数据导入导出（CSV） | ✅ | ✅ | ✅ | [import-export.md](import-export.md) |
+| 备注 | ✅ | ✅ | ✅ | [notes.md](notes.md) |
 
 ## 整体回归（全部模块完成后）
 命令：`scripts/regression.sh final-mvp` → **PASS**（lint、typecheck、11 文件 181/181、静态导出、生产构建、E2E 6/6）。原始输出：[results/final-mvp-r3-regression.txt](results/final-mvp-r3-regression.txt)

@@ -17,6 +17,7 @@ import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
 import { ExportButton } from '@/components/ExportButton';
 import { ImportModal } from '@/components/ImportModal';
+import { NotesPanel } from '@/components/NotesPanel';
 import { ConvertLeadModal } from '@/components/ConvertLeadModal';
 import { RelatedActivities } from '@/components/RelatedActivities';
 import type { Ref } from '@/lib/types';
@@ -302,6 +303,10 @@ export default function LeadsPage() {
                 </Descriptions.Item>
               </Descriptions>
             )}
+            <Typography.Title level={5} style={{ marginTop: 24 }}>
+              {t('notes.title')}
+            </Typography.Title>
+            <NotesPanel key={`notes-${detail.id}`} parent={{ leadId: detail.id }} ownerId={detail.ownerId} />
             <Typography.Title level={5} style={{ marginTop: 24 }}>
               {t('accounts.tabActivities')}
             </Typography.Title>

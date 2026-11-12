@@ -10,6 +10,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { AuditTrail } from '@/components/AuditTrail';
 import { DealBoard } from '@/components/DealBoard';
+import { NotesPanel } from '@/components/NotesPanel';
 import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
 import { ExportButton } from '@/components/ExportButton';
@@ -304,6 +305,11 @@ export default function DealsPage() {
                     </Descriptions.Item>
                   </Descriptions>
                 ),
+              },
+              {
+                key: 'notes',
+                label: t('notes.title'),
+                children: <NotesPanel key={`notes-${detail.id}`} parent={{ dealId: detail.id }} ownerId={detail.ownerId} />,
               },
               { key: 'activities', label: t('deals.tabActivities'), children: <RelatedActivities relation={{ dealId: detail.id }} /> },
               { key: 'audit', label: t('audit.trail'), children: <AuditTrail entityType="deal" entityId={detail.id} version={detail.updatedAt} /> },

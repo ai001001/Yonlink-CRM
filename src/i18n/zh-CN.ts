@@ -330,6 +330,15 @@ export const zhCN = {
   'importReason.invalid': '格式不正确',
   'auditAction.export': '导出',
   'auditAction.import': '导入',
+  'notes.title': '备注',
+  'notes.placeholder': '添加备注…（Ctrl+Enter 提交）',
+  'notes.add': '添加备注',
+  'notes.added': '备注已添加',
+  'notes.edited': '已编辑',
+  'notes.confirmDelete': '确认删除这条备注？',
+  'notes.empty': '暂无备注',
+  'notes.tooLong': '备注不能超过 5000 字',
+  'auditEntity.note': '备注',
 } as const;
 
 export type MessageKey = keyof typeof zhCN;

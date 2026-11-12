@@ -1,0 +1,33 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 permissions > 销售代表可给自己的记录加备注；他人记录不可见（404）/ sales: own records only 565ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 permissions > 只读用户可查看，不能新增（403）/ read-only users read but cannot add 127ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 permissions > 只有作者能修改，管理员也不行 / only the author edits, not even admins 135ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 permissions > 删除：作者或有删除权限的角色；销售代表不能删他人在自己记录上的备注 / delete rules 160ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 permissions > 记录被改派后，原负责人看不到其备注 / reassignment hides notes from the former owner 190ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 permissions > 线索转化后备注保留在线索上 / notes stay on the lead after conversion 147ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 其他组织不可见、不可写、不可改删 / other organizations are isolated 141ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法新增：空内容 / empty → 400 118ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法新增：空白 / blank → 400 110ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法新增：超长 / too long → 400 91ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法新增：未指定所属记录 / no parent → 400 95ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法新增：指定两个所属记录 / two parents → 400 103ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法新增：非 UUID / bad uuid → 400 106ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法新增：注入作者 / authorId injection → 400 110ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 5000 字边界可保存 / exactly 5000 characters are accepted 86ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法列表查询 {} → 400 / bad list query 78ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法列表查询 {"leadId":"x"} → 400 / bad list query 81ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法列表查询 {"leadId":"00000000-0000-4000-8000-000000000000","dealId":"00000000-0000-4000-8000-000000000001"} → 400 / bad list query 82ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 未登录 401 / unauthenticated 81ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 含 HTML/脚本的内容按原文保存（显示时按纯文本）/ HTML is stored verbatim (rendered as text) 88ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 数据库约束：恰好一个所属记录、内容非空、复合外键防跨组织 / DB constraints 170ms
+
+ Test Files  1 passed (1)
+      Tests  21 passed (21)
+   Start at  11:09:50
+   Duration  4.97s (tests 91%, import 6%, transform 2%)
