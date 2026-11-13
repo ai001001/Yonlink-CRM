@@ -1,0 +1,12 @@
+# 每天北京时间 03:30 备份；错过（关机）则开机后补做
+# Daily backup at 03:30 Beijing time; missed runs (machine off) run after boot
+[Unit]
+Description=Daily Yonlink-CRM backup
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Asia/Shanghai
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

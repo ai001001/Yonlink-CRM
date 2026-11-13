@@ -35,6 +35,7 @@
 | 回收站 | ✅ | ✅ | ✅ | [recycle.md](recycle.md) |
 | 保存自定义视图 | ✅ | ✅ | ✅ | [views.md](views.md) |
 | 附件 | ✅ | ✅ | ✅ | [attachments.md](attachments.md) |
+| 备份与恢复 | ✅ | ✅ | ✅ | [backup.md](backup.md) |
 
 ## 整体回归（全部模块完成后）
 命令：`scripts/regression.sh final-mvp` → **PASS**（lint、typecheck、11 文件 181/181、静态导出、生产构建、E2E 6/6）。原始输出：[results/final-mvp-r3-regression.txt](results/final-mvp-r3-regression.txt)

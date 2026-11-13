@@ -1,0 +1,18 @@
+# 永联CRM 备份（数据库应用级逻辑备份 + 附件），由 yonlink-backup.timer 每天触发
+# Yonlink-CRM backup (application-level database backup + attachments), triggered daily by yonlink-backup.timer
+[Unit]
+Description=Yonlink-CRM backup
+After=yonlink-postgres.service
+Requires=yonlink-postgres.service
+
+[Service]
+Type=oneshot
+# node 路径由 runtime.env 提供 / node path comes from runtime.env
+EnvironmentFile=%h/yonlink-deploy/shared/runtime.env
+EnvironmentFile=%h/yonlink-deploy/shared/app.env
+Environment=BACKUP_DIR=%h/yonlink-deploy/backups
+Environment=BACKUP_KEEP=14
+WorkingDirectory=%h/yonlink-deploy/current
+ExecStart=%h/yonlink-deploy/current/node_modules/.bin/tsx scripts/backup.ts
+Nice=10
+UMask=0077

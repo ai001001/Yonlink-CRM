@@ -1,0 +1,21 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/backup/backup.r2-integration.test.ts > backup R2 integrity > 附件文件缺失时备份仍完成并在清单中列出 / missing attachment files are listed 4ms
+ ✓ tests/backup/backup.r2-integration.test.ts > backup R2 integrity > 数据文件被篡改：校验失败，恢复中止且不改动目标库 / tampered data aborts the restore 60ms
+ ✓ tests/backup/backup.r2-integration.test.ts > backup R2 integrity > 附件被篡改、清单缺失：校验失败 / tampered attachment and missing manifest 21ms
+ ✓ tests/backup/backup.r2-integration.test.ts > backup R2 restore safety > 目标库迁移不一致时拒绝恢复 / migration mismatch is refused 2223ms
+ ✓ tests/backup/backup.r2-integration.test.ts > backup R2 restore safety > 非空目标：不加 replace 拒绝；加 replace 后清空并与备份一致 / non-empty targets need replace 317ms
+ ✓ tests/backup/backup.r2-integration.test.ts > backup R2 robustness & CLI > 并发：锁文件存在时备份失败且不留下目录 / a held lock blocks a second backup 2ms
+ ✓ tests/backup/backup.r2-integration.test.ts > backup R2 robustness & CLI > 数据库不可用：失败并清理不完整目录与锁 / failures clean up 9ms
+ ✓ tests/backup/backup.r2-integration.test.ts > backup R2 robustness & CLI > 命令行：缺少参数 2、仅校验 0、篡改 1、恢复需显式目标 2 / CLI exit codes 3950ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  15:06:06
+   Duration  12.03s (tests 96%, import 2%, transform 1%)
+

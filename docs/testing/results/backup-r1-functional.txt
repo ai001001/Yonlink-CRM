@@ -1,0 +1,19 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/backup/backup.r1-functional.test.ts > backup R1 manifest > 清单：全部业务表（不含会话与迁移表）、行数与源库一致、迁移清单、权限 700/600 / manifest content 280ms
+ ✓ tests/backup/backup.r1-functional.test.ts > backup R1 manifest > 附件：在用与回收站快照中的附件都备份，校验和正确 / live and recycled attachments are included 1ms
+ ✓ tests/backup/backup.r1-functional.test.ts > backup R1 manifest > 校验通过；会话不在备份中 / verify passes; sessions are excluded 25ms
+ ✓ tests/backup/backup.r1-functional.test.ts > backup R1 restore > 恢复到全新目标库：每张表逐行一致；会话为空；附件文件一致 / restore reproduces every row 6458ms
+ ✓ tests/backup/backup.r1-functional.test.ts > backup R1 restore > 数据精度：金额、折扣、时间（微秒）、JSON 快照、文本数组、枚举原样恢复 / precision is preserved 23ms
+ ✓ tests/backup/backup.r1-functional.test.ts > backup R1 restore > 追加型审计触发器在恢复后仍然有效（replica 只在恢复事务内）/ the audit trigger is still enforced 13ms
+ ✓ tests/backup/backup.r1-functional.test.ts > backup R1 retention > 只保留最近 N 份，忽略不符合命名或不完整的目录 / prune keeps the newest N 4ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  15:06:41
+   Duration  10.93s (tests 93%, import 4%, transform 3%)
