@@ -6,6 +6,8 @@ import 'dotenv/config';
 import { defineConfig } from '@playwright/test';
 
 const PORT = 3100;
+// 全局准备（写入演示附件）与测试服务器必须使用同一附件目录 / global setup (demo files) and the server share one directory
+process.env.ATTACHMENTS_DIR ??= '.data/e2e-attachments';
 
 export default defineConfig({
   testDir: 'e2e',
@@ -29,6 +31,6 @@ export default defineConfig({
     url: `http://127.0.0.1:${PORT}/login`,
     reuseExistingServer: false,
     timeout: 60_000,
-    env: { DATABASE_URL: process.env.TEST_DATABASE_URL ?? '', NODE_ENV: 'production', DEMO_LOGIN_ENABLED: '1' },
+    env: { DATABASE_URL: process.env.TEST_DATABASE_URL ?? '', NODE_ENV: 'production', DEMO_LOGIN_ENABLED: '1', ATTACHMENTS_DIR: process.env.ATTACHMENTS_DIR },
   },
 });

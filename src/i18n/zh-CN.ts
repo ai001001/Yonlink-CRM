@@ -592,6 +592,23 @@ export const zhCN = {
   'views.error.taken': '已有同名视图',
   'views.error.limit': '每个列表最多 50 个视图',
   'auditEntity.view': '视图',
+  'attachments.title': '附件',
+  'attachments.upload': '上传附件',
+  'attachments.uploaded': '已上传：{name}',
+  'attachments.download': '下载',
+  'attachments.empty': '暂无附件',
+  'attachments.hint': '单个文件不超过 {size}；支持：{types}',
+  'attachments.confirmDelete': '删除附件“{name}”？',
+  'attachments.error.too_large': '文件超过 10 MB',
+  'attachments.error.type_not_allowed': '不支持该文件类型',
+  'attachments.error.content_mismatch': '文件内容与扩展名不符',
+  'attachments.error.empty': '文件为空',
+  'attachments.error.limit': '每条记录最多 50 个附件',
+  'attachments.error.name': '文件名无效',
+  'attachments.error.missing': '文件已不存在',
+  'attachments.error.required': '请选择文件',
+  'recycle.summary.attachments': '附件 {n}',
+  'auditEntity.attachment': '附件',
 } as const;
 
 export type MessageKey = keyof typeof zhCN;

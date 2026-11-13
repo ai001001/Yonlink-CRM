@@ -13,7 +13,7 @@ type Handler = (req: Request, route: { params: Promise<Record<string, string>> }
 export async function resetDb(): Promise<void> {
   resetLoginLimiter();
   await prisma.$executeRawUnsafe(
-    'TRUNCATE audit_logs, user_view_defaults, saved_views, recycle_bin_items, lead_tags, account_tags, deal_tags, tags, quote_line_items, quotes, deal_line_items, products, notes, activities, deals, contacts, accounts, leads, sessions, users, organizations RESTART IDENTITY CASCADE',
+    'TRUNCATE audit_logs, attachments, user_view_defaults, saved_views, recycle_bin_items, lead_tags, account_tags, deal_tags, tags, quote_line_items, quotes, deal_line_items, products, notes, activities, deals, contacts, accounts, leads, sessions, users, organizations RESTART IDENTITY CASCADE',
   );
 }
 

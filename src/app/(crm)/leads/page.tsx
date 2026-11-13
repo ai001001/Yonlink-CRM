@@ -20,6 +20,7 @@ import { TagEditor, TagFilter, TagList, tagsOf } from '@/components/Tags';
 import { ExportButton } from '@/components/ExportButton';
 import { ImportModal } from '@/components/ImportModal';
 import { NotesPanel } from '@/components/NotesPanel';
+import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { ConvertLeadModal } from '@/components/ConvertLeadModal';
 import { RelatedActivities } from '@/components/RelatedActivities';
 import type { RecordTags, Ref } from '@/lib/types';
@@ -326,6 +327,10 @@ export default function LeadsPage() {
               {t('notes.title')}
             </Typography.Title>
             <NotesPanel key={`notes-${detail.id}`} parent={{ leadId: detail.id }} ownerId={detail.ownerId} />
+            <Typography.Title level={5} style={{ marginTop: 24 }}>
+              {t('attachments.title')}
+            </Typography.Title>
+            <AttachmentsPanel key={`files-${detail.id}`} parent={{ leadId: detail.id }} ownerId={detail.ownerId} />
             <Typography.Title level={5} style={{ marginTop: 24 }}>
               {t('accounts.tabActivities')}
             </Typography.Title>

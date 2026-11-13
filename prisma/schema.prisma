@@ -37,6 +37,7 @@ model Organization {
   recycleBin   RecycleBinItem[]
   savedViews   SavedView[]
   viewDefaults UserViewDefault[]
+  attachments  Attachment[]
 
   @@map("organizations")
 }
@@ -66,6 +67,7 @@ model User {
   deletedItems    RecycleBinItem[]  @relation("RecycleDeleter")
   savedViews      SavedView[]
   viewDefaults    UserViewDefault[]
+  uploads         Attachment[]      @relation("AttachmentUploader")
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -136,6 +138,7 @@ model Lead {
   activities         Activity[]
   notes              Note[]
   tags               LeadTag[]
+  attachments        Attachment[]
 
   @@unique([organizationId, id])
   @@index([organizationId, createdAt(sort: Desc)])
@@ -166,6 +169,7 @@ model Account {
   notes          Note[]
   convertedLeads Lead[]       @relation("LeadConvertedAccount")
   tags           AccountTag[]
+  attachments    Attachment[]
 
   @@unique([organizationId, id])
   @@index([organizationId, createdAt(sort: Desc)])
@@ -226,6 +230,7 @@ model Deal {
   quotes            Quote[]
   convertedLeads    Lead[]         @relation("LeadConvertedDeal")
   tags              DealTag[]
+  attachments       Attachment[]
 
   @@unique([organizationId, id])
   @@index([organizationId, createdAt(sort: Desc)])
@@ -589,4 +594,33 @@ model UserViewDefault {
   @@id([userId, entity])
   @@index([organizationId, viewId])
   @@map("user_view_defaults")
+}
+
+/// 附件元数据；文件内容存放在附件目录 <组织 ID>/<附件 ID>（不使用原文件名，避免路径注入）。
+/// 恰好属于一条线索、客户或商机；随所属记录删除（进入回收站快照，彻底删除时才删除文件）。
+/// Attachment metadata; content lives at <organization id>/<attachment id> in the attachment directory (never the
+/// original name). Belongs to exactly one lead, account or deal; removed with it (kept in the recycle-bin snapshot,
+/// the file is deleted only on purge).
+model Attachment {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  leadId         String?      @map("lead_id") @db.Uuid
+  accountId      String?      @map("account_id") @db.Uuid
+  dealId         String?      @map("deal_id") @db.Uuid
+  fileName       String       @map("file_name") @db.VarChar(200)
+  contentType    String       @map("content_type") @db.VarChar(100)
+  size           Int
+  sha256         String       @db.Char(64)
+  uploadedById   String       @map("uploaded_by_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  uploadedBy     User         @relation("AttachmentUploader", fields: [organizationId, uploadedById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  lead           Lead?        @relation(fields: [organizationId, leadId], references: [organizationId, id], onDelete: Cascade)
+  account        Account?     @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Cascade)
+  deal           Deal?        @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Cascade)
+
+  @@index([organizationId, leadId, createdAt])
+  @@index([organizationId, accountId, createdAt])
+  @@index([organizationId, dealId, createdAt])
+  @@map("attachments")
 }

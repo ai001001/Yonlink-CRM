@@ -1,0 +1,52 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+Applying migration `20261113142825_attachments`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20261113142825_attachments/
+    └─ migration.sql
+
+All migrations have been successfully applied.
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 upload & types > 上传：元数据、磁盘文件与 SHA-256、审计只记名称与大小 / upload stores file and metadata 574ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 upload & types > 允许的类型按文件头识别；扩展名大小写不敏感 / allowed types by magic bytes 188ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 upload & types > 不允许的类型、内容与扩展名不符、空文件被拒绝 / disallowed, mismatched and empty files 110ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 upload & types > 文件名清理：去掉路径与控制字符，超长保留扩展名 / file names are sanitised 94ms
+ × tests/attachments/attachments.r1-functional.test.ts > attachments R1 list, download, delete & limits > 列表按记录、最新在前；下载返回原内容与安全响应头 / list and download 236ms
+   → expected 'attachment; filename="_ ___.pdf"; fil…' to be 'attachment; filename="__ ___.pdf"; fi…' // Object.is equality
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 list, download, delete & limits > 删除：记录与磁盘文件都删除，写审计 / delete removes row and file 140ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 list, download, delete & limits > 大小上限 10 MB（恰好 10 MB 可以）与每条记录 50 个 / size and count limits 243ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 recycle bin & demo > 删除商机：附件进入回收站且文件保留；恢复后可下载；再次删除并彻底删除后文件移除 / recycle bin keeps files until purge 276ms
+stdout | tests/attachments/attachments.r1-functional.test.ts > attachments R1 recycle bin & demo > 演示数据：附件记录与磁盘文件一致（SHA-256）/ demo attachments match their files
+演示数据已创建：30 客户、64 联系人、64 线索、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、6 标签、11 附件 / demo data ready
+
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 recycle bin & demo > 演示数据：附件记录与磁盘文件一致（SHA-256）/ demo attachments match their files 1028ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/attachments/attachments.r1-functional.test.ts > attachments R1 list, download, delete & limits > 列表按记录、最新在前；下载返回原内容与安全响应头 / list and download
+AssertionError: expected 'attachment; filename="_ ___.pdf"; fil…' to be 'attachment; filename="__ ___.pdf"; fi…' // Object.is equality
+
+Expected: "attachment; filename="__ ___.pdf"; filename*=UTF-8''%E4%BA%8C%20%E6%8A%A5%E4%BB%B7%E5%8D%95.pdf"
+Received: "attachment; filename="_ ___.pdf"; filename*=UTF-8''%E4%BA%8C%20%E6%8A%A5%E4%BB%B7%E5%8D%95.pdf"
+
+ ❯ tests/attachments/attachments.r1-functional.test.ts:104:50
+    102|     expect(f.bytes).toEqual(SAMPLES.pdf);
+    103|     expect(f.headers.get('content-type')).toBe('application/pdf');
+    104|     expect(f.headers.get('content-disposition')).toBe(`attachment; fil…
+       |                                                  ^
+    105|     expect(f.headers.get('x-content-type-options')).toBe('nosniff');
+    106|     expect(f.headers.get('content-security-policy')).toContain('sandbo…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 8 passed (9)
+   Start at  14:34:27
+   Duration  5.34s (tests 84%, transform 10%, import 6%)

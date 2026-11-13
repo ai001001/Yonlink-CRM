@@ -15,6 +15,7 @@ import { TagEditor, TagFilter, TagList, tagsOf } from '@/components/Tags';
 import { ExportButton } from '@/components/ExportButton';
 import { ImportModal } from '@/components/ImportModal';
 import { NotesPanel } from '@/components/NotesPanel';
+import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { AuditTrail } from '@/components/AuditTrail';
 import { ContactsPanel } from '@/components/ContactsPanel';
 import { RelatedActivities } from '@/components/RelatedActivities';
@@ -272,6 +273,11 @@ export default function AccountsPage() {
                 key: 'notes',
                 label: t('notes.title'),
                 children: <NotesPanel key={`notes-${detail.id}`} parent={{ accountId: detail.id }} ownerId={detail.ownerId} />,
+              },
+              {
+                key: 'attachments',
+                label: t('attachments.title'),
+                children: <AttachmentsPanel key={`files-${detail.id}`} parent={{ accountId: detail.id }} ownerId={detail.ownerId} />,
               },
               {
                 key: 'contacts',

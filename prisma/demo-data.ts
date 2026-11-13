@@ -591,6 +591,60 @@ export function demoTagAssignments(data: ReturnType<typeof buildDemoData>) {
   return { accounts, deals, leads };
 }
 
+/** 演示附件（纯文本 / CSV，内容为虚构演示数据）/ Demo attachments (plain text / CSV, fictional content) */
+export interface DemoAttachment {
+  entity: 'lead' | 'account' | 'deal';
+  /** 线索为序号，客户/商机为 key / lead index or account/deal key */
+  ref: string | number;
+  fileName: string;
+  contentType: 'text/plain' | 'text/csv';
+  content: string;
+}
+
+/**
+ * 演示附件（由数据集确定性推导）。
+ * Demo attachments derived deterministically from the dataset.
+ */
+export function demoAttachments(data: ReturnType<typeof buildDemoData>): DemoAttachment[] {
+  const out: DemoAttachment[] = [];
+  data.deals
+    .filter((d) => d.stage === 'CLOSED_WON')
+    .slice(0, 4)
+    .forEach((d) =>
+      out.push({
+        entity: 'deal',
+        ref: d.key,
+        fileName: '合同要点（演示）.txt',
+        contentType: 'text/plain',
+        content: `【演示数据】${d.name}\n合同要点：\n1. 付款：30% 预付款，余款发货前付清。\n2. 交期：收到预付款后 4–6 周。\n3. 质保：整机 12 个月。\n本文件为虚构演示内容。\n`,
+      }),
+    );
+  data.accounts.slice(0, 4).forEach((a) => {
+    const rows = data.products.filter((p) => p.currency === (a.currency === 'CNY' ? 'CNY' : 'USD')).slice(0, 8);
+    out.push({
+      entity: 'account',
+      ref: a.key,
+      fileName: '产品价格表（演示）.csv',
+      contentType: 'text/csv',
+      content: ['SKU,产品,单位,单价,币种', ...rows.map((p) => `${p.sku},${p.name},${p.unit},${p.unitPrice},${p.currency}`)].join('\r\n') + '\r\n',
+    });
+  });
+  data.leads
+    .map((l, i) => ({ l, i }))
+    .filter(({ l }) => l.source === 'EXHIBITION')
+    .slice(0, 3)
+    .forEach(({ l, i }) =>
+      out.push({
+        entity: 'lead',
+        ref: i,
+        fileName: '展会名片记录（演示）.txt',
+        contentType: 'text/plain',
+        content: `【演示数据】${l.name} · ${l.company}\n展会交流要点：${l.description}\n本文件为虚构演示内容。\n`,
+      }),
+    );
+  return out;
+}
+
 /**
  * E2E 测试使用的样本（由数据集推导，数据调整后测试自动跟随）。
  * Samples used by the E2E tests (derived from the dataset so tests follow data changes).

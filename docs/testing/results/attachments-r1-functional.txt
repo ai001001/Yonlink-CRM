@@ -1,0 +1,24 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 upload & types > 上传：元数据、磁盘文件与 SHA-256、审计只记名称与大小 / upload stores file and metadata 533ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 upload & types > 允许的类型按文件头识别；扩展名大小写不敏感 / allowed types by magic bytes 178ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 upload & types > 不允许的类型、内容与扩展名不符、空文件被拒绝 / disallowed, mismatched and empty files 123ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 upload & types > 文件名清理：去掉路径与控制字符，超长保留扩展名 / file names are sanitised 105ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 list, download, delete & limits > 列表按记录、最新在前；下载返回原内容与安全响应头 / list and download 207ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 list, download, delete & limits > 删除：记录与磁盘文件都删除，写审计 / delete removes row and file 138ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 list, download, delete & limits > 大小上限 10 MB（恰好 10 MB 可以）与每条记录 50 个 / size and count limits 211ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 recycle bin & demo > 删除商机：附件进入回收站且文件保留；恢复后可下载；再次删除并彻底删除后文件移除 / recycle bin keeps files until purge 270ms
+stdout | tests/attachments/attachments.r1-functional.test.ts > attachments R1 recycle bin & demo > 演示数据：附件记录与磁盘文件一致（SHA-256）/ demo attachments match their files
+演示数据已创建：30 客户、64 联系人、64 线索、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、6 标签、11 附件 / demo data ready
+
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 recycle bin & demo > 演示数据：附件记录与磁盘文件一致（SHA-256）/ demo attachments match their files 1016ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  14:34:40
+   Duration  4.97s (tests 89%, import 7%, transform 4%)

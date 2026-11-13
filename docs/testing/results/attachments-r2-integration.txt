@@ -1,0 +1,25 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 permissions > 上传：本人记录 201、他人记录 404、只读 403、经理 201 / upload rights 641ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 permissions > 查看与下载遵循记录可见范围 / viewing and downloading follow visibility 213ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 permissions > 删除：上传人可以；不能删他人上传的；只读 403；经理可删任意 / delete rules 219ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 permissions > 记录改派后：原负责人看不到也删不了自己上传的附件 / reassignment moves access 202ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 isolation & input > 跨组织：看不到、下载不了、删不了、不能上传到他组织记录；文件按组织目录隔离 / cross-org isolation 199ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 isolation & input > 非法所属记录 {}（no parent）→ 400 / invalid parents 120ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 isolation & input > 非法所属记录 {"leadId":"x"}（bad uuid）→ 400 / invalid parents 122ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 isolation & input > 非法所属记录 {"organizationId":"00000000-0000-4000-8000-000000000000"}（client organization id）→ 400 / invalid parents 125ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 isolation & input > 同时指定两个所属记录、缺少文件、非 multipart、Content-Length 过大 / malformed requests 174ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 isolation & input > 未登录 401 / unauthenticated 144ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 isolation & input > 数据库约束：恰好一个所属记录、大小范围、SHA 格式、跨组织所属记录 / DB constraints 193ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 storage safety > 生产环境未配置附件目录时直接报错；存储键必须是 UUID / production requires ATTACHMENTS_DIR; keys must be UUIDs 118ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 storage safety > 文件被篡改时下载 500，文件丢失时 404 / tampered files fail, missing files 404 166ms
+
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
+   Start at  14:36:42
+   Duration  4.86s (tests 88%, import 7%, transform 4%)

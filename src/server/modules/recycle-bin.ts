@@ -1,7 +1,7 @@
 /**
  * 回收站（参考 Zoho Recycle Bin）：删除线索、客户、商机时，在同一事务内把记录及随之删除的附属数据保存为快照，
  * 原记录随后被真正删除（因此其他查询无需改动，已删除数据不会出现在任何列表、统计、搜索中）。
- * - 快照内容：记录本身；备注、标签、仅关联本记录的跟进（会随记录删除）；与其他记录共享、只解除关联的跟进 ID；
+ * - 快照内容：记录本身；备注、标签、附件元数据（文件保留在磁盘，彻底删除或过期时才删除）、仅关联本记录的跟进（会随记录删除）；与其他记录共享、只解除关联的跟进 ID；
  *   客户的联系人与转化来源线索；商机的产品明细、报价单（含明细）与转化来源线索。
  * - 恢复：按原 ID 与时间写回；依赖的客户、产品必须仍存在（否则 409 并说明）；已不存在的关联（标签、共享跟进、转化线索、
  *   线索的转化目标）跳过。快照中的报价单号保留占用，不会被新报价单复用。
@@ -18,6 +18,7 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
 import { requirePermission } from '../permissions';
+import { removeFile } from '../storage';
 import { containsText } from '../validation';
 
 /** 保留天数 / retention in days */
@@ -44,6 +45,8 @@ interface Payload {
   /** 共享跟进：只解除了与本记录的关联 / shared activities that were only unlinked */
   detachedActivityIds: string[];
   tagIds: string[];
+  /** 附件元数据（文件保留在磁盘，彻底删除时才删除）/ attachment metadata (files stay on disk until purged) */
+  attachments?: Record<string, unknown>[];
   contacts?: Record<string, unknown>[];
   lineItems?: Record<string, unknown>[];
   quotes?: (Record<string, unknown> & { lines: Record<string, unknown>[] })[];
@@ -82,7 +85,7 @@ export async function recycle(tx: Prisma.TransactionClient, ctx: AuthContext, en
       : entity === 'account'
         ? await tx.account.findFirstOrThrow({ where: { id, organizationId: org } })
         : await tx.deal.findFirstOrThrow({ where: { id, organizationId: org } });
-  const [notes, shared, owned, tags] = await Promise.all([
+  const [notes, shared, owned, tags, attachments] = await Promise.all([
     tx.note.findMany({ where: { organizationId: org, [field]: id } }),
     tx.activity.findMany({ where: { organizationId: org, [field]: id, OR: others.map((f) => ({ [f]: { not: null } })) }, select: { id: true } }),
     tx.activity.findMany({ where: { organizationId: org, [field]: id, AND: others.map((f) => ({ [f]: null })) } }),
@@ -91,6 +94,7 @@ export async function recycle(tx: Prisma.TransactionClient, ctx: AuthContext, en
       : entity === 'account'
         ? tx.accountTag.findMany({ where: { accountId: id }, select: { tagId: true } })
         : tx.dealTag.findMany({ where: { dealId: id }, select: { tagId: true } }),
+    tx.attachment.findMany({ where: { organizationId: org, [field]: id } }),
   ]);
   const payload: Payload = {
     version: 1,
@@ -99,6 +103,7 @@ export async function recycle(tx: Prisma.TransactionClient, ctx: AuthContext, en
     activities: owned,
     detachedActivityIds: shared.map((a) => a.id),
     tagIds: tags.map((t) => t.tagId),
+    attachments,
     conversions: [],
   };
   let reservedNumbers: string[] = [];
@@ -125,6 +130,7 @@ export async function recycle(tx: Prisma.TransactionClient, ctx: AuthContext, en
     notes: notes.length,
     activities: owned.length + shared.length,
     tags: tags.length,
+    attachments: attachments.length,
     contacts: payload.contacts?.length ?? 0,
     lineItems: payload.lineItems?.length ?? 0,
     quotes: payload.quotes?.length ?? 0,
@@ -150,23 +156,37 @@ export async function recycle(tx: Prisma.TransactionClient, ctx: AuthContext, en
 }
 
 /**
+ * 删除快照中附件对应的磁盘文件（在数据库事务提交之后调用）。
+ * Delete the files of a snapshot's attachments (call after the database transaction commits).
+ */
+async function removeSnapshotFiles(organizationId: string, payloads: unknown[]): Promise<void> {
+  for (const p of payloads) {
+    for (const a of (p as Payload).attachments ?? []) await removeFile(organizationId, a.id as string).catch(() => undefined);
+  }
+}
+
+/**
  * 清除过期条目（写审计，操作人为空表示系统）。
  * Remove expired entries (audited with a null actor, i.e. the system).
  */
 async function expire(organizationId: string): Promise<void> {
   const expired = await prisma.recycleBinItem.findMany({
     where: { organizationId, expiresAt: { lte: new Date() } },
-    select: { id: true, entityType: true, entityId: true, displayName: true },
+    select: { id: true, entityType: true, entityId: true, displayName: true, payload: true },
   });
   if (!expired.length) return;
-  await prisma.$transaction(async (tx) => {
+  const removed = await prisma.$transaction(async (tx) => {
+    const done: unknown[] = [];
     for (const e of expired) {
       const { count } = await tx.recycleBinItem.deleteMany({ where: { id: e.id } });
       if (count) {
+        done.push(e.payload);
         await audit(tx, { organizationId, actorId: null, action: `${e.entityType}.expire`, entityType: e.entityType, entityId: e.entityId, changes: { name: e.displayName } });
       }
     }
+    return done;
   });
+  await removeSnapshotFiles(organizationId, removed);
 }
 
 /**
@@ -257,6 +277,7 @@ export async function restoreItem(ctx: AuthContext, itemId: string) {
     }
 
     await tx.note.createMany({ data: p.notes.map((n) => revive<Prisma.NoteCreateManyInput>(n, org)) });
+    await tx.attachment.createMany({ data: (p.attachments ?? []).map((x) => revive<Prisma.AttachmentCreateManyInput>(x, org)) });
     await tx.activity.createMany({ data: p.activities.map((a) => revive<Prisma.ActivityCreateManyInput>(a, org)) });
     // 共享跟进：仍存在且该关联为空时重新关联 / re-link shared activities that still exist and are unlinked
     const relinked = p.detachedActivityIds.length
@@ -291,12 +312,14 @@ export async function restoreItem(ctx: AuthContext, itemId: string) {
  */
 export async function purgeItem(ctx: AuthContext, itemId: string): Promise<void> {
   requirePermission(ctx, 'recycle.purge');
-  await prisma.$transaction(async (tx) => {
-    const item = await tx.recycleBinItem.findFirst({ where: { id: itemId, organizationId: ctx.organizationId }, select: { id: true, entityType: true, entityId: true, displayName: true } });
+  const payload = await prisma.$transaction(async (tx) => {
+    const item = await tx.recycleBinItem.findFirst({ where: { id: itemId, organizationId: ctx.organizationId }, select: { id: true, entityType: true, entityId: true, displayName: true, payload: true } });
     if (!item) throw notFound();
     await tx.recycleBinItem.delete({ where: { id: item.id } });
     await audit(tx, { ...by(ctx), action: `${item.entityType}.purge`, entityType: item.entityType, entityId: item.entityId, changes: { name: item.displayName } });
+    return item.payload;
   });
+  await removeSnapshotFiles(ctx.organizationId, [payload]);
 }
 
 /**
@@ -305,12 +328,14 @@ export async function purgeItem(ctx: AuthContext, itemId: string): Promise<void>
  */
 export async function emptyRecycleBin(ctx: AuthContext): Promise<{ purged: number }> {
   requirePermission(ctx, 'recycle.purge');
-  return prisma.$transaction(async (tx) => {
-    const items = await tx.recycleBinItem.findMany({ where: { organizationId: ctx.organizationId }, select: { id: true, entityType: true, entityId: true, displayName: true } });
-    await tx.recycleBinItem.deleteMany({ where: { id: { in: items.map((i) => i.id) } } });
-    for (const i of items) {
+  const items = await prisma.$transaction(async (tx) => {
+    const list = await tx.recycleBinItem.findMany({ where: { organizationId: ctx.organizationId }, select: { id: true, entityType: true, entityId: true, displayName: true, payload: true } });
+    await tx.recycleBinItem.deleteMany({ where: { id: { in: list.map((i) => i.id) } } });
+    for (const i of list) {
       await audit(tx, { ...by(ctx), action: `${i.entityType}.purge`, entityType: i.entityType, entityId: i.entityId, changes: { name: i.displayName, via: 'recycle.empty' } });
     }
-    return { purged: items.length };
+    return list;
   });
+  await removeSnapshotFiles(ctx.organizationId, items.map((i) => i.payload));
+  return { purged: items.length };
 }

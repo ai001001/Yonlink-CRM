@@ -11,8 +11,10 @@
 import 'dotenv/config';
 import { randomBytes } from 'node:crypto';
 import { hashPassword } from '../src/server/auth';
+import { createHash, randomUUID } from 'node:crypto';
 import { prisma } from '../src/server/db';
-import { buildDemoData, dealCreatedDaysAgo, DEMO_ORG_NAME, DEMO_TAGS, demoTagAssignments, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { removeOrganizationFiles, saveFile } from '../src/server/storage';
+import { buildDemoData, dealCreatedDaysAgo, demoAttachments, DEMO_ORG_NAME, DEMO_TAGS, demoTagAssignments, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -67,6 +69,9 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
   const data = buildDemoData();
   const owner = (k: OwnerKey) => ids[k];
 
+  // 重置时先删除演示组织的旧附件文件（附件记录随业务数据删除）/ on reset, delete the demo organization's old files first
+  if (options.reset) await removeOrganizationFiles(o);
+  const files: { id: string; data: Buffer }[] = [];
   await prisma.$transaction(
     async (tx) => {
       if (options.reset) {
@@ -226,6 +231,32 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         leadIds.push(created.id);
       }
 
+      // 附件元数据（文件在事务提交后写入）/ attachment metadata (files are written after the commit)
+      for (const att of demoAttachments(data)) {
+        const id = randomUUID();
+        const body = Buffer.from((att.contentType === 'text/csv' ? '\uFEFF' : '') + att.content, 'utf8');
+        const parent =
+          att.entity === 'lead'
+            ? { leadId: leadIds[att.ref as number]!, owner: data.leads[att.ref as number]!.owner }
+            : att.entity === 'account'
+              ? { accountId: accountIds[att.ref as string]!, owner: data.accounts.find((a) => a.key === att.ref)!.owner }
+              : { dealId: dealIds[att.ref as string]!, owner: data.deals.find((d) => d.key === att.ref)!.owner };
+        const { owner: ownerKey, ...link } = parent;
+        await tx.attachment.create({
+          data: {
+            id,
+            organizationId: o,
+            ...link,
+            fileName: att.fileName,
+            contentType: att.contentType,
+            size: body.byteLength,
+            sha256: createHash('sha256').update(body).digest('hex'),
+            uploadedById: owner(ownerKey),
+          },
+        });
+        files.push({ id, data: body });
+      }
+
       // 标签 / tags
       const tagIds: Record<string, string> = {};
       for (const tag of DEMO_TAGS) {
@@ -267,10 +298,12 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
     },
     { timeout: 60_000 },
   );
+  // 事务提交后写入附件文件 / write attachment files after the commit
+  for (const f of files) await saveFile(o, f.id, f.data);
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length} 客户、${data.accounts.reduce((n, a) => n + a.contacts.length, 0)} 联系人、` +
-      `${data.leads.length} 线索、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${DEMO_TAGS.length} 标签 / demo data ready`,
+      `${data.leads.length} 线索、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${DEMO_TAGS.length} 标签、${files.length} 附件 / demo data ready`,
   );
 }
 

@@ -30,7 +30,7 @@ interface Item {
 
 const COLOR: Record<Entity, string> = { lead: 'gold', account: 'geekblue', deal: 'green' };
 const PAGE: Record<Entity, string> = { lead: '/leads', account: '/accounts', deal: '/deals' };
-const SUMMARY_KEYS = ['contacts', 'notes', 'activities', 'tags', 'lineItems', 'quotes'] as const;
+const SUMMARY_KEYS = ['contacts', 'notes', 'activities', 'tags', 'attachments', 'lineItems', 'quotes'] as const;
 
 export default function RecycleBinPage() {
   const { message, notification } = App.useApp();

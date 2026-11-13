@@ -9,7 +9,7 @@ import { prisma } from '../db';
 import { requirePermission } from '../permissions';
 import { listQuery, type Page } from '../validation';
 
-const ENTITY_TYPES = ['lead', 'account', 'contact', 'deal', 'activity', 'note', 'product', 'quote', 'tag', 'view', 'user', 'auth'] as const;
+const ENTITY_TYPES = ['lead', 'account', 'contact', 'deal', 'activity', 'note', 'product', 'quote', 'tag', 'view', 'attachment', 'user', 'auth'] as const;
 
 /**
  * 查询参数（严格模式：未知参数报错，避免把拼错的筛选条件静默忽略后返回全部日志）。
