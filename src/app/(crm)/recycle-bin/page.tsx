@@ -66,8 +66,8 @@ export default function RecycleBinPage() {
       const r = await api<{ entityType: Entity; entityId: string; skipped: string[] }>(`/api/recycle-bin/${item.id}/restore`, { method: 'POST' });
       notification.success({
         title: r.skipped.length
-          ? t('recycle.restoredPartial', { items: r.skipped.map((s) => t(`recycle.skipped.${s}` as MessageKey)).join('、') })
-          : `${t('recycle.restored')}：${item.displayName}`,
+          ? t('recycle.restoredPartial', { items: r.skipped.map((s) => t(`recycle.skipped.${s}` as MessageKey)).join(t('common.listSep')) })
+          : `${t('recycle.restored')}${t('common.colon')}${item.displayName}`,
         description: <Link href={`${PAGE[r.entityType]}?id=${r.entityId}`}>{t('recycle.view')}</Link>,
       });
       void load();
@@ -131,7 +131,7 @@ export default function RecycleBinPage() {
               <Typography.Text type="secondary">
                 {SUMMARY_KEYS.filter((k) => (r.summary[k] ?? 0) > 0)
                   .map((k) => t(`recycle.summary.${k}` as MessageKey, { n: r.summary[k]! }))
-                  .join('、') || '—'}
+                  .join(t('common.listSep')) || '—'}
               </Typography.Text>
             ),
           },

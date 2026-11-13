@@ -25,6 +25,7 @@ import {
 import { t, tEnum } from '@/i18n';
 import { useAuth } from './AuthProvider';
 import { GlobalSearch } from './GlobalSearch';
+import { LanguageSwitch } from './LanguageSwitch';
 
 const NAV: { key: string; icon: React.ReactNode; label: string; permission?: string }[] = [
   { key: '/', icon: <DashboardOutlined />, label: t('nav.dashboard') },
@@ -90,6 +91,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           <GlobalSearch />
           <div style={{ flex: 1 }} />
+          <LanguageSwitch />
           <Typography.Text type="secondary">{me.organization.name}</Typography.Text>
           {me.isDemo && <Tag color="orange">{t('demo.badge')}</Tag>}
           <Tag color="blue" data-testid="current-role">

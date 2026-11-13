@@ -9,8 +9,7 @@
  */
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
-import { t, tEnum } from '@/i18n';
-import { zhCN } from '@/i18n/zh-CN';
+import { allTranslations, DEFAULT_LOCALE, enumCodes, isLocale, LOCALES, tEnumIn, translate, type Locale, type MessageKey } from '@/i18n';
 import { audit, by, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
 import { parseCsv, toCsv, uncsvCell } from '../csv';
@@ -33,7 +32,15 @@ export const IMPORT_MAX_CHARS = 1_000_000;
 const timeFmt = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 const fmtTime = (d: Date | null) => (d ? timeFmt.format(d) : '');
 const fmtDate = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : '');
-const TIME_HEADER = (label: string) => `${label}（UTC+8）`;
+/**
+ * 解析导出/模板的语言参数（缺省为默认语言，非法值 400）。
+ * Parse the locale parameter of exports and templates (default when absent; invalid → 400).
+ */
+export function parseLang(value: string | null | undefined): Locale {
+  if (value === undefined || value === null || value === '') return DEFAULT_LOCALE;
+  if (!isLocale(value)) throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid language', { lang: ['invalid'] });
+  return value;
+}
 
 export type ExportEntity = 'leads' | 'accounts' | 'deals' | 'activities';
 
@@ -60,8 +67,14 @@ async function auditExport(ctx: AuthContext, entityType: 'lead' | 'account' | 'd
  * 导出 CSV。查询参数与对应列表相同。
  * Export CSV; query parameters are the same as the corresponding list.
  */
-export async function exportCsv(ctx: AuthContext, entity: ExportEntity, params: Record<string, string>): Promise<ExportResult> {
+export async function exportCsv(ctx: AuthContext, entity: ExportEntity, input: Record<string, string>): Promise<ExportResult> {
   requirePermission(ctx, 'data.export');
+  // 语言参数只决定表头与枚举文字，不参与筛选 / the locale only affects headers and enum labels, not filtering
+  const { lang, ...params } = input;
+  const locale = parseLang(lang);
+  const t = (key: MessageKey) => translate(locale, key);
+  const tEnum = (prefix: string, value: string | null | undefined) => tEnumIn(locale, prefix, value);
+  const TIME_HEADER = (label: string) => translate(locale, 'export.timeHeader', { label });
   const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const take = EXPORT_MAX + 1;
   const orderBy = [{ createdAt: 'desc' as const }, { id: 'asc' as const }];
@@ -158,6 +171,8 @@ export const importSchema = z.strictObject({
   dryRun: z.boolean().default(true),
   /** 重复记录：跳过（默认）或照常创建 / duplicates: skip (default) or create anyway */
   duplicates: z.enum(['skip', 'create']).default('skip'),
+  /** 提示信息（如缺失的列名）使用的语言 / locale for messages such as missing column names */
+  lang: z.enum(LOCALES).optional(),
 });
 
 /** 导入报告 / Import report */
@@ -171,69 +186,76 @@ export interface ImportReport {
   unknownColumns: string[];
 }
 
-/** 列定义：表头（中文标签或英文字段名）→ 字段 / Column definition: header → field */
+/** 列定义：表头（任一语言的标签或字段名）→ 字段 / Column definition: header (label in any locale or field name) → field */
 interface ColumnDef {
   field: string;
-  headers: string[];
+  /** 表头文案 key / header message key */
+  label: MessageKey;
   required?: boolean;
   /** 枚举翻译前缀（可填中文标签或代码）/ enum translation prefix (label or code accepted) */
   enumPrefix?: string;
 }
 
 const LEAD_COLUMNS: ColumnDef[] = [
-  { field: 'name', headers: [t('leads.name'), 'name'], required: true },
-  { field: 'company', headers: [t('leads.company'), 'company'] },
-  { field: 'title', headers: [t('leads.jobTitle'), 'title'] },
-  { field: 'phone', headers: [t('leads.phone'), 'phone'] },
-  { field: 'mobile', headers: [t('leads.mobile'), 'mobile'] },
-  { field: 'email', headers: [t('leads.email'), 'email'] },
-  { field: 'source', headers: [t('leads.source'), 'source'], enumPrefix: 'leadSource' },
-  { field: 'status', headers: [t('leads.status'), 'status'], enumPrefix: 'leadStatus' },
-  { field: 'ownerEmail', headers: [t('import.ownerEmail'), 'ownerEmail'] },
-  { field: 'description', headers: [t('common.description'), 'description'] },
+  { field: 'name', label: 'leads.name', required: true },
+  { field: 'company', label: 'leads.company' },
+  { field: 'title', label: 'leads.jobTitle' },
+  { field: 'phone', label: 'leads.phone' },
+  { field: 'mobile', label: 'leads.mobile' },
+  { field: 'email', label: 'leads.email' },
+  { field: 'source', label: 'leads.source', enumPrefix: 'leadSource' },
+  { field: 'status', label: 'leads.status', enumPrefix: 'leadStatus' },
+  { field: 'ownerEmail', label: 'import.ownerEmail' },
+  { field: 'description', label: 'common.description' },
 ];
 
 const ACCOUNT_COLUMNS: ColumnDef[] = [
-  { field: 'name', headers: [t('accounts.name'), 'name'], required: true },
-  { field: 'industry', headers: [t('accounts.industry'), 'industry'], enumPrefix: 'industry' },
-  { field: 'phone', headers: [t('accounts.phone'), 'phone'] },
-  { field: 'website', headers: [t('accounts.website'), 'website'] },
-  { field: 'address', headers: [t('accounts.address'), 'address'] },
-  { field: 'ownerEmail', headers: [t('import.ownerEmail'), 'ownerEmail'] },
-  { field: 'description', headers: [t('common.description'), 'description'] },
-  { field: 'contactName', headers: [t('import.contactName'), 'contactName'] },
-  { field: 'contactTitle', headers: [t('import.contactTitle'), 'contactTitle'] },
-  { field: 'contactPhone', headers: [t('import.contactPhone'), 'contactPhone'] },
-  { field: 'contactEmail', headers: [t('import.contactEmail'), 'contactEmail'] },
+  { field: 'name', label: 'accounts.name', required: true },
+  { field: 'industry', label: 'accounts.industry', enumPrefix: 'industry' },
+  { field: 'phone', label: 'accounts.phone' },
+  { field: 'website', label: 'accounts.website' },
+  { field: 'address', label: 'accounts.address' },
+  { field: 'ownerEmail', label: 'import.ownerEmail' },
+  { field: 'description', label: 'common.description' },
+  { field: 'contactName', label: 'import.contactName' },
+  { field: 'contactTitle', label: 'import.contactTitle' },
+  { field: 'contactPhone', label: 'import.contactPhone' },
+  { field: 'contactEmail', label: 'import.contactEmail' },
 ];
 
 const COLUMNS: Record<ImportEntity, ColumnDef[]> = { leads: LEAD_COLUMNS, accounts: ACCOUNT_COLUMNS };
 
-/** 示例行（模板）/ Example rows for templates */
-const EXAMPLES: Record<ImportEntity, string[]> = {
-  leads: ['张三', '上海星河科技有限公司', '采购经理', '021-55550000', '13800000000', 'zhangsan@example.com', tEnum('leadSource', 'EXHIBITION'), tEnum('leadStatus', 'NEW'), '', t('import.exampleNote')],
-  accounts: ['杭州远望制造有限公司', tEnum('industry', 'MANUFACTURING'), '0571-55550000', 'https://www.example.com', '浙江省杭州市', '', t('import.exampleNote'), '陈经理', '采购总监', '13700000000', 'chen@example.com'],
-};
-
 /**
- * 导入模板（表头 + 一行示例）。
- * Import template (header plus one example row).
+ * 示例行（模板，按语言）。
+ * Example rows for templates, per locale.
  */
-export function importTemplate(entity: ImportEntity): { filename: string; csv: string } {
-  return { filename: `${entity}-import-template.csv`, csv: toCsv(COLUMNS[entity].map((c) => c.headers[0]!), [EXAMPLES[entity]]) };
+function example(entity: ImportEntity, locale: Locale): string[] {
+  const t = (key: MessageKey) => translate(locale, key);
+  return entity === 'leads'
+    ? [t('import.sample.leadName'), t('import.sample.company'), t('import.sample.jobTitle'), '021-55550000', '13800000000', 'sample@example.com', tEnumIn(locale, 'leadSource', 'EXHIBITION'), tEnumIn(locale, 'leadStatus', 'NEW'), '', t('import.exampleNote')]
+    : [t('import.sample.accountName'), tEnumIn(locale, 'industry', 'MANUFACTURING'), '0571-55550000', 'https://www.example.com', t('import.sample.address'), '', t('import.exampleNote'), t('import.sample.contactName'), t('import.sample.contactTitle'), '13700000000', 'contact@example.com'];
 }
 
 /**
- * 枚举值：接受代码或中文标签，返回代码；空值返回 undefined；无法识别时原样返回（由校验报错）。
- * Enum value: accepts a code or its Chinese label; empty → undefined; unknown values pass through to fail validation.
+ * 导入模板（表头 + 一行示例，按语言）。
+ * Import template (header plus one example row) in the given locale.
+ */
+export function importTemplate(entity: ImportEntity, locale: Locale = DEFAULT_LOCALE): { filename: string; csv: string } {
+  return { filename: `${entity}-import-template.csv`, csv: toCsv(COLUMNS[entity].map((c) => translate(locale, c.label)), [example(entity, locale)]) };
+}
+
+/**
+ * 枚举值：接受代码或任一语言的标签，返回代码；空值返回 undefined；无法识别时原样返回（由校验报错）。
+ * Enum value: accepts a code or its label in any locale; empty → undefined; unknown values pass through to fail validation.
  */
 function enumValue(prefix: string, raw: string): string | undefined {
   const v = raw.trim();
   if (!v) return undefined;
-  const dict = zhCN as Record<string, string>;
-  if (dict[`${prefix}.${v.toUpperCase()}`]) return v.toUpperCase();
-  const hit = Object.keys(dict).find((k) => k.startsWith(`${prefix}.`) && dict[k] === v);
-  return hit ? hit.slice(prefix.length + 1) : v;
+  const code = v.toUpperCase();
+  if (allTranslations(`${prefix}.${code}`).length) return code;
+  // 任一语言的标签（英文不区分大小写）/ a label in any locale (English is case-insensitive)
+  const hit = enumCodes(prefix).find((c) => allTranslations(`${prefix}.${c}`).some((label) => label.toLowerCase() === v.toLowerCase()));
+  return hit ?? v;
 }
 
 /**
@@ -269,12 +291,12 @@ export async function importCsv(ctx: AuthContext, entity: ImportEntity, input: z
   const indexOf: Record<string, number> = {};
   const unknownColumns: string[] = [];
   header.forEach((h, i) => {
-    const def = defs.find((d) => d.headers.some((x) => x.toLowerCase() === h.toLowerCase()));
+    const def = defs.find((d) => [...allTranslations(d.label), d.field].some((x) => x.toLowerCase() === h.toLowerCase()));
     if (def) indexOf[def.field] ??= i;
     else if (h) unknownColumns.push(h);
   });
   const missing = defs.filter((d) => d.required && indexOf[d.field] === undefined);
-  if (missing.length) throw new ApiError(400, 'VALIDATION_ERROR', 'Missing required column', { csv: missing.map((d) => `missing_column:${d.headers[0]}`) });
+  if (missing.length) throw new ApiError(400, 'VALIDATION_ERROR', 'Missing required column', { csv: missing.map((d) => `missing_column:${translate(input.lang ?? DEFAULT_LOCALE, d.label)}`) });
 
   // 负责人：本组织启用用户的邮箱 / owners: active users of the organization by email
   const users = await prisma.user.findMany({ where: { organizationId: ctx.organizationId, isActive: true }, select: { id: true, email: true } });

@@ -93,7 +93,7 @@ export function QuoteLinesTable({ quote, size = 'small' }: { quote: Quote; size?
               <Table.Summary.Cell index={0} colSpan={6} align="right">
                 <Typography.Text strong={id === 'quote-total'}>
                   {t(key as MessageKey)}
-                  {id === 'quote-tax' && `（${Number(quote.taxPercent)}%）`}
+                  {id === 'quote-tax' && t('common.parens', { text: `${Number(quote.taxPercent)}%` })}
                 </Typography.Text>
               </Table.Summary.Cell>
               <Table.Summary.Cell index={1} align="right">

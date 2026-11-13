@@ -149,7 +149,7 @@ export function DealItemsPanel({ deal, onChanged }: Props) {
                 const p = options.find((o) => o.id === id);
                 if (p) addForm.setFieldsValue({ unitPrice: p.unitPrice });
               }}
-              options={options.map((p) => ({ value: p.id, label: `${p.sku} · ${p.name}（${fmtMoney(p.unitPrice, p.currency)}/${p.unit}）` }))}
+              options={options.map((p) => ({ value: p.id, label: `${p.sku} · ${p.name}${t('common.parens', { text: `${fmtMoney(p.unitPrice, p.currency)}/${p.unit}` })}` }))}
               popupMatchSelectWidth={false}
             />
           </Form.Item>

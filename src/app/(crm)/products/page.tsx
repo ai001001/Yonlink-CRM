@@ -137,7 +137,7 @@ export default function ProductsPage() {
         width={600}
         forceRender
       >
-        <Form form={form} name="product" layout="vertical" initialValues={{ unit: '件', currency: 'CNY', isActive: true }}>
+        <Form form={form} name="product" layout="vertical" initialValues={{ unit: t('products.defaultUnit'), currency: 'CNY', isActive: true }}>
           <div className="form-row">
             <Form.Item
               name="sku"

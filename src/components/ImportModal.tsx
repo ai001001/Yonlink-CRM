@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { Alert, App, Button, Modal, Radio, Space, Table, Typography, Upload } from 'antd';
 import { DownloadOutlined, UploadOutlined } from '@ant-design/icons';
-import { t, tEnum, type MessageKey } from '@/i18n';
+import { getLocale, t, tEnum, type MessageKey } from '@/i18n';
 import { api, apiDownload, ClientApiError } from '@/lib/api';
 
 /** 服务端导入报告 / Server import report */
@@ -90,7 +90,7 @@ export function ImportModal({ resource, open, onClose, onImported }: Props) {
     setBusy(true);
     setProblems([]);
     try {
-      const r = await api<Report>(`/api/${resource}/import`, { method: 'POST', body: { csv, dryRun, duplicates } });
+      const r = await api<Report>(`/api/${resource}/import`, { method: 'POST', body: { csv, dryRun, duplicates, lang: getLocale() } });
       if (dryRun) setReport(r);
       else {
         message.success(t('import.done', { n: r.created }));
@@ -130,7 +130,7 @@ export function ImportModal({ resource, open, onClose, onImported }: Props) {
           <Typography.Paragraph style={{ marginBottom: 8 }}>{t('import.step1')}</Typography.Paragraph>
           <Button
             icon={<DownloadOutlined />}
-            onClick={() => apiDownload(`/api/${resource}/import/template`, `${resource}-import-template.csv`).catch((e: Error) => message.error(e.message))}
+            onClick={() => apiDownload(`/api/${resource}/import/template?lang=${getLocale()}`, `${resource}-import-template.csv`).catch((e: Error) => message.error(e.message))}
           >
             {t('import.template')}
           </Button>
@@ -162,7 +162,9 @@ export function ImportModal({ resource, open, onClose, onImported }: Props) {
           )}
         </div>
         <div>
-          <Typography.Text>{resource === 'leads' ? t('import.duplicatesLeads') : t('import.duplicatesAccounts')}：</Typography.Text>
+          <Typography.Text>{resource === 'leads' ? t('import.duplicatesLeads') : t('import.duplicatesAccounts')}
+            {t('common.colon')}
+          </Typography.Text>
           <Radio.Group
             value={duplicates}
             onChange={(e) => {
@@ -175,14 +177,14 @@ export function ImportModal({ resource, open, onClose, onImported }: Props) {
             ]}
           />
         </div>
-        {problems.length > 0 && <Alert type="error" showIcon title={problems.join('；')} />}
+        {problems.length > 0 && <Alert type="error" showIcon title={problems.join(t('common.sentenceSep'))} />}
         {report && (
           <div data-testid="import-report">
             <Alert
               type={report.errors.length ? 'warning' : 'success'}
               showIcon
               title={t('import.summary', { total: report.total, valid: report.valid, dup: report.duplicates.length, err: report.errors.length })}
-              description={report.unknownColumns.length ? t('import.unknownColumns', { cols: report.unknownColumns.join('、') }) : undefined}
+              description={report.unknownColumns.length ? t('import.unknownColumns', { cols: report.unknownColumns.join(t('common.listSep')) }) : undefined}
             />
             {report.errors.length > 0 && (
               <Table

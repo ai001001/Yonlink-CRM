@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, App, Button, Card, Divider, Form, Input, Table, Tag, Typography } from 'antd';
 import { useAuth } from '@/components/AuthProvider';
+import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { t, tEnum } from '@/i18n';
 import { api, STATIC_PREVIEW } from '@/lib/api';
 
@@ -29,6 +30,13 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [demo, setDemo] = useState<DemoAccount[]>([]);
   const [demoBusy, setDemoBusy] = useState<string | null>(null);
+  // 挂载后再渲染内容：预渲染为默认语言，浏览器可能是英文，避免水合不一致 / render after mount (prerender uses the default locale)
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (me) router.replace('/');
@@ -53,8 +61,14 @@ export default function LoginPage() {
     }
   };
 
+  const background = 'linear-gradient(135deg,#0f2a5a,#1f5fbf)';
+  if (!mounted) return <div style={{ minHeight: '100vh', background }} />;
+
   return (
-    <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '32px 16px', background: 'linear-gradient(135deg,#0f2a5a,#1f5fbf)' }}>
+    <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '32px 16px', background, position: 'relative' }}>
+      <div style={{ position: 'absolute', top: 16, right: 16 }}>
+        <LanguageSwitch />
+      </div>
       <Card style={{ width: demo.length ? 560 : 380, maxWidth: '100%' }}>
         <Typography.Title level={3} style={{ marginBottom: 4 }}>
           {t('login.title')}

@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { App, Button } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
-import { t } from '@/i18n';
+import { getLocale, t } from '@/i18n';
 import { apiDownload, qs } from '@/lib/api';
 import { usePermissions } from './AuthProvider';
 
@@ -27,7 +27,7 @@ export function ExportButton({ resource, filters }: Props) {
     setBusy(true);
     try {
       const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const headers = await apiDownload(`/api/${resource}/export${qs(filters)}`, `${resource}-${stamp}.csv`);
+      const headers = await apiDownload(`/api/${resource}/export${qs({ ...filters, lang: getLocale() })}`, `${resource}-${stamp}.csv`);
       const n = Number(headers.get('X-Export-Count') ?? 0);
       if (headers.get('X-Export-Truncated') === 'true') message.warning(t('export.truncated', { n }));
       else message.success(t('export.done', { n }));

@@ -62,7 +62,9 @@ export function BulkBar({ path, selected, names, valueChange, completable, tagga
               <ul style={{ paddingLeft: 18, marginTop: 8 }}>
                 {res.failed.map((f) => (
                   <li key={f.id}>
-                    {names[f.id] ?? f.id.slice(0, 8)}：{t(`error.${f.code}` as MessageKey)}
+                    {names[f.id] ?? f.id.slice(0, 8)}
+                    {t('common.colon')}
+                    {t(`error.${f.code}` as MessageKey)}
                   </li>
                 ))}
               </ul>

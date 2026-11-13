@@ -127,23 +127,23 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
   const fields = c.fields as Record<string, [unknown, unknown]> | undefined;
   const snap = (c.after ?? c.before) as Record<string, unknown> | undefined;
   if (fields) {
-    for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}：${value(f, b, users, entry.entityType)} → ${value(f, a, users, entry.entityType)}`);
+    for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, b, users, entry.entityType)} → ${value(f, a, users, entry.entityType)}`);
   } else if (snap) {
-    for (const [f, v] of Object.entries(snap)) if (v !== null) lines.push(`${fieldLabel(f, entry.entityType)}：${value(f, v, users, entry.entityType)}`);
+    for (const [f, v] of Object.entries(snap)) if (v !== null) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, v, users, entry.entityType)}`);
   } else if (typeof c.reason === 'string') {
     lines.push(tEnum('auditReason', c.reason));
   } else if (typeof c.name === 'string' && /\.(restore|purge|expire)$/.test(entry.action)) {
     // 回收站操作 / recycle-bin actions
-    lines.push(`${t('recycle.record')}：${c.name}`);
+    lines.push(`${t('recycle.record')}${t('common.colon')}${c.name}`);
   } else if (Array.isArray(c.added) || Array.isArray(c.removed)) {
     // 标签变化 / tag changes
     const added = (c.added as string[] | undefined) ?? [];
     const removed = (c.removed as string[] | undefined) ?? [];
-    if (added.length) lines.push(t('tags.auditAdded', { names: added.join('、') }));
-    if (removed.length) lines.push(t('tags.auditRemoved', { names: removed.join('、') }));
+    if (added.length) lines.push(t('tags.auditAdded', { names: added.join(t('common.listSep')) }));
+    if (removed.length) lines.push(t('tags.auditRemoved', { names: removed.join(t('common.listSep')) }));
   } else if (entry.action === 'lead.convert') {
-    lines.push(`${t('nav.accounts')}：${value('accountId', c.accountId, users)}`);
-    if (c.dealId) lines.push(`${t('nav.deals')}：${value('dealId', c.dealId, users)}`);
+    lines.push(`${t('nav.accounts')}${t('common.colon')}${value('accountId', c.accountId, users)}`);
+    if (c.dealId) lines.push(`${t('nav.deals')}${t('common.colon')}${value('dealId', c.dealId, users)}`);
   }
   if (typeof c.via === 'string') lines.push(t('audit.via', { via: actionLabel(c.via) }));
   if (!lines.length) return null;

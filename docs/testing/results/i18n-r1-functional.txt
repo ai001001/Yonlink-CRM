@@ -1,0 +1,20 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/i18n/i18n.r1-functional.test.ts > i18n R1 dictionaries > 英文覆盖全部 key，且没有多余 key、没有空值 / English covers every key 17ms
+ ✓ tests/i18n/i18n.r1-functional.test.ts > i18n R1 dictionaries > 每个 key 的占位符在中英文中一致 / placeholders match per key 14ms
+ ✓ tests/i18n/i18n.r1-functional.test.ts > i18n R1 dictionaries > 英文文案不含中文与全角标点（语言名“中文”除外）/ no CJK in English except the language name 3ms
+ ✓ tests/i18n/i18n.r1-functional.test.ts > i18n R1 dictionaries > 翻译函数：服务端默认中文、按语言翻译、枚举、全部语言与枚举代码 / translation helpers 2ms
+ ✓ tests/i18n/i18n.r1-functional.test.ts > i18n R1 CSV > 导出：英文表头、英文枚举与时间列后缀；默认仍为中文 / English export headers and enums 576ms
+ ✓ tests/i18n/i18n.r1-functional.test.ts > i18n R1 CSV > 模板：英文表头与英文示例行；英文模板可直接预检导入 / English template imports as-is 105ms
+ ✓ tests/i18n/i18n.r1-functional.test.ts > i18n R1 CSV > 导入：中英文列名与字段名、中英文枚举标签与代码混用均可识别 / mixed headers and enum labels 116ms
+ ✓ tests/i18n/i18n.r1-functional.test.ts > i18n R1 CSV > 缺少必填列时按请求语言提示列名 / the missing column is reported in the request locale 76ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  16:07:51
+   Duration  3.12s (tests 69%, import 20%, transform 9%, setup 1%)

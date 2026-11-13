@@ -29,7 +29,7 @@ export function HBarChart({ data, label, testId }: { data: HBar[]; label: string
   return (
     <div role="list" aria-label={label} data-testid={testId} style={{ display: 'grid', gap: 8 }}>
       {data.map((d, i) => (
-        <div key={d.key} role="listitem" data-key={d.key} title={`${d.label}：${d.display}`} style={{ display: 'grid', gridTemplateColumns: '88px 1fr', alignItems: 'center', gap: 8 }}>
+        <div key={d.key} role="listitem" data-key={d.key} title={`${d.label}${t('common.colon')}${d.display}`} style={{ display: 'grid', gridTemplateColumns: '88px 1fr', alignItems: 'center', gap: 8 }}>
           <span style={{ color: COLORS.text, fontSize: 13, textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.label}</span>
           <div>
             <div

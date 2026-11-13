@@ -201,7 +201,7 @@ export default function ReportsPage() {
                       key: s.source ?? 'none',
                       label: s.source ? tEnum('leadSource', s.source) : t('reports.noSource'),
                       value: s.total,
-                      display: `${s.total} · ${t('reports.col.converted')} ${s.converted}（${pct(s.conversionRate)}）`,
+                      display: `${s.total} · ${t('reports.col.converted')} ${s.converted}${t('common.parens', { text: pct(s.conversionRate) })}`,
                     }))}
                   />
                 </Card>

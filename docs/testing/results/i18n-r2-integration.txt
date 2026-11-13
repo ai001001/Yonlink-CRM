@@ -1,0 +1,18 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/i18n/i18n.r2-integration.test.ts > i18n R2 source guard > 界面源码（src/app、src/components、src/lib）不含硬编码中文或全角标点 / no hardcoded CJK in UI code 25ms
+ ✓ tests/i18n/i18n.r2-integration.test.ts > i18n R2 source guard > 扫描器本身能发现问题（自检）/ the scanner itself detects violations 1ms
+ ✓ tests/i18n/i18n.r2-integration.test.ts > i18n R2 browser locale > 读取浏览器保存的英文；非法值或存储不可用时回退中文 / stored locale and fallbacks 6ms
+ ✓ tests/i18n/i18n.r2-integration.test.ts > i18n R2 server parameters > 非法语言参数：导出、模板、导入均 400 / invalid locale parameters 442ms
+ ✓ tests/i18n/i18n.r2-integration.test.ts > i18n R2 server parameters > 四类导出的英文表头不含中文；用户录入的中文数据原样保留 / English headers, user data untouched 286ms
+ ✓ tests/i18n/i18n.r2-integration.test.ts > i18n R2 server parameters > 语言参数不影响筛选，也不写入导出审计的筛选条件 / the locale is not a filter 119ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  16:08:22
+   Duration  3.15s (tests 70%, import 19%, transform 10%, setup 1%)
