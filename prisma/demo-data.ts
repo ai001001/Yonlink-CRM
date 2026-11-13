@@ -657,6 +657,23 @@ export function demoAttachments(data: ReturnType<typeof buildDemoData>): DemoAtt
   return out;
 }
 
+/** 演示销售目标（月度基准金额；按月份在 ±10% 内确定性浮动）/ Demo monthly targets (base amounts varied ±10% by month) */
+export const DEMO_TARGETS: { owner: OwnerKey; currency: 'CNY' | 'USD'; base: number }[] = [
+  { owner: 'manager', currency: 'CNY', base: 1_200_000 },
+  { owner: 'sales1', currency: 'USD', base: 80_000 },
+  { owner: 'sales2', currency: 'USD', base: 60_000 },
+];
+/** 演示目标覆盖的月份偏移（相对本月）/ month offsets covered by demo targets (relative to this month) */
+export const DEMO_TARGET_MONTHS = [-5, -4, -3, -2, -1, 0, 1, 2];
+
+/**
+ * 某月的演示目标金额（两位小数字符串）。
+ * Demo target amount for a month offset (2-dp string).
+ */
+export function demoTargetAmount(base: number, offset: number): string {
+  return (base * (1 + (((offset % 3) + 3) % 3 - 1) * 0.1)).toFixed(2);
+}
+
 /**
  * E2E 测试使用的样本（由数据集推导，数据调整后测试自动跟随）。
  * Samples used by the E2E tests (derived from the dataset so tests follow data changes).

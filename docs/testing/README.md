@@ -38,6 +38,7 @@
 | 备份与恢复 | ✅ | ✅ | ✅ | [backup.md](backup.md) |
 | 已知问题修复（标签与视图、E2E 下拉选择） | ✅ | ✅ | ✅ | [cleanup.md](cleanup.md) |
 | 英文界面（中英文切换） | ✅ | ✅ | ✅ | [i18n.md](i18n.md) |
+| 销售目标与预测 | ✅ | ✅ | ✅ | [forecasts.md](forecasts.md) |
 
 ## 整体回归（全部模块完成后）
 命令：`scripts/regression.sh final-mvp` → **PASS**（lint、typecheck、11 文件 181/181、静态导出、生产构建、E2E 6/6）。原始输出：[results/final-mvp-r3-regression.txt](results/final-mvp-r3-regression.txt)

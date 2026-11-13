@@ -38,6 +38,7 @@ model Organization {
   savedViews   SavedView[]
   viewDefaults UserViewDefault[]
   attachments  Attachment[]
+  salesTargets SalesTarget[]
 
   @@map("organizations")
 }
@@ -68,6 +69,8 @@ model User {
   savedViews      SavedView[]
   viewDefaults    UserViewDefault[]
   uploads         Attachment[]      @relation("AttachmentUploader")
+  salesTargets    SalesTarget[]     @relation("TargetOwner")
+  targetsUpdated  SalesTarget[]     @relation("TargetUpdater")
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -623,4 +626,25 @@ model Attachment {
   @@index([organizationId, accountId, createdAt])
   @@index([organizationId, dealId, createdAt])
   @@map("attachments")
+}
+
+/// 销售目标：负责人 × 月份 × 币种的目标金额（月份为该月 1 日）。
+/// Sales target: amount per owner, month (first day of the month) and currency.
+model SalesTarget {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  month          DateTime     @db.Date
+  currency       String       @db.Char(3)
+  amount         Decimal      @db.Decimal(18, 2)
+  updatedById    String?      @map("updated_by_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation("TargetOwner", fields: [organizationId, userId], references: [organizationId, id], onDelete: Cascade)
+  updatedBy      User?        @relation("TargetUpdater", fields: [organizationId, updatedById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organizationId, userId, month, currency])
+  @@index([organizationId, month])
+  @@map("sales_targets")
 }

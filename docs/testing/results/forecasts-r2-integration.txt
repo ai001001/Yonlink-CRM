@@ -1,0 +1,34 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 permissions > 销售代表只看到自己一行，合计等于自己；不能编辑 / sales reps see only themselves 700ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 permissions > 只读看全部不能改；经理与管理员可改 / read-only views all, managers edit 200ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 跨组织：不能给他组织用户设目标，他组织看不到本组织数据 / cross-org isolation 205ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法预测参数 {"period":"2026-1"} → 400 / invalid forecast query 129ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法预测参数 {"period":"2026-Q5"} → 400 / invalid forecast query 130ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法预测参数 {"period":"2026/11"} → 400 / invalid forecast query 134ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法预测参数 {"period":""} → 400 / invalid forecast query 111ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法预测参数 {"currency":"GBP"} → 400 / invalid forecast query 123ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法预测参数 {"ownerId":"x"} → 400 / invalid forecast query 122ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法目标参数 {"month":"2026-13"} → 400 / invalid target input 133ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法目标参数 {"month":"2026-11-01"} → 400 / invalid target input 124ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法目标参数 {"amount":"-1"} → 400 / invalid target input 132ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法目标参数 {"amount":"1.234"} → 400 / invalid target input 128ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法目标参数 {"amount":"abc"} → 400 / invalid target input 124ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法目标参数 {} → 400 / invalid target input 127ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法目标参数 {"currency":"GBP"} → 400 / invalid target input 113ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法目标参数 {"userId":"x"} → 400 / invalid target input 116ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法目标参数 {"organizationId":"00000000-0000-4000-8000-000000000000"} → 400 / invalid target input 122ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 数据库约束：月份须为 1 日、金额非负、币种格式、唯一、不能跨组织 / DB constraints 206ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 并发设定同一目标：最终只有一行 / concurrent sets keep one row 172ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 未登录 401 / unauthenticated 130ms
+
+ Test Files  1 passed (1)
+      Tests  21 passed (21)
+   Start at  17:22:25
+   Duration  5.89s (tests 90%, import 6%, transform 3%)
+

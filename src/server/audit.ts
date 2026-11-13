@@ -16,7 +16,7 @@ export interface RequestMeta {
 }
 
 /** 审计对象类型 / Audited entity types */
-export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'tag' | 'view' | 'attachment' | 'user' | 'auth';
+export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
 
 /** 字段策略 / Field policy */
 type Policy = 'plain' | 'mask' | 'redact';
@@ -40,6 +40,7 @@ export const AUDIT_FIELDS: Record<Exclude<AuditEntity, 'auth'>, Record<string, P
   product: { sku: 'plain', name: 'plain', category: 'plain', unit: 'plain', unitPrice: 'plain', currency: 'plain', isActive: 'plain', description: 'redact' },
   tag: { name: 'plain', color: 'plain' },
   view: { name: 'plain', entity: 'plain', shared: 'plain', filters: 'plain' },
+  target: { userId: 'plain', month: 'plain', currency: 'plain', amount: 'plain' },
   attachment: { fileName: 'plain', contentType: 'plain', size: 'plain', leadId: 'plain', accountId: 'plain', dealId: 'plain' },
   quote: {
     quoteNumber: 'plain', subject: 'plain', status: 'plain', dealId: 'plain', currency: 'plain', validUntil: 'plain',

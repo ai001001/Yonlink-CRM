@@ -14,7 +14,7 @@ import { hashPassword } from '../src/server/auth';
 import { createHash, randomUUID } from 'node:crypto';
 import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
-import { buildDemoData, dealCreatedDaysAgo, demoAttachments, DEMO_ORG_NAME, DEMO_TAGS, demoTagAssignments, demoTagId, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoAttachments, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -89,6 +89,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.tag.deleteMany({ where: { organizationId: o } });
         // 回收站中的旧快照对应已不存在的旧数据，一并清空 / old snapshots refer to the wiped data
         await tx.recycleBinItem.deleteMany({ where: { organizationId: o } });
+        await tx.salesTarget.deleteMany({ where: { organizationId: o } });
       }
 
       await tx.product.createMany({ data: data.products.map((p) => ({ ...p, organizationId: o })) });
@@ -257,6 +258,20 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         files.push({ id, data: body });
       }
 
+      // 销售目标：按月（当月 1 日，UTC）/ monthly sales targets (first day of the month, UTC)
+      const now = new Date();
+      await tx.salesTarget.createMany({
+        data: DEMO_TARGETS.flatMap((target) =>
+          DEMO_TARGET_MONTHS.map((offset) => ({
+            organizationId: o,
+            userId: owner(target.owner),
+            month: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + offset, 1)),
+            currency: target.currency,
+            amount: demoTargetAmount(target.base, offset),
+          })),
+        ),
+      });
+
       // 标签 / tags
       const tagIds: Record<string, string> = {};
       for (const tag of DEMO_TAGS) {
@@ -309,7 +324,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length} 客户、${data.accounts.reduce((n, a) => n + a.contacts.length, 0)} 联系人、` +
-      `${data.leads.length} 线索、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${DEMO_TAGS.length} 标签、${files.length} 附件 / demo data ready`,
+      `${data.leads.length} 线索、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标 / demo data ready`,
   );
 }
 

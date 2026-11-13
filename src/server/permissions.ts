@@ -19,13 +19,14 @@ export type Permission =
   | 'tag.manage' // 标签改名、改色、删除 / rename, recolour and delete tags
   | 'recycle.purge' // 回收站彻底删除与清空 / permanently delete from the recycle bin
   | 'view.share' // 共享视图给全组织 / share saved views with the organization
+  | 'forecast.manage' // 设定销售目标 / set sales targets
   | 'data.export' // 导出 CSV（批量带走客户数据，仅管理员与经理）/ CSV export (bulk data egress; admins and managers only)
   | 'user.manage';
 
 /** 角色 → 权限 / Role → permissions */
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
-  ADMIN: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'audit.read', 'user.manage', 'data.export', 'product.manage', 'tag.manage', 'recycle.purge', 'view.share'],
-  MANAGER: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'data.export', 'product.manage', 'tag.manage', 'view.share'],
+  ADMIN: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'audit.read', 'user.manage', 'data.export', 'product.manage', 'tag.manage', 'recycle.purge', 'view.share', 'forecast.manage'],
+  MANAGER: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'data.export', 'product.manage', 'tag.manage', 'view.share', 'forecast.manage'],
   SALES: ['record.create', 'record.update.own'],
   READONLY: ['record.read.all'],
 };

@@ -97,6 +97,7 @@ const fieldLabel = (field: string, entityType: string): string => {
   if (entityType === 'account' && field === 'phone') return t('accounts.phone');
   if (entityType === 'product' && field === 'name') return t('products.name');
   if (entityType === 'tag' && field === 'name') return t('tags.name');
+  if (entityType === 'target' && field === 'amount') return t('forecasts.target');
   if (entityType === 'tag' && field === 'color') return t('tags.color');
   if (entityType === 'quote' && field === 'subject') return t('quotes.subject');
   if (entityType === 'quote' && field === 'status') return t('quotes.status');
@@ -126,6 +127,10 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
   const lines: string[] = [];
   const fields = c.fields as Record<string, [unknown, unknown]> | undefined;
   const snap = (c.after ?? c.before) as Record<string, unknown> | undefined;
+  if (entry.entityType === 'target' && typeof c.month === 'string') {
+    // 销售目标：负责人 · 月份 · 币种 / sales target: owner · month · currency
+    lines.push(`${value('ownerId', c.userId, users)} · ${c.month} · ${String(c.currency ?? '')}`);
+  }
   if (fields) {
     for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, b, users, entry.entityType)} → ${value(f, a, users, entry.entityType)}`);
   } else if (snap) {

@@ -1,0 +1,30 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+Applying migration `20261113171607_sales_targets`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20261113171607_sales_targets/
+    └─ migration.sql
+
+All migrations have been successfully applied.
+ ✓ tests/forecasts/forecasts.r1-functional.test.ts > forecasts R1 period > 期间：月、季度、缺省为当前月；非法期间抛错 / period parsing 343ms
+ ✓ tests/forecasts/forecasts.r1-functional.test.ts > forecasts R1 numbers > 每行指标：目标、赢单、完成率、差额、在手、加权、预测、最好情况；按币种与期间过滤 / per-row metrics 335ms
+ ✓ tests/forecasts/forecasts.r1-functional.test.ts > forecasts R1 numbers > 季度：目标为三月之和，季度不可编辑；合计行；超额时差额为负 / quarter view and totals 165ms
+ ✓ tests/forecasts/forecasts.r1-functional.test.ts > forecasts R1 numbers > 参与统计的用户：未停用的非只读用户（即使无数据）、有商机的已停用用户、未分配商机；无目标时合计目标为空 / who is listed 117ms
+ ✓ tests/forecasts/forecasts.r1-functional.test.ts > forecasts R1 targets > 设定、修改、清除目标；按月 1 日存储；审计记录前后值，未变化不写审计 / set, change and clear 131ms
+stdout | tests/forecasts/forecasts.r1-functional.test.ts > forecasts R1 targets > 演示数据：本月经理人民币目标与销售美元目标 / demo targets
+演示数据已创建：30 客户、64 联系人、64 线索、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、6 标签、11 附件、24 条销售目标 / demo data ready
+
+ ✓ tests/forecasts/forecasts.r1-functional.test.ts > forecasts R1 targets > 演示数据：本月经理人民币目标与销售美元目标 / demo targets 998ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  17:21:52
+   Duration  4.47s (tests 80%, transform 11%, import 9%)
+
