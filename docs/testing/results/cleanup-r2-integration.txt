@@ -1,0 +1,17 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/maintenance/cleanup.r2-integration.test.ts > cleanup R2 > 删除本组织标签不改动其他组织的视图（即使筛选值相同）/ other organizations are untouched 552ms
+ ✓ tests/maintenance/cleanup.r2-integration.test.ts > cleanup R2 > 无权限删除失败时视图不变 / a refused delete changes nothing 127ms
+ ✓ tests/maintenance/cleanup.r2-integration.test.ts > cleanup R2 > 视图仍存在，默认视图设置保留 / views and defaults survive 158ms
+ ✓ tests/maintenance/cleanup.r2-integration.test.ts > cleanup R2 > 演示标签固定 ID：合法 UUID、可重复计算、按组织与标签区分 / stable ids are valid and distinct 88ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  15:39:24
+   Duration  3.08s (tests 73%, import 17%, transform 9%, setup 1%)
+

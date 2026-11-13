@@ -6,6 +6,7 @@
  * scenarios follow public industry information; every company, customer and contact is fictional and labelled
  * 【演示】; websites use the reserved .example TLD and phone numbers the reserved 555 range.
  */
+import { createHash } from 'node:crypto';
 
 /** 演示组织名称 / Demo organization name */
 export const DEMO_ORG_NAME = '演示涡轮增压器有限公司（演示数据）';
@@ -566,6 +567,17 @@ export const DEMO_TAGS = [
   { key: 'sample', name: '需要样品', color: 'cyan' },
 ] as const;
 type DemoTagKey = (typeof DEMO_TAGS)[number]['key'];
+
+/**
+ * 演示标签的固定 ID（由组织 ID 与标签 key 推导的 UUID v5 格式）：重置后不变，保存的按标签筛选视图持续有效。
+ * Stable demo tag id (UUID v5 format derived from the organization id and tag key): unchanged across resets, so
+ * saved views filtering by a demo tag keep working.
+ */
+export function demoTagId(organizationId: string, key: string): string {
+  const h = createHash('sha256').update(`yonlink-demo-tag:${organizationId}:${key}`).digest('hex');
+  const variant = ((parseInt(h[16]!, 16) & 0x3) | 0x8).toString(16);
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-${variant}${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
 
 /**
  * 演示标签分配（由数据集确定性推导）。

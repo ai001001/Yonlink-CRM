@@ -3,7 +3,7 @@
  * Dashboard round 3: end-to-end regression.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { nav, signIn } from './helpers';
+import { nav, selectOption, signIn } from './helpers';
 
 const SAVE = /保\s*存/;
 
@@ -48,8 +48,7 @@ test('工作台统计与全局搜索 / dashboard figures and global search', asy
   await nav(page, '跟进');
   await page.getByRole('button', { name: '新增跟进' }).click();
   dialog = page.getByRole('dialog', { name: '新增跟进' });
-  await dialog.getByLabel('类型').click();
-  await page.getByTitle('任务').click();
+  await selectOption(page, dialog, '类型', '任务');
   await dialog.getByLabel('主题').fill('E2E 工作台待办');
   await dialog.getByRole('button', { name: SAVE }).click();
   await expect(page.getByRole('row', { name: /E2E 工作台待办/ })).toBeVisible();

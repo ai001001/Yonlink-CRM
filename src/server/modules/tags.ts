@@ -1,7 +1,8 @@
 /**
  * 标签应用服务（参考 Zoho Tags）：线索、客户、商机可打多个彩色标签。
  * - 标签名在组织内唯一（不区分大小写，name_key = 小写去空格），颜色来自预设色板。
- * - 能编辑记录的用户可新建标签；改名、改色、删除需 tag.manage（管理员、经理）；删除标签同时移除其所有关联。
+ * - 能编辑记录的用户可新建标签；改名、改色、删除需 tag.manage（管理员、经理）；删除标签同时移除其所有关联，
+ *   并从引用它的保存视图中去掉标签筛选。
  * - 给记录打标签需能编辑该记录；每条记录最多 20 个标签，每个组织最多 200 个标签。
  * Tags service (cf. Zoho Tags) for leads, accounts and deals: case-insensitive unique names per organization,
  * preset colours; users who can edit records may create tags; renaming, recolouring and deleting require
@@ -139,7 +140,17 @@ export async function deleteTag(ctx: AuthContext, id: string): Promise<void> {
       tx.dealTag.count({ where: { tagId: id } }),
     ]);
     await tx.tag.delete({ where: { id } });
-    await audit(tx, { ...by(ctx), action: 'tag.delete', entityType: 'tag', entityId: id, changes: { before: snapshot('tag', tag), removed: { leads, accounts, deals } } });
+    // 引用该标签的视图（私有与共享）去掉标签筛选，避免视图筛出空列表 / drop the tag filter from views that use it
+    const views = await tx.$executeRaw`
+      UPDATE saved_views SET filters = filters - 'tagId', updated_at = now()
+      WHERE organization_id = ${ctx.organizationId}::uuid AND filters->>'tagId' = ${id}`;
+    await audit(tx, {
+      ...by(ctx),
+      action: 'tag.delete',
+      entityType: 'tag',
+      entityId: id,
+      changes: { before: snapshot('tag', tag), removed: { leads, accounts, deals }, views },
+    });
   });
 }
 

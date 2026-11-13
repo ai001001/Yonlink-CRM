@@ -1,0 +1,28 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/maintenance/cleanup.r1-functional.test.ts > cleanup R1 tag deletion > 删除标签：所有用户的私有与共享视图去掉该标签筛选，其他条件保留，审计记录数量 / views lose only the deleted tag 685ms
+ ✓ tests/maintenance/cleanup.r1-functional.test.ts > cleanup R1 tag deletion > 清理后的视图套用时返回正常结果而不是空列表 / a cleaned view no longer yields an empty list 284ms
+stdout | tests/maintenance/cleanup.r1-functional.test.ts > cleanup R1 demo reset > 演示标签 ID 固定：两次重置后相同，按演示标签筛选的视图仍有效 / stable demo tag ids across resets
+演示数据已创建：30 客户、64 联系人、64 线索、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、6 标签、11 附件 / demo data ready
+
+stdout | tests/maintenance/cleanup.r1-functional.test.ts > cleanup R1 demo reset > 演示标签 ID 固定：两次重置后相同，按演示标签筛选的视图仍有效 / stable demo tag ids across resets
+演示数据已重建：30 客户、64 联系人、64 线索、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、6 标签、11 附件 / demo data ready
+
+ ✓ tests/maintenance/cleanup.r1-functional.test.ts > cleanup R1 demo reset > 演示标签 ID 固定：两次重置后相同，按演示标签筛选的视图仍有效 / stable demo tag ids across resets 1409ms
+stdout | tests/maintenance/cleanup.r1-functional.test.ts > cleanup R1 demo reset > 重置时清理指向已不存在标签的视图筛选，其他视图不变 / the reset drops stale tag filters only
+演示数据已创建：30 客户、64 联系人、64 线索、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、6 标签、11 附件 / demo data ready
+
+stdout | tests/maintenance/cleanup.r1-functional.test.ts > cleanup R1 demo reset > 重置时清理指向已不存在标签的视图筛选，其他视图不变 / the reset drops stale tag filters only
+演示数据已重建：30 客户、64 联系人、64 线索、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、6 标签、11 附件 / demo data ready
+
+ ✓ tests/maintenance/cleanup.r1-functional.test.ts > cleanup R1 demo reset > 重置时清理指向已不存在标签的视图筛选，其他视图不变 / the reset drops stale tag filters only 1025ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  15:38:59
+   Duration  5.75s (tests 88%, import 6%, transform 6%)

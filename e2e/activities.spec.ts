@@ -3,7 +3,7 @@
  * Activities round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
-import { nav, signIn } from './helpers';
+import { nav, selectOption, signIn } from './helpers';
 
 const SAVE = /保\s*存/;
 
@@ -23,8 +23,7 @@ test('跟进管理完整业务流程 / full activities flow', async ({ page }) =
   await expect(page.getByText('跟进管理')).toBeVisible();
   await page.getByRole('button', { name: '新增跟进' }).click();
   dialog = page.getByRole('dialog', { name: '新增跟进' });
-  await dialog.getByLabel('类型').click();
-  await page.getByTitle('任务').click();
+  await selectOption(page, dialog, '类型', '任务');
   await dialog.getByLabel('主题').fill('E2E 发送报价单');
   await dialog.getByLabel('截止/计划时间').fill('2020-01-02 09:00');
   await dialog.getByLabel('截止/计划时间').press('Enter');

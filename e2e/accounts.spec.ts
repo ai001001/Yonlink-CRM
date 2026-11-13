@@ -3,7 +3,7 @@
  * Accounts round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
-import { nav, searchList, signIn } from './helpers';
+import { nav, searchList, selectOption, signIn } from './helpers';
 
 const SAVE = /保\s*存/;
 
@@ -16,8 +16,7 @@ test('客户完整业务流程 / full accounts flow', async ({ page }) => {
   await page.getByRole('button', { name: '新增客户' }).click();
   let dialog = page.getByRole('dialog', { name: '新增客户' });
   await dialog.getByLabel('客户名称').fill('E2E 远望制造');
-  await dialog.getByLabel('行业').click();
-  await page.getByTitle('制造业').click();
+  await selectOption(page, dialog, '行业', '制造业');
   await dialog.getByLabel('电话').fill('0571-12345678');
   await dialog.getByLabel('地址').fill('杭州市滨江区');
   await dialog.getByRole('button', { name: SAVE }).click();
@@ -50,8 +49,7 @@ test('客户完整业务流程 / full accounts flow', async ({ page }) => {
   await drawer.getByRole('tab', { name: '跟进记录' }).click();
   await drawer.getByRole('button', { name: '新增跟进' }).click();
   dialog = page.getByRole('dialog', { name: '新增跟进' });
-  await dialog.getByLabel('类型').click();
-  await page.getByTitle('客户拜访').click();
+  await selectOption(page, dialog, '类型', '客户拜访');
   await dialog.getByLabel('主题').fill('E2E 上门拜访');
   await dialog.getByLabel('内容').fill('确认了二期需求');
   await dialog.getByRole('button', { name: SAVE }).click();

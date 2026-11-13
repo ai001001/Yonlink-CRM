@@ -14,7 +14,7 @@ import { hashPassword } from '../src/server/auth';
 import { createHash, randomUUID } from 'node:crypto';
 import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
-import { buildDemoData, dealCreatedDaysAgo, demoAttachments, DEMO_ORG_NAME, DEMO_TAGS, demoTagAssignments, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoAttachments, DEMO_ORG_NAME, DEMO_TAGS, demoTagAssignments, demoTagId, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -260,8 +260,14 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
       // 标签 / tags
       const tagIds: Record<string, string> = {};
       for (const tag of DEMO_TAGS) {
-        tagIds[tag.key] = (await tx.tag.create({ data: { organizationId: o, name: tag.name, nameKey: tag.name.toLowerCase(), color: tag.color } })).id;
+        tagIds[tag.key] = (await tx.tag.create({ data: { id: demoTagId(o, tag.key), organizationId: o, name: tag.name, nameKey: tag.name.toLowerCase(), color: tag.color } })).id;
       }
+      // 视图中仍指向已不存在标签的筛选条件去掉（如用户在演示中自建、重置后已删除的标签）
+      // drop view tag filters that point at tags which no longer exist (e.g. user-made demo tags wiped by the reset)
+      await tx.$executeRaw`
+        UPDATE saved_views SET filters = filters - 'tagId', updated_at = now()
+        WHERE organization_id = ${o}::uuid AND filters ? 'tagId'
+          AND NOT EXISTS (SELECT 1 FROM tags WHERE tags.organization_id = ${o}::uuid AND tags.id::text = saved_views.filters->>'tagId')`;
       const assigned = demoTagAssignments(data);
       await tx.accountTag.createMany({ data: assigned.accounts.map((x) => ({ organizationId: o, accountId: accountIds[x.account]!, tagId: tagIds[x.tag]! })) });
       await tx.dealTag.createMany({ data: assigned.deals.map((x) => ({ organizationId: o, dealId: dealIds[x.deal]!, tagId: tagIds[x.tag]! })) });

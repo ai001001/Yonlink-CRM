@@ -20,18 +20,21 @@ export async function nav(page: Page, name: '工作台' | '线索' | '客户' | 
 
 /**
  * 选择下拉选项并确认已选中（下拉展开动画期间的点击可能被忽略，失败时自动重试）。
+ * 不按 Esc：Esc 会同时关闭所在的弹窗；改为当目标选项不在已展开的下拉中时点击字段展开。
  * Pick a select option and confirm it took effect (clicks during the open animation can be ignored; retried).
+ * No Escape key: it would also close the surrounding modal; the field is clicked when the option is not showing.
  * @param scope 表单所在的对话框 / dialog containing the field
  * @param label 字段标签 / field label
  * @param option 选项文字 / option text
  */
 export async function selectOption(page: Page, scope: Locator, label: string, option: string): Promise<void> {
+  const dropdown = page.locator('.ant-select-dropdown:visible');
+  const item = dropdown.getByTitle(option, { exact: true });
   await expect(async () => {
-    await page.keyboard.press('Escape');
-    await scope.getByLabel(label).click();
-    await page.locator('.ant-select-dropdown:visible').getByTitle(option, { exact: true }).click({ timeout: 2000 });
+    if (!(await item.isVisible())) await scope.getByLabel(label).click();
+    await item.click({ timeout: 2000 });
     await expect(scope.getByTitle(option, { exact: true })).toBeVisible({ timeout: 1000 });
-    await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(0, { timeout: 1000 });
+    await expect(dropdown).toHaveCount(0, { timeout: 1000 });
   }).toPass({ timeout: 15000 });
 }
 
