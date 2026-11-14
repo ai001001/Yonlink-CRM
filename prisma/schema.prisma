@@ -14,63 +14,66 @@ datasource db {
 }
 
 model Organization {
-  id           String            @id @default(uuid()) @db.Uuid
-  name         String            @db.VarChar(200)
-  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
-  users        User[]
-  accounts     Account[]
-  contacts     Contact[]
-  leads        Lead[]
-  deals        Deal[]
-  activities   Activity[]
-  auditLogs    AuditLog[]
-  notes        Note[]
-  products     Product[]
-  dealItems    DealLineItem[]
-  quotes       Quote[]
-  quoteItems   QuoteLineItem[]
-  tags         Tag[]
-  leadTags     LeadTag[]
-  accountTags  AccountTag[]
-  dealTags     DealTag[]
-  recycleBin   RecycleBinItem[]
-  savedViews   SavedView[]
-  viewDefaults UserViewDefault[]
-  attachments  Attachment[]
-  salesTargets SalesTarget[]
+  id            String            @id @default(uuid()) @db.Uuid
+  name          String            @db.VarChar(200)
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  users         User[]
+  accounts      Account[]
+  contacts      Contact[]
+  leads         Lead[]
+  deals         Deal[]
+  activities    Activity[]
+  auditLogs     AuditLog[]
+  notes         Note[]
+  products      Product[]
+  dealItems     DealLineItem[]
+  quotes        Quote[]
+  quoteItems    QuoteLineItem[]
+  tags          Tag[]
+  leadTags      LeadTag[]
+  accountTags   AccountTag[]
+  dealTags      DealTag[]
+  recycleBin    RecycleBinItem[]
+  savedViews    SavedView[]
+  viewDefaults  UserViewDefault[]
+  attachments   Attachment[]
+  salesTargets  SalesTarget[]
+  notifications Notification[]
 
   @@map("organizations")
 }
 
 model User {
-  id              String            @id @default(uuid()) @db.Uuid
-  organizationId  String            @map("organization_id") @db.Uuid
-  email           String            @db.VarChar(254)
-  name            String            @db.VarChar(100)
-  passwordHash    String            @map("password_hash")
+  id                String            @id @default(uuid()) @db.Uuid
+  organizationId    String            @map("organization_id") @db.Uuid
+  email             String            @db.VarChar(254)
+  name              String            @db.VarChar(100)
+  passwordHash      String            @map("password_hash")
+  notifications     Notification[]    @relation("NotificationRecipient")
+  notificationsSent Notification[]    @relation("NotificationActor")
   /// 角色（服务端每个请求从数据库读取）/ role (read from the DB on every request)
-  role            UserRole          @default(SALES)
-  isActive        Boolean           @default(true) @map("is_active")
+  role              UserRole          @default(SALES)
+  isActive          Boolean           @default(true) @map("is_active")
   /// 演示账号：仅在 DEMO_LOGIN_ENABLED=1 时可免密一键登录 / demo account: password-less login only when DEMO_LOGIN_ENABLED=1
-  isDemo          Boolean           @default(false) @map("is_demo")
-  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  sessions        Session[]
-  ownedLeads      Lead[]            @relation("LeadOwner")
-  ownedAccounts   Account[]         @relation("AccountOwner")
-  ownedDeals      Deal[]            @relation("DealOwner")
-  ownedActivities Activity[]        @relation("ActivityOwner")
-  auditLogs       AuditLog[]        @relation("AuditActor")
-  notes           Note[]            @relation("NoteAuthor")
-  createdQuotes   Quote[]           @relation("QuoteCreator")
-  deletedItems    RecycleBinItem[]  @relation("RecycleDeleter")
-  savedViews      SavedView[]
-  viewDefaults    UserViewDefault[]
-  uploads         Attachment[]      @relation("AttachmentUploader")
-  salesTargets    SalesTarget[]     @relation("TargetOwner")
-  targetsUpdated  SalesTarget[]     @relation("TargetUpdater")
+  isDemo            Boolean           @default(false) @map("is_demo")
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sessions          Session[]
+  ownedLeads        Lead[]            @relation("LeadOwner")
+  ownedAccounts     Account[]         @relation("AccountOwner")
+  ownedDeals        Deal[]            @relation("DealOwner")
+  ownedActivities   Activity[]        @relation("ActivityOwner")
+  auditLogs         AuditLog[]        @relation("AuditActor")
+  notes             Note[]            @relation("NoteAuthor")
+  createdQuotes     Quote[]           @relation("QuoteCreator")
+  deletedItems      RecycleBinItem[]  @relation("RecycleDeleter")
+  savedViews        SavedView[]
+  viewDefaults      UserViewDefault[]
+  uploads           Attachment[]      @relation("AttachmentUploader")
+  salesTargets      SalesTarget[]     @relation("TargetOwner")
+  targetsUpdated    SalesTarget[]     @relation("TargetUpdater")
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -113,31 +116,32 @@ enum LeadStatus {
 }
 
 model Lead {
-  id                 String       @id @default(uuid()) @db.Uuid
-  organizationId     String       @map("organization_id") @db.Uuid
-  ownerId            String?      @map("owner_id") @db.Uuid
-  name               String       @db.VarChar(100)
-  company            String?      @db.VarChar(200)
-  title              String?      @db.VarChar(100)
-  phone              String?      @db.VarChar(50)
-  mobile             String?      @db.VarChar(50)
-  email              String?      @db.VarChar(254)
-  source             String?      @db.VarChar(50)
-  status             LeadStatus   @default(NEW)
-  description        String?      @db.Text
+  id                 String         @id @default(uuid()) @db.Uuid
+  organizationId     String         @map("organization_id") @db.Uuid
+  ownerId            String?        @map("owner_id") @db.Uuid
+  name               String         @db.VarChar(100)
+  company            String?        @db.VarChar(200)
+  title              String?        @db.VarChar(100)
+  phone              String?        @db.VarChar(50)
+  mobile             String?        @db.VarChar(50)
+  email              String?        @db.VarChar(254)
+  source             String?        @db.VarChar(50)
+  status             LeadStatus     @default(NEW)
+  description        String?        @db.Text
+  notifications      Notification[]
   // 线索转化结果（只由服务端转化流程写入）/ conversion result (written only by the server-side conversion)
   // 关联记录删除时置空；同组织约束由数据库触发器保证 / set null on delete; same-org enforced by a DB trigger
-  convertedAccountId String?      @map("converted_account_id") @db.Uuid
-  convertedContactId String?      @map("converted_contact_id") @db.Uuid
-  convertedDealId    String?      @map("converted_deal_id") @db.Uuid
-  convertedAt        DateTime?    @map("converted_at") @db.Timestamptz(6)
-  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner              User?        @relation("LeadOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
-  convertedAccount   Account?     @relation("LeadConvertedAccount", fields: [convertedAccountId], references: [id], onDelete: SetNull)
-  convertedContact   Contact?     @relation("LeadConvertedContact", fields: [convertedContactId], references: [id], onDelete: SetNull)
-  convertedDeal      Deal?        @relation("LeadConvertedDeal", fields: [convertedDealId], references: [id], onDelete: SetNull)
+  convertedAccountId String?        @map("converted_account_id") @db.Uuid
+  convertedContactId String?        @map("converted_contact_id") @db.Uuid
+  convertedDealId    String?        @map("converted_deal_id") @db.Uuid
+  convertedAt        DateTime?      @map("converted_at") @db.Timestamptz(6)
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization       Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner              User?          @relation("LeadOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  convertedAccount   Account?       @relation("LeadConvertedAccount", fields: [convertedAccountId], references: [id], onDelete: SetNull)
+  convertedContact   Contact?       @relation("LeadConvertedContact", fields: [convertedContactId], references: [id], onDelete: SetNull)
+  convertedDeal      Deal?          @relation("LeadConvertedDeal", fields: [convertedDealId], references: [id], onDelete: SetNull)
   activities         Activity[]
   notes              Note[]
   tags               LeadTag[]
@@ -153,26 +157,27 @@ model Lead {
 }
 
 model Account {
-  id             String       @id @default(uuid()) @db.Uuid
-  organizationId String       @map("organization_id") @db.Uuid
-  ownerId        String?      @map("owner_id") @db.Uuid
-  name           String       @db.VarChar(200)
-  industry       String?      @db.VarChar(50)
-  phone          String?      @db.VarChar(50)
-  website        String?      @db.VarChar(254)
-  address        String?      @db.VarChar(500)
-  description    String?      @db.Text
-  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner          User?        @relation("AccountOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  ownerId        String?        @map("owner_id") @db.Uuid
+  name           String         @db.VarChar(200)
+  industry       String?        @db.VarChar(50)
+  phone          String?        @db.VarChar(50)
+  website        String?        @db.VarChar(254)
+  address        String?        @db.VarChar(500)
+  description    String?        @db.Text
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner          User?          @relation("AccountOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
   contacts       Contact[]
   deals          Deal[]
   activities     Activity[]
   notes          Note[]
-  convertedLeads Lead[]       @relation("LeadConvertedAccount")
+  convertedLeads Lead[]         @relation("LeadConvertedAccount")
   tags           AccountTag[]
   attachments    Attachment[]
+  notifications  Notification[]
 
   @@unique([organizationId, id])
   @@index([organizationId, createdAt(sort: Desc)])
@@ -225,6 +230,7 @@ model Deal {
   updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization      Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner             User?          @relation("DealOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  notifications     Notification[]
   // 有商机的客户不能删除 / accounts with deals cannot be deleted
   account           Account        @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Restrict)
   activities        Activity[]
@@ -252,27 +258,29 @@ enum ActivityType {
 }
 
 model Activity {
-  id             String       @id @default(uuid()) @db.Uuid
-  organizationId String       @map("organization_id") @db.Uuid
-  ownerId        String?      @map("owner_id") @db.Uuid
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  ownerId        String?        @map("owner_id") @db.Uuid
   type           ActivityType
-  subject        String       @db.VarChar(200)
-  content        String?      @db.Text
-  dueAt          DateTime?    @map("due_at") @db.Timestamptz(6)
-  completed      Boolean      @default(false)
-  completedAt    DateTime?    @map("completed_at") @db.Timestamptz(6)
-  accountId      String?      @map("account_id") @db.Uuid
-  leadId         String?      @map("lead_id") @db.Uuid
-  dealId         String?      @map("deal_id") @db.Uuid
-  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner          User?        @relation("ActivityOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  subject        String         @db.VarChar(200)
+  content        String?        @db.Text
+  dueAt          DateTime?      @map("due_at") @db.Timestamptz(6)
+  completed      Boolean        @default(false)
+  completedAt    DateTime?      @map("completed_at") @db.Timestamptz(6)
+  accountId      String?        @map("account_id") @db.Uuid
+  leadId         String?        @map("lead_id") @db.Uuid
+  dealId         String?        @map("deal_id") @db.Uuid
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner          User?          @relation("ActivityOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  notifications  Notification[]
   // 关联记录删除时跟进记录一并删除 / activities are removed with the related record
-  account        Account?     @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Cascade)
-  lead           Lead?        @relation(fields: [organizationId, leadId], references: [organizationId, id], onDelete: Cascade)
-  deal           Deal?        @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Cascade)
+  account        Account?       @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Cascade)
+  lead           Lead?          @relation(fields: [organizationId, leadId], references: [organizationId, id], onDelete: Cascade)
+  deal           Deal?          @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Cascade)
 
+  @@unique([organizationId, id])
   @@index([organizationId, createdAt(sort: Desc)])
   @@index([organizationId, completed, dueAt])
   @@index([organizationId, accountId])
@@ -647,4 +655,51 @@ model SalesTarget {
   @@unique([organizationId, userId, month, currency])
   @@index([organizationId, month])
   @@map("sales_targets")
+}
+
+/// 通知类型 / notification type
+enum NotificationType {
+  /// 记录被分配给我 / a record was assigned to me
+  ASSIGNED
+  /// 我的跟进即将到期 / my activity is coming due
+  ACTIVITY_DUE
+
+  @@map("notification_type")
+}
+
+/// 站内通知：只属于接收人本人；恰好关联一条线索、客户、商机或跟进，随所属记录删除。
+/// title 为生成时的记录名称快照；dedup_key 防止同一提醒重复生成（同一接收人内唯一）。
+/// In-app notification owned by its recipient; linked to exactly one lead, account, deal or activity and removed
+/// with it. title snapshots the record name; dedup_key keeps a reminder from being generated twice per recipient.
+model Notification {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  type           NotificationType
+  actorId        String?          @map("actor_id") @db.Uuid
+  leadId         String?          @map("lead_id") @db.Uuid
+  accountId      String?          @map("account_id") @db.Uuid
+  dealId         String?          @map("deal_id") @db.Uuid
+  activityId     String?          @map("activity_id") @db.Uuid
+  title          String           @db.VarChar(200)
+  dueAt          DateTime?        @map("due_at") @db.Timestamptz(6)
+  dedupKey       String?          @map("dedup_key") @db.VarChar(100)
+  readAt         DateTime?        @map("read_at") @db.Timestamptz(6)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User             @relation("NotificationRecipient", fields: [organizationId, userId], references: [organizationId, id], onDelete: Cascade)
+  actor          User?            @relation("NotificationActor", fields: [organizationId, actorId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  lead           Lead?            @relation(fields: [organizationId, leadId], references: [organizationId, id], onDelete: Cascade)
+  account        Account?         @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Cascade)
+  deal           Deal?            @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Cascade)
+  activity       Activity?        @relation(fields: [organizationId, activityId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([userId, dedupKey])
+  @@index([organizationId, userId, createdAt(sort: Desc)])
+  @@index([userId, readAt])
+  @@index([organizationId, activityId])
+  @@index([organizationId, leadId])
+  @@index([organizationId, accountId])
+  @@index([organizationId, dealId])
+  @@map("notifications")
 }

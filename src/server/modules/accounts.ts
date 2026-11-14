@@ -10,6 +10,7 @@ import { prisma } from '../db';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, can, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
+import { notifyAssigned } from './notifications';
 import { recycle } from './recycle-bin';
 import { tagFilter, tagsInclude } from './tags';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
@@ -133,6 +134,7 @@ export async function createAccount(ctx: AuthContext, input: z.infer<typeof acco
   const created = await prisma.$transaction(async (tx) => {
     const account = await tx.account.create({ data: { ...data, organizationId: ctx.organizationId, ownerId: owner } });
     await audit(tx, { ...by(ctx), action: 'account.create', entityType: 'account', entityId: account.id, changes: { after: snapshot('account', account) } });
+    await notifyAssigned(tx, ctx, { entity: 'account', id: account.id }, account.name, account.ownerId, null);
     return account;
   });
   return getAccount(ctx, created.id);
@@ -150,6 +152,7 @@ export async function updateAccount(ctx: AuthContext, id: string, input: z.infer
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
   await prisma.$transaction(async (tx) => {
     const updated = await tx.account.update({ where: { id: current.id }, data: { ...data, ownerId: owner } });
+    await notifyAssigned(tx, ctx, { entity: 'account', id }, updated.name, updated.ownerId, current.ownerId);
     const fields = diff('account', current, updated);
     if (Object.keys(fields).length) {
       await audit(tx, { ...by(ctx), action: 'account.update', entityType: 'account', entityId: id, changes: { fields } });

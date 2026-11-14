@@ -14,7 +14,7 @@ import { hashPassword } from '../src/server/auth';
 import { createHash, randomUUID } from 'node:crypto';
 import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
-import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, demoNotifications, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -76,6 +76,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
     async (tx) => {
       if (options.reset) {
         // 仅清空演示组织的业务数据 / wipe business data of the demo organization only
+        await tx.notification.deleteMany({ where: { organizationId: o } });
         await tx.note.deleteMany({ where: { organizationId: o } });
         await tx.activity.deleteMany({ where: { organizationId: o } });
         await tx.lead.updateMany({ where: { organizationId: o }, data: { convertedAccountId: null, convertedContactId: null, convertedDealId: null } });
@@ -354,6 +355,23 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
           createdAt: new Date(Date.now() - a.daysAgo * DAY),
         })),
       });
+
+      // 站内通知（分配通知）/ in-app notifications (assignments)
+      const notices = demoNotifications(data);
+      await tx.notification.createMany({
+        data: notices.map((n) => ({
+          organizationId: o,
+          userId: ids[n.to],
+          type: 'ASSIGNED' as const,
+          actorId: ids[n.from],
+          leadId: 'lead' in n.target ? leadIds[n.target.lead] : null,
+          accountId: 'account' in n.target ? accountIds[n.target.account] : null,
+          dealId: 'deal' in n.target ? dealIds[n.target.deal] : null,
+          title: n.title,
+          createdAt: new Date(Date.now() - n.hoursAgo * 3600_000),
+          readAt: n.read ? new Date(Date.now() - (n.hoursAgo - 1) * 3600_000) : null,
+        })),
+      });
     },
     { timeout: 60_000 },
   );
@@ -362,7 +380,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length + 1} 客户（含 1 条重复）、${data.accounts.reduce((n, a) => n + a.contacts.length, 0) + 2} 联系人、` +
-      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标 / demo data ready`,
+      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
   );
 }
 

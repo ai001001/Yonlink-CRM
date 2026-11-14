@@ -11,6 +11,7 @@ import { Avatar, Dropdown, Layout, Menu, Spin, Tag, Typography } from 'antd';
 import {
   BankOutlined,
   BarChartOutlined,
+  BellOutlined,
   BlockOutlined,
   DashboardOutlined,
   DeleteOutlined,
@@ -28,6 +29,7 @@ import { t, tEnum } from '@/i18n';
 import { useAuth } from './AuthProvider';
 import { GlobalSearch } from './GlobalSearch';
 import { LanguageSwitch } from './LanguageSwitch';
+import { NotificationBell } from './NotificationBell';
 
 const NAV: { key: string; icon: React.ReactNode; label: string; permission?: string }[] = [
   { key: '/', icon: <DashboardOutlined />, label: t('nav.dashboard') },
@@ -40,6 +42,7 @@ const NAV: { key: string; icon: React.ReactNode; label: string; permission?: str
   { key: '/forecasts', icon: <AimOutlined />, label: t('nav.forecasts') },
   { key: '/products', icon: <AppstoreOutlined />, label: t('nav.products') },
   { key: '/duplicates', icon: <BlockOutlined />, label: t('nav.duplicates') },
+  { key: '/notifications', icon: <BellOutlined />, label: t('nav.notifications') },
   { key: '/recycle-bin', icon: <DeleteOutlined />, label: t('nav.recycleBin'), permission: 'record.delete' },
   { key: '/audit-logs', icon: <AuditOutlined />, label: t('nav.audit'), permission: 'audit.read' },
   { key: '/users', icon: <TeamOutlined />, label: t('nav.users'), permission: 'user.manage' },
@@ -95,6 +98,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           <GlobalSearch />
           <div style={{ flex: 1 }} />
+          <NotificationBell />
           <LanguageSwitch />
           <Typography.Text type="secondary">{me.organization.name}</Typography.Text>
           {me.isDemo && <Tag color="orange">{t('demo.badge')}</Tag>}

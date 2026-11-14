@@ -5,8 +5,10 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { App } from 'antd';
 import { api, qs } from './api';
+import { OPEN_RECORD } from './notifications';
 
 /** 分页响应 / Paginated response */
 export interface PageResult<T> {
@@ -95,18 +97,30 @@ export function toFormErrors(details: Record<string, string[]> | undefined) {
 }
 
 /**
- * 页面加载时若 URL 带 ?id=，打开对应记录详情（用于全局搜索跳转）。
- * Open a record's detail when the URL carries ?id= on load (used by global search links).
+ * 页面加载时若 URL 带 ?id=，打开对应记录详情（用于全局搜索和通知跳转）；
+ * 已在本页时，通知通过 yonlink:open-record 事件打开详情。
+ * Open a record's detail when the URL carries ?id= on load (global search and notification links); when the page
+ * is already open, notifications open the detail through the yonlink:open-record event.
  * @param open 打开详情的回调 / callback that opens the detail
  */
 export function useOpenFromUrl(open: (id: string) => void): void {
   const opened = useRef(false);
+  const pathname = usePathname();
   useEffect(() => {
     if (opened.current) return;
     opened.current = true;
     const id = new URLSearchParams(window.location.search).get('id');
     if (id) open(id);
   }, [open]);
+  useEffect(() => {
+    const here = pathname.replace(/\/$/, '') || '/';
+    const onOpen = (e: Event) => {
+      const detail = (e as CustomEvent<{ path: string; id: string }>).detail;
+      if (detail?.path === here) open(detail.id);
+    };
+    window.addEventListener(OPEN_RECORD, onOpen);
+    return () => window.removeEventListener(OPEN_RECORD, onOpen);
+  }, [open, pathname]);
 }
 
 /**

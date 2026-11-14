@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { App, Button, Card, Checkbox, Descriptions, Drawer, Input, Popconfirm, Segmented, Select, Space, Table, Tag, Typography } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
@@ -19,7 +19,7 @@ import { ACTIVITY_TYPE_COLOR, toggleActivity } from '@/components/RelatedActivit
 import { t, tEnum } from '@/i18n';
 import { api } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
-import { usePagedList, useSearch, useSelection } from '@/lib/hooks';
+import { useOpenFromUrl, usePagedList, useSearch, useSelection } from '@/lib/hooks';
 import type { Activity } from '@/lib/types';
 
 type StatusFilter = 'all' | 'false' | 'true';
@@ -73,6 +73,17 @@ export default function ActivitiesPage() {
   } | null>(null);
   const [detail, setDetail] = useState<Activity | null>(null);
   const [view, setView] = useState<View>('list');
+  // 通知跳转带 ?id= 时打开跟进详情 / open the activity detail for notification links with ?id=
+  useOpenFromUrl(
+    useCallback(
+      (id: string) => {
+        api<Activity>(`/api/activities/${id}`)
+          .then(setDetail)
+          .catch((err: Error) => message.error(err.message));
+      },
+      [message],
+    ),
+  );
   // 日历在数据变化后重新加载 / the calendar reloads after changes
   const [calendarVersion, setCalendarVersion] = useState(0);
 

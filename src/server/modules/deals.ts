@@ -11,6 +11,7 @@ import { prisma } from '../db';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
+import { notifyAssigned } from './notifications';
 import { recycle } from './recycle-bin';
 import { tagFilter, tagsInclude } from './tags';
 import { containsText, listQuery, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
@@ -141,6 +142,7 @@ export async function createDeal(ctx: AuthContext, input: z.infer<typeof dealCre
   return prisma.$transaction(async (tx) => {
     const deal = await tx.deal.create({ data: { ...data, organizationId: ctx.organizationId, ownerId: owner }, include });
     await audit(tx, { ...by(ctx), action: 'deal.create', entityType: 'deal', entityId: deal.id, changes: { after: snapshot('deal', deal) } });
+    await notifyAssigned(tx, ctx, { entity: 'deal', id: deal.id }, deal.name, deal.ownerId, null);
     return deal;
   });
 }
@@ -169,6 +171,7 @@ export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<ty
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
   return prisma.$transaction(async (tx) => {
     const deal = await tx.deal.update({ where: { id: current.id }, data: { ...data, ownerId: owner }, include });
+    await notifyAssigned(tx, ctx, { entity: 'deal', id: deal.id }, deal.name, deal.ownerId, current.ownerId);
     const fields = diff('deal', current, deal);
     if (Object.keys(fields).length) {
       await audit(tx, { ...by(ctx), action: 'deal.update', entityType: 'deal', entityId: deal.id, changes: { fields } });

@@ -10,6 +10,7 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
+import { notifyAssigned, withdrawReminders } from './notifications';
 import { containsText, listQuery, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
 const activityFields = {
@@ -183,6 +184,7 @@ export async function createActivity(ctx: AuthContext, input: z.infer<typeof act
       include: activityInclude,
     });
     await audit(tx, { ...by(ctx), action: 'activity.create', entityType: 'activity', entityId: activity.id, changes: { after: snapshot('activity', activity) } });
+    await notifyAssigned(tx, ctx, { entity: 'activity', id: activity.id }, activity.subject, activity.ownerId, null);
     return activity;
   });
 }
@@ -213,6 +215,11 @@ export async function updateActivity(ctx: AuthContext, id: string, input: z.infe
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
   return prisma.$transaction(async (tx) => {
     const activity = await tx.activity.update({ where: { id: current.id }, data: { ...data, completedAt, ownerId: owner }, include: activityInclude });
+    // 完成、改期、改负责人后旧提醒失效 / old reminders are stale after completion, rescheduling or reassignment
+    if (activity.completed !== current.completed || activity.ownerId !== current.ownerId || activity.dueAt?.getTime() !== current.dueAt?.getTime()) {
+      await withdrawReminders(tx, ctx.organizationId, activity.id);
+    }
+    await notifyAssigned(tx, ctx, { entity: 'activity', id: activity.id }, activity.subject, activity.ownerId, current.ownerId);
     const fields = diff('activity', current, activity);
     if (Object.keys(fields).length) {
       await audit(tx, { ...by(ctx), action: 'activity.update', entityType: 'activity', entityId: activity.id, changes: { fields } });

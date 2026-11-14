@@ -19,6 +19,7 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError } from '../errors';
 import { assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
+import { notifyAssigned } from './notifications';
 import { recycle } from './recycle-bin';
 import { MAX_TAGS_PER_RECORD } from './tags';
 
@@ -238,6 +239,8 @@ export async function mergeDuplicates(ctx: AuthContext, input: z.infer<typeof me
       await audit(tx, { ...by(ctx), action: `${single}.delete`, entityType: single, entityId: id, changes: { before: snapshot(single, r), recycled: true, mergedInto: master.id } });
     }
     const after = { ...master, ...data };
+    // 合并选用了另一位负责人时通知新负责人 / notify the new owner when the merge picks another owner
+    await notifyAssigned(tx, ctx, { entity: single, id: master.id }, String(after.name), (after.ownerId as string | null) ?? null, master.ownerId);
     await audit(tx, {
       ...by(ctx),
       action: `${single}.merge`,

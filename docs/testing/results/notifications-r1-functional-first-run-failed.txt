@@ -1,0 +1,45 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+16 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:1787172) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/notifications/notifications.r1-functional.test.ts (11 tests | 1 failed) 3436ms
+   ❯ notifications R1 reminders (3)
+     × 改期撤销未读旧提醒，新时间在窗口内会重新提醒；完成后撤销 / reschedule and completion withdraw 165ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/notifications/notifications.r1-functional.test.ts > notifications R1 reminders > 改期撤销未读旧提醒，新时间在窗口内会重新提醒；完成后撤销 / reschedule and completion withdraw
+AssertionError: expected 1794648072957 to be 1794648072933 // Object.is equality
+
+- Expected
++ Received
+
+- 1794648072933
++ 1794648072957
+
+ ❯ tests/notifications/notifications.r1-functional.test.ts:100:50
+     98|     expect(await count(s.token)).toBe(1);
+     99|     const r = await list(s.token);
+    100|     expect(new Date(r.items[0].dueAt).getTime()).toBe(new Date(act.due…
+       |                                                  ^
+    101|     await patch(activity, act.id, { completed: true }, s.token);
+    102|     expect(await count(s.token)).toBe(0);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 passed (11)
+   Start at  09:01:09
+   Duration  5.73s (tests 91%, import 6%, transform 3%)
+

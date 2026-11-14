@@ -12,6 +12,7 @@ import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermiss
 import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
 import { amountSchema, CURRENCIES, dateOnly } from './deals';
+import { notifyAssigned } from './notifications';
 import { recycle } from './recycle-bin';
 import { tagFilter, tagsInclude } from './tags';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
@@ -108,6 +109,7 @@ export async function createLead(ctx: AuthContext, input: z.infer<typeof leadCre
   return prisma.$transaction(async (tx) => {
     const lead = await tx.lead.create({ data: { ...data, organizationId: ctx.organizationId, ownerId: owner }, include });
     await audit(tx, { ...by(ctx), action: 'lead.create', entityType: 'lead', entityId: lead.id, changes: { after: snapshot('lead', lead) } });
+    await notifyAssigned(tx, ctx, { entity: 'lead', id: lead.id }, lead.name, lead.ownerId, null);
     return lead;
   });
 }
@@ -127,6 +129,7 @@ export async function updateLead(ctx: AuthContext, id: string, input: z.infer<ty
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
   return prisma.$transaction(async (tx) => {
     const lead = await tx.lead.update({ where: { id: current.id }, data: { ...data, ownerId: owner }, include });
+    await notifyAssigned(tx, ctx, { entity: 'lead', id: lead.id }, lead.name, lead.ownerId, current.ownerId);
     const fields = diff('lead', current, lead);
     if (Object.keys(fields).length) {
       await audit(tx, { ...by(ctx), action: 'lead.update', entityType: 'lead', entityId: lead.id, changes: { fields } });
