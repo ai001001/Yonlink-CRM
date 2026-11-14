@@ -78,6 +78,9 @@ export async function closeDrawer(page: Page, drawer: Locator): Promise<void> {
 export async function clickOption(page: Page, option: Locator): Promise<void> {
   // 正在收起的下拉带 *-leave 类名 / closing dropdowns carry a *-leave class
   const open = page.locator('.ant-select-dropdown:visible:not([class*="-leave"])');
+  // 先等下拉展开、选项出现：否则“下拉已收起”在展开之前也成立，会一次都没点就返回
+  // wait for the option first: "no open dropdown" is also true before it opens, which would return without clicking
+  await expect(option).toBeVisible();
   await expect(async () => {
     if ((await open.count()) > 0 && (await option.isVisible())) await option.click({ timeout: 2000 });
     await expect(open).toHaveCount(0, { timeout: 2000 });

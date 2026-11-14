@@ -1,0 +1,77 @@
+# CI run 43605829347 — commit 25626b8（失败的 E2E 摘要 / failed E2E summary）
+  ✓   1 e2e/accounts.spec.ts:10:1 › 客户完整业务流程 / full accounts flow (10.2s)
+  ✓   2 e2e/activities.spec.ts:10:1 › 跟进管理完整业务流程 / full activities flow (11.5s)
+  ✓   3 e2e/attachments.spec.ts:20:1 › 商机附件：上传、类型限制、下载、删除 / deal attachments (10.7s)
+  ✓   4 e2e/attachments.spec.ts:77:1 › 只读用户：可下载演示附件，不能上传或删除 / read-only users only download (1.5s)
+  ✓   5 e2e/audit.spec.ts:10:1 › 审计日志完整流程 / full audit flow (7.9s)
+  ✘   6 e2e/bulk.spec.ts:29:1 › 批量操作：线索、客户、跟进 / bulk actions on leads, accounts and activities (6.6s)
+  ✓   7 e2e/bulk.spec.ts:88:1 › 只读用户没有勾选框与批量操作栏 / read-only users cannot select rows (1.0s)
+  ✓   8 e2e/calendar.spec.ts:24:1 › 日历查看、完成、拖动改期、在某天新建 / calendar view, complete, drag, create on a day (7.1s)
+  ✓   9 e2e/calendar.spec.ts:89:1 › 只读用户：可查看日历，不能拖动或新建 / read-only user cannot drag or create (1.1s)
+  ✓  10 e2e/dashboard.spec.ts:16:1 › 工作台统计与全局搜索 / dashboard figures and global search (9.5s)
+  ✘  11 e2e/deal-board.spec.ts:20:1 › 商机看板拖动与移动 / deal board drag and move (6.7s)
+  ✓  12 e2e/deal-board.spec.ts:68:1 › 只读用户看板不可拖动、无“移动到” / read-only users cannot move cards (1.1s)
+  ✓  13 e2e/deals.spec.ts:10:1 › 商机完整业务流程 / full deals flow (12.7s)
+  ✓  14 e2e/duplicates.spec.ts:16:1 › 查找并合并重复线索 / find and merge duplicate leads (3.3s)
+  ✓  15 e2e/duplicates.spec.ts:57:1 › 销售代表只能查看重复记录，不能合并 / sales reps can only view (880ms)
+  ✓  16 e2e/forecasts.spec.ts:20:1 › 设定目标、指标一致、季度只读、清除 / set targets, matching figures, read-only quarter, clear (1.5s)
+  ✓  17 e2e/forecasts.spec.ts:72:1 › 销售代表只看到自己，不能设定目标 / sales reps see only themselves (1.3s)
+  ✓  18 e2e/i18n.spec.ts:8:1 › 切换英文界面并切回中文 / switch to English and back (3.5s)
+  ✓  19 e2e/import-export.spec.ts:9:1 › 导入客户并导出 / import accounts then export (1.9s)
+  ✓  20 e2e/import-export.spec.ts:49:1 › 销售代表可导入但没有导出按钮 / sales reps can import but not export (944ms)
+  ✓  21 e2e/invoices.spec.ts:22:1 › 订单生成发票、收款、撤销、付清 / invoice lifecycle (7.8s)
+  ✓  22 e2e/invoices.spec.ts:94:1 › 只读用户：查看演示发票与逾期筛选 / read-only user and the overdue filter (1.1s)
+  ✓  23 e2e/lead-conversion.spec.ts:10:1 › 线索转化完整流程 / full lead conversion flow (9.6s)
+  ✓  24 e2e/leads.spec.ts:8:1 › 线索完整业务流程 / full leads flow (10.5s)
+  ✓  25 e2e/leads.spec.ts:73:1 › 未登录访问业务页跳转登录 / unauthenticated access redirects to login (476ms)
+  ✓  26 e2e/notes.spec.ts:17:1 › 商机备注：新增、纯文本显示、编辑、删除 / deal notes: add, plain text, edit, delete (6.3s)
+  ✓  27 e2e/notes.spec.ts:66:1 › 只读用户可查看演示备注但不能添加 / read-only users see demo notes but cannot add (1.5s)
+  ✓  28 e2e/notifications.spec.ts:39:1 › 分配通知：铃铛提醒并在当前页打开记录 / assignment notice opens the record (4.8s)
+  ✓  29 e2e/notifications.spec.ts:76:1 › 跟进到期提醒：跳转到跟进详情 / due reminder opens the activity (1.4s)
+  ✓  30 e2e/products.spec.ts:30:1 › 产品目录与商机明细 / product catalog and deal line items (14.6s)
+  ✓  31 e2e/products.spec.ts:124:1 › 只读用户只能查看产品目录 / read-only user only views the catalog (861ms)
+  ✓  32 e2e/quotes.spec.ts:21:1 › 商机生成报价单、发送、接受、打印 / quote lifecycle (10.5s)
+  ✓  33 e2e/quotes.spec.ts:105:1 › 只读用户可查看报价单但不能操作 / read-only user views quotes only (1.1s)
+  ✓  34 e2e/rbac.spec.ts:55:1 › 演示账号列表与各角色权限 / demo accounts and per-role permissions (10.3s)
+  ✓  35 e2e/rbac.spec.ts:148:1 › 系统管理员管理用户 / admin manages users (3.5s)
+  ✓  36 e2e/receivables.spec.ts:16:1 › 经理查看应收账款并跳转发票 / manager views receivables (2.0s)
+  ✓  37 e2e/receivables.spec.ts:46:1 › 销售代表只看到自己负责的应收 / sales reps see only their own (1.7s)
+  ✓  38 e2e/recycle.spec.ts:26:1 › 删除、恢复、依赖提示、彻底删除与清空 / delete, restore, dependency hint, purge and empty (7.7s)
+  ✓  39 e2e/recycle.spec.ts:89:1 › 经理可恢复但不能彻底删除 / managers cannot purge (818ms)
+  ✓  40 e2e/recycle.spec.ts:97:1 › 销售代表没有回收站入口 / sales reps have no recycle bin (943ms)
+  ✘  41 e2e/reports.spec.ts:19:1 › 报表数字与接口一致，可切换币种与负责人 / figures match the API; currency and owner filters (30.2s)
+  ✓  42 e2e/reports.spec.ts:55:1 › 销售代表只统计自己负责的数据，没有负责人筛选 / sales reps see only their own data (1.0s)
+  ✓  43 e2e/sales-orders.spec.ts:22:1 › 报价单生成销售订单并完成发货与取消 / order lifecycle from a quote (9.1s)
+  ✓  44 e2e/sales-orders.spec.ts:94:1 › 演示数据：销售订单列表与只读用户 / demo orders for a read-only user (1.0s)
+  ✘  45 e2e/tags.spec.ts:19:1 › 标签：添加、筛选、移除、批量、管理 / tags: add, filter, remove, bulk, manage (10.0s)
+  ✓  46 e2e/tags.spec.ts:94:1 › 只读用户：可看到演示标签，不能添加或管理 / read-only users only view tags (1.2s)
+  ✘  47 e2e/views.spec.ts:31:1 › 视图：保存、默认自动套用、切换、更新、共享、删除 / views end to end (8.2s)
+  ✘  48 e2e/views.spec.ts:87:1 › 只读用户可保存私有视图，不能共享 / read-only users save private views only (8.9s)
+  1) e2e/bulk.spec.ts:29:1 › 批量操作：线索、客户、跟进 / bulk actions on leads, accounts and activities ────────
+    Error: expect(locator).toHaveText(expected) failed
+    Error: element(s) not found
+    > 42 |   await expect(page.locator('.ant-modal-confirm-title')).toHaveText('确认将选中的 3 条记录改为“已确认”？');
+    Error Context: test-results/bulk-批量操作：线索、客户、跟进-bulk-ac-c3539-ads-accounts-and-activities/error-context.md
+  2) e2e/deal-board.spec.ts:20:1 › 商机看板拖动与移动 / deal board drag and move ────────────────────────────
+    Error: expect(locator).toBeVisible() failed
+    Error: element(s) not found
+    > 48 |   await expect(negotiation.getByLabel('E2E 看板商机乙', { exact: true })).toBeVisible();
+    Error Context: test-results/deal-board-商机看板拖动与移动-deal-board-drag-and-move/error-context.md
+  3) e2e/reports.spec.ts:19:1 › 报表数字与接口一致，可切换币种与负责人 / figures match the API; currency and owner filters 
+    Error: page.waitForResponse: Test timeout of 30000ms exceeded.
+    > 36 |   let next = page.waitForResponse((r) => isReport(r) && r.url().includes('currency=USD'));
+    Error Context: test-results/reports-报表数字与接口一致，可切换币种与负责-e1b45--currency-and-owner-filters/error-context.md
+  4) e2e/tags.spec.ts:19:1 › 标签：添加、筛选、移除、批量、管理 / tags: add, filter, remove, bulk, manage ───────────
+    Error: expect(locator).toHaveCount(expected) failed
+    > 43 |   await expect(page.getByRole('row', { name: /E2E 标签客户/ })).toHaveCount(1);
+    Error Context: test-results/tags-标签：添加、筛选、移除、批量、管理-tags-add-filter-remove-bulk-manage/error-context.md
+  5) e2e/views.spec.ts:31:1 › 视图：保存、默认自动套用、切换、更新、共享、删除 / views end to end ──────────────────────────
+    Error: expect(locator).toContainText(expected) failed
+    > 53 |   await expect(page.getByRole('main').locator('.ant-select', { has: page.getByLabel('线索状态', { exact: true }) })).toContainText('新线索');
+    Error Context: test-results/views-视图：保存、默认自动套用、切换、更新、共享、删除-views-end-to-end/error-context.md
+  6) e2e/views.spec.ts:87:1 › 只读用户可保存私有视图，不能共享 / read-only users save private views only ───────────
+    Error: expect(locator).toContainText(expected) failed
+    > 101 |   await expect(page.getByRole('main').locator('.ant-select', { has: page.getByLabel('行业', { exact: true }) })).toContainText('制造业');
+    Error Context: test-results/views-只读用户可保存私有视图，不能共享-rea-ade17-ers-save-private-views-only/error-context.md
+  6 failed
+  42 passed (4.6m)
