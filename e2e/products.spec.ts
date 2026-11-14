@@ -4,7 +4,7 @@
  * Product catalog and deal line items round 3: end-to-end regression.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { nav, searchList, signIn } from './helpers';
+import { closeDrawer, nav, searchList, signIn } from './helpers';
 
 const PRODUCTS = '搜索 SKU、名称、分类';
 const DEALS = '搜索商机名称、客户名称';
@@ -78,7 +78,7 @@ test('产品目录与商机明细 / product catalog and deal line items', async 
   await expect(panel.getByTestId('items-total')).toHaveText('¥1,800.00');
 
   // 列表中的商机金额随明细更新 / the deal amount in the list follows the items
-  await drawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, drawer);
   await expect(drawer).toBeHidden();
   const dealRow = page.getByRole('row', { name: /E2E 产品商机/ });
   await expect(dealRow).toContainText('¥1,800.00');
@@ -115,7 +115,7 @@ test('产品目录与商机明细 / product catalog and deal line items', async 
   await expect(panel.getByTestId('items-total')).toHaveText('¥0.00');
 
   // 审计日志记录产品与明细操作 / the audit log records product and item actions
-  await drawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, drawer);
   await expect(drawer).toBeHidden();
   await nav(page, '审计日志');
   await expect(page.locator('.ant-table')).toContainText('产品');

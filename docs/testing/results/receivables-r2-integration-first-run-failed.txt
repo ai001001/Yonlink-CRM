@@ -1,0 +1,124 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+18 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:1910119) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/receivables/receivables.r2-integration.test.ts (8 tests | 5 failed) 2509ms
+   ❯ receivables R2 scope (4)
+     × 销售代表只统计自己的；传别人的负责人也不能越权 / sales reps see only their own 980ms
+     × 销售代表的近 30 天收款也只统计自己的 / collections follow the scope 282ms
+   ❯ receivables R2 behaviour (3)
+     × 明细超过上限时截断，汇总仍包含全部 / truncated list keeps full totals 283ms
+     × 时间推移后账龄随之变化 / aging moves with time 192ms
+     × 收款与作废实时生效 / payments and voids apply immediately 198ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/receivables/receivables.r2-integration.test.ts > receivables R2 scope > 销售代表只统计自己的；传别人的负责人也不能越权 / sales reps see only their own
+AssertionError: expected [] to deeply equal [ '销售1客户' ]
+
+- Expected
++ Received
+
+- [
+-   "销售1客户",
+- ]
++ []
+
+ ❯ tests/receivables/receivables.r2-integration.test.ts:60:23
+     58|     await invoice(sales2, '销售2客户', '2', -10);
+     59|     const s1 = await get(sales1);
+     60|     expect(names(s1)).toEqual(['销售1客户']);
+       |                       ^
+     61|     expect(s1.summary).toMatchObject({ outstanding: '100.00', overdueC…
+     62|     const sneaky = await get(sales1, { ownerId: sales2.user.id });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  tests/receivables/receivables.r2-integration.test.ts > receivables R2 scope > 销售代表的近 30 天收款也只统计自己的 / collections follow the scope
+AssertionError: expected { outstanding: '0.00', …(5) } to match object { collected: '30.00', …(1) }
+(4 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "collected": "30.00",
+-   "collectedCount": 1,
++   "collected": "0.00",
++   "collectedCount": 0,
+  }
+
+ ❯ tests/receivables/receivables.r2-integration.test.ts:74:41
+     72|     await call(payments.POST, { token: sales1.token, params: { id: i1.…
+     73|     await call(payments.POST, { token: sales2.token, params: { id: i2.…
+     74|     expect((await get(sales1)).summary).toMatchObject({ collected: '30…
+       |                                         ^
+     75|     expect((await get(admin)).summary).toMatchObject({ collected: '70.…
+     76|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  tests/receivables/receivables.r2-integration.test.ts > receivables R2 behaviour > 明细超过上限时截断，汇总仍包含全部 / truncated list keeps full totals
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/receivables/receivables.r2-integration.test.ts:99:25
+     97|     const ctx = { userId: admin.user.id, organizationId: admin.org.id,…
+     98|     const r = await receivablesReport(ctx, { currency: 'CNY' }, new Da…
+     99|     expect(r.truncated).toBe(true);
+       |                         ^
+    100|     expect(r.invoices).toHaveLength(2);
+    101|     expect(r.summary).toMatchObject({ outstanding: '600.00', outstandi…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  tests/receivables/receivables.r2-integration.test.ts > receivables R2 behaviour > 时间推移后账龄随之变化 / aging moves with time
+TypeError: Cannot read properties of undefined (reading 'bucket')
+ ❯ bucketOf tests/receivables/receivables.r2-integration.test.ts:109:76
+    107|     const ctx = { userId: admin.user.id, organizationId: admin.org.id,…
+    108|     const at = (days: number) => receivablesReport(ctx, { currency: 'C…
+    109|     const bucketOf = async (days: number) => (await at(days)).invoices…
+       |                                                                            ^
+    110|     expect(await bucketOf(0)).toBe('current');
+    111|     expect(await bucketOf(1)).toBe('d1_30');
+ ❯ tests/receivables/receivables.r2-integration.test.ts:110:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  tests/receivables/receivables.r2-integration.test.ts > receivables R2 behaviour > 收款与作废实时生效 / payments and voids apply immediately
+AssertionError: expected '0.00' to be '400.00' // Object.is equality
+
+Expected: "400.00"
+Received: "0.00"
+
+ ❯ tests/receivables/receivables.r2-integration.test.ts:120:52
+    118|   it('收款与作废实时生效 / payments and voids apply immediately', async () => {
+    119|     const i = await invoice(admin, '甲客户', '4', -3);
+    120|     expect((await get(admin)).summary.outstanding).toBe('400.00');
+       |                                                    ^
+    121|     await call(payments.POST, { token: admin.token, params: { id: i.id…
+    122|     expect((await get(admin)).summary).toMatchObject({ outstanding: '0…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 3 passed (8)
+   Start at  13:44:38
+   Duration  4.87s (tests 86%, import 10%, transform 3%)
+

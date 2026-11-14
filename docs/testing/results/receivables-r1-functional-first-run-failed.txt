@@ -1,0 +1,49 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+18 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:1908703) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/receivables/receivables.r1-functional.test.ts (5 tests | 1 failed) 3939ms
+   ❯ receivables R1 aging (4)
+     × 未收、逾期、账龄、按客户汇总与发票明细 / totals, aging, accounts and invoices 1017ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/receivables/receivables.r1-functional.test.ts > receivables R1 aging > 未收、逾期、账龄、按客户汇总与发票明细 / totals, aging, accounts and invoices
+AssertionError: expected [ '乙客户', '甲客户', '甲客户' ] to deeply equal [ '甲客户', '乙客户' ]
+
+- Expected
++ Received
+
+  [
++   "乙客户",
+    "甲客户",
+-   "乙客户",
++   "甲客户",
+  ]
+
+ ❯ tests/receivables/receivables.r1-functional.test.ts:84:61
+     82|     ]);
+     83|     // 欠款多的客户在前 / largest balance first
+     84|     expect(r.accounts.map((x: { name: string }) => x.name)).toEqual(['…
+       |                                                             ^
+     85|     expect(r.accounts[0]).toMatchObject({ count: 2, outstanding: '1500…
+     86|     expect(r.accounts[0].buckets).toMatchObject({ current: '1000.00', …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  13:43:20
+   Duration  6.42s (tests 90%, import 7%, transform 3%)
+

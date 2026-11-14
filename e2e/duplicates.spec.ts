@@ -3,7 +3,7 @@
  * Deduplication round 3: end-to-end regression.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { nav, signIn } from './helpers';
+import { closeDrawer, nav, signIn } from './helpers';
 
 /** 用当前登录令牌调用 API / call the API with the current session */
 async function apiPost(page: Page, path: string, data: object) {
@@ -44,7 +44,7 @@ test('查找并合并重复线索 / find and merge duplicate leads', async ({ pa
   await expect(drawer).toContainText('E2E 查重公司');
   await expect(drawer).toContainText('e2e-dupe@example.com');
   await expect(drawer).toContainText('重复记录上的备注');
-  await drawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, drawer);
   await expect(drawer).toBeHidden();
 
   // 回收站与审计 / recycle bin and audit

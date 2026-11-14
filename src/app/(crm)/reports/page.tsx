@@ -6,6 +6,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Alert, App, Card, Col, DatePicker, Row, Select, Space, Spin, Statistic, Table, Typography } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { usePermissions } from '@/components/AuthProvider';
@@ -86,7 +87,7 @@ export default function ReportsPage() {
   const currencyOptions = [...new Set([...(data?.currencies ?? []), currency, ...CURRENCIES])].map((c) => ({ value: c, label: c }));
 
   return (
-    <Card title={t('reports.title')}>
+    <Card title={t('reports.title')} extra={<Link href="/reports/receivables">{t('receivables.title')}</Link>}>
       <Space wrap style={{ marginBottom: 12 }}>
         <Select aria-label={t('reports.currency')} style={{ width: 100 }} value={currency} onChange={setCurrency} options={currencyOptions} />
         <DatePicker.RangePicker

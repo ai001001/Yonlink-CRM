@@ -4,7 +4,7 @@
  */
 import { expect, test, type Page, type Response } from '@playwright/test';
 import { fmtMoney } from '../src/lib/format';
-import { nav, signIn } from './helpers';
+import { clickOption, nav, signIn } from './helpers';
 
 /** 用当前登录令牌调用 API / call the API with the current session */
 async function apiPost(page: Page, path: string, data: object) {
@@ -75,7 +75,7 @@ test('销售代表只看到自己，不能设定目标 / sales reps see only the
   await expect(page.getByTestId('current-role')).toHaveText('销售代表');
   await page.getByRole('menu').getByRole('link', { name: '销售预测', exact: true }).click();
   await page.locator('.ant-select', { has: page.getByLabel('币种', { exact: true }) }).click();
-  await page.locator('.ant-select-dropdown:visible').getByTitle('USD', { exact: true }).click();
+  await clickOption(page, page.locator('.ant-select-dropdown:visible').getByTitle('USD', { exact: true }));
   const rows = page.getByTestId('forecast-table').locator('tbody tr.ant-table-row');
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText('王芳');

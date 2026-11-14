@@ -3,7 +3,7 @@
  * Leads round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
-import { nav, searchList, selectOption, signIn } from './helpers';
+import { closeDrawer, nav, searchList, selectOption, signIn } from './helpers';
 
 test('线索完整业务流程 / full leads flow', async ({ page }) => {
   await signIn(page);
@@ -54,7 +54,7 @@ test('线索完整业务流程 / full leads flow', async ({ page }) => {
   await selectOption(page, dialog, '线索状态', '已确认');
   await dialog.getByRole('button', { name: /保\s*存/ }).click();
   await expect(drawer).toContainText('已确认');
-  await drawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, drawer);
 
   // 刷新后数据仍在（来自数据库）/ data survives reload (persisted)
   await page.reload();

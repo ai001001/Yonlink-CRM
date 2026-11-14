@@ -3,7 +3,7 @@
  * Bulk actions round 3: end-to-end regression.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { nav, signIn } from './helpers';
+import { clickOption, nav, signIn } from './helpers';
 
 /** 用当前登录令牌调用 API / call the API with the current session */
 async function apiPost(page: Page, path: string, data: object) {
@@ -38,7 +38,7 @@ test('批量操作：线索、客户、跟进 / bulk actions on leads, accounts 
   const bar = page.getByTestId('bulk-bar');
   await expect(bar).toContainText('已选择 3 条');
   await bar.getByLabel('批量修改状态').click();
-  await page.locator('.ant-select-dropdown:visible').getByTitle('已确认', { exact: true }).click();
+  await clickOption(page, page.locator('.ant-select-dropdown:visible').getByTitle('已确认', { exact: true }));
   await expect(page.locator('.ant-modal-confirm-title')).toHaveText('确认将选中的 3 条记录改为“已确认”？');
   await page.getByRole('button', { name: /保\s*存/ }).click();
   await expect(page.getByText('已处理 3 条').first()).toBeVisible();
@@ -48,7 +48,7 @@ test('批量操作：线索、客户、跟进 / bulk actions on leads, accounts 
   // 线索：批量取消分配 / leads: bulk unassign
   await selectAll(page);
   await bar.getByLabel('批量指派负责人').click();
-  await page.locator('.ant-select-dropdown:visible').getByTitle('未分配', { exact: true }).click();
+  await clickOption(page, page.locator('.ant-select-dropdown:visible').getByTitle('未分配', { exact: true }));
   await page.getByRole('button', { name: /保\s*存/ }).click();
   await expect(page.getByText('已处理 3 条').first()).toBeVisible();
   await expect(page.getByRole('row', { name: /E2E 批量线索甲/ })).toContainText('未分配');

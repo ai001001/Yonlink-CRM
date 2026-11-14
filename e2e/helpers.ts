@@ -52,13 +52,34 @@ export async function searchList(page: Page, placeholder: string, text: string):
 }
 
 /**
- * 关闭抽屉。先等顶部提示条全部消失：提示条可能盖住抽屉的关闭按钮，而鼠标悬停在提示条上会暂停它自动消失，
- * 直接点击会一直被挡住。
- * Close a drawer. Waits for the top toasts to disappear first: they can cover the drawer's close button, and
- * hovering a toast pauses its auto-dismiss, so a direct click could stay blocked.
+ * 关闭抽屉。先把鼠标移开并等顶部提示条全部消失：提示条可能盖住抽屉的关闭按钮，而鼠标悬停在提示条上会暂停
+ * 它自动消失，直接点击会一直被挡住。所有 E2E 关闭抽屉都应使用本函数。
+ * Close a drawer. Moves the mouse away and waits for the top toasts to disappear first: they can cover the
+ * drawer's close button, and hovering a toast pauses its auto-dismiss, so a direct click could stay blocked.
+ * Every E2E test should close drawers through this helper.
  * @param drawer 抽屉 / the drawer
  */
 export async function closeDrawer(page: Page, drawer: Locator): Promise<void> {
+  // 先把鼠标移到左上角空白处，避免悬停在提示条上 / move the mouse to the empty top-left corner first
+  await page.mouse.move(1, 1);
   await expect(page.locator('.ant-message-notice')).toHaveCount(0, { timeout: 15000 });
   await drawer.getByRole('button', { name: '关闭' }).first().click();
+}
+
+/**
+ * 点击已展开下拉中的选项，并确认生效（下拉收起）。Ant Design 下拉在展开动画期间的点击可能被忽略，忽略时重试；
+ * 只在下拉仍处于展开状态（不是正在收起）时才再次点击，避免同一选项被选两次（如批量操作弹出两个确认框）。
+ * 所有 E2E 点击下拉选项都应使用本函数或 selectOption。
+ * Click an option in an open dropdown and confirm it took effect (the dropdown closes). Clicks during the opening
+ * animation can be ignored, so they are retried, but only while the dropdown is still open (not closing) so an option
+ * is never picked twice (e.g. two bulk confirmations). Every E2E dropdown pick should use this or selectOption.
+ * @param option 下拉中的选项 / the option inside the dropdown
+ */
+export async function clickOption(page: Page, option: Locator): Promise<void> {
+  // 正在收起的下拉带 *-leave 类名 / closing dropdowns carry a *-leave class
+  const open = page.locator('.ant-select-dropdown:visible:not([class*="-leave"])');
+  await expect(async () => {
+    if ((await open.count()) > 0 && (await option.isVisible())) await option.click({ timeout: 2000 });
+    await expect(open).toHaveCount(0, { timeout: 2000 });
+  }).toPass({ timeout: 15000 });
 }

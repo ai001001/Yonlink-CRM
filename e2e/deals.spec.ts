@@ -3,7 +3,7 @@
  * Deals round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
-import { nav, searchList, selectOption, signIn } from './helpers';
+import { closeDrawer, nav, searchList, selectOption, signIn } from './helpers';
 
 const SAVE = /保\s*存/;
 
@@ -61,7 +61,7 @@ test('商机完整业务流程 / full deals flow', async ({ page }) => {
   await dialog.getByLabel('主题').fill('E2E 签约会议');
   await dialog.getByRole('button', { name: SAVE }).click();
   await expect(drawer.getByTestId('related-activities')).toContainText('E2E 签约会议');
-  await drawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, drawer);
 
   // 搜索：按客户名找到商机 / search by account name
   await searchList(page, '搜索商机名称、客户名称', '海川');
@@ -74,7 +74,7 @@ test('商机完整业务流程 / full deals flow', async ({ page }) => {
   const accDrawer = page.getByRole('dialog', { name: /客户详情/ });
   await accDrawer.getByRole('tab', { name: '商机 (1)' }).click();
   await expect(accDrawer.getByTestId('account-deals')).toContainText('E2E 服务器扩容');
-  await accDrawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, accDrawer);
   await accRow.getByRole('button', { name: /删\s*除/ }).click();
   await page.getByRole('button', { name: /确\s*定|OK/ }).click();
   await expect(page.getByText('该客户下存在商机，请先删除或转移商机')).toBeVisible();

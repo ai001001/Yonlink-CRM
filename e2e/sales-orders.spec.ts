@@ -4,7 +4,7 @@
  * Sales orders round 3: end-to-end regression.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { nav, searchList, signIn } from './helpers';
+import { closeDrawer, nav, searchList, signIn } from './helpers';
 
 /** 用当前登录令牌调用 API / call the API with the current session */
 async function apiPost(page: Page, path: string, data: object = {}) {
@@ -67,7 +67,7 @@ test('报价单生成销售订单并完成发货与取消 / order lifecycle from
   await expect(drawer).toContainText('客户改期');
   await expect(drawer).toContainText('订单已交付或已取消，不能再修改。');
   await expect(drawer.getByRole('button', { name: /编\s*辑/ })).toHaveCount(0);
-  await drawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, drawer);
 
   // 列表按状态筛选 / list filter
   await page.locator('.ant-segmented').getByText('已取消', { exact: true }).click();

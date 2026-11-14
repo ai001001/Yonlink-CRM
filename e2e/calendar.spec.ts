@@ -3,7 +3,7 @@
  * Activity calendar round 3: end-to-end regression.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { nav, signIn } from './helpers';
+import { clickOption, closeDrawer, nav, signIn } from './helpers';
 
 // 固定北京时间，日期计算稳定 / fixed time zone for stable dates
 test.use({ timezoneId: 'Asia/Shanghai' });
@@ -41,7 +41,7 @@ test('日历查看、完成、拖动改期、在某天新建 / calendar view, co
   await drawer.getByRole('button', { name: '标记完成' }).click();
   await expect(drawer.getByRole('button', { name: '重新打开' })).toBeVisible();
   await expect(drawer).toContainText('已完成');
-  await drawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, drawer);
   await expect(drawer).toBeHidden();
   // 点日期数字区域选中当天（点中心可能落在跟进条目上）/ click the date corner, the centre may hit an item
   await todayCell.click({ position: { x: 8, y: 8 } });
@@ -70,7 +70,7 @@ test('日历查看、完成、拖动改期、在某天新建 / calendar view, co
 
   // 类型筛选：只看客户拜访 / type filter
   await cal.getByLabel('类型').click();
-  await page.locator('.ant-select-dropdown:visible').getByTitle('客户拜访', { exact: true }).click();
+  await clickOption(page, page.locator('.ant-select-dropdown:visible').getByTitle('客户拜访', { exact: true }));
   await expect(tomorrowCell.getByTestId('calendar-item').filter({ hasText: 'E2E 日历拜访' })).toBeVisible();
   await expect(tomorrowCell.getByTestId('calendar-item').filter({ hasText: 'E2E 日历新建任务' })).toHaveCount(0);
 

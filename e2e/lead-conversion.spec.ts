@@ -3,7 +3,7 @@
  * Lead conversion round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
-import { nav, signIn } from './helpers';
+import { closeDrawer, nav, signIn } from './helpers';
 
 const SAVE = /保\s*存/;
 
@@ -49,7 +49,7 @@ test('线索转化完整流程 / full lead conversion flow', async ({ page }) =>
   await expect(drawer.getByRole('button', { name: /^(swap )?转\s*化$/ })).toHaveCount(0);
 
   // 列表中转化按钮禁用；编辑时状态锁定 / list button disabled; status locked when editing
-  await drawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, drawer);
   const row = page.getByRole('row', { name: /E2E 转化张三/ });
   await expect(row).toContainText('已转化');
   await expect(row.getByRole('button', { name: /^(swap )?转\s*化$/ })).toBeDisabled();

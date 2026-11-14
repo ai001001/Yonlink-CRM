@@ -4,7 +4,7 @@
  * Saved views round 3: end-to-end regression.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { nav, searchList, signIn } from './helpers';
+import { clickOption, nav, searchList, signIn } from './helpers';
 
 /** 用当前登录令牌调用 API / call the API with the current session */
 async function apiPost(page: Page, path: string, data: object) {
@@ -24,7 +24,7 @@ const dropdown = (page: Page) => page.locator('.ant-select-dropdown:visible');
  */
 async function pick(page: Page, label: string, option: string): Promise<void> {
   await page.getByRole('main').getByLabel(label, { exact: true }).click();
-  await dropdown(page).getByTitle(option, { exact: true }).click();
+  await clickOption(page, dropdown(page).getByTitle(option, { exact: true }));
   await expect(dropdown(page)).toHaveCount(0);
 }
 

@@ -3,7 +3,7 @@
  * Activities round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
-import { nav, selectOption, signIn } from './helpers';
+import { closeDrawer, nav, selectOption, signIn } from './helpers';
 
 const SAVE = /保\s*存/;
 
@@ -65,14 +65,14 @@ test('跟进管理完整业务流程 / full activities flow', async ({ page }) =
   await dialog.getByLabel('内容').fill('报价单已通过邮件发送');
   await dialog.getByRole('button', { name: SAVE }).click();
   await expect(drawer).toContainText('报价单已通过邮件发送');
-  await drawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, drawer);
 
   // 线索详情中可见该跟进 / visible in the lead timeline
   await nav(page, '线索');
   await page.getByRole('button', { name: 'E2E 跟进线索' }).click();
   const leadDrawer = page.getByRole('dialog', { name: '线索详情' });
   await expect(leadDrawer.getByTestId('related-activities')).toContainText('E2E 发送报价单');
-  await leadDrawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, leadDrawer);
 
   // 删除跟进 / delete activity
   await nav(page, '跟进');

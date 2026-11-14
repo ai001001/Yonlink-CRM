@@ -3,7 +3,7 @@
  * Audit log round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
-import { nav, selectOption, signIn } from './helpers';
+import { closeDrawer, nav, selectOption, signIn } from './helpers';
 
 const SAVE = /保\s*存/;
 
@@ -37,7 +37,7 @@ test('审计日志完整流程 / full audit flow', async ({ page }) => {
   await expect(trail).toContainText('（已修改，内容不记录）');
   await expect(trail).not.toContainText('audit.person@example.com');
   await expect(trail).not.toContainText('E2E 机密备注内容');
-  await drawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, drawer);
 
   // 审计日志页：说明、筛选、登录事件 / audit page: notice, filters, login events
   await nav(page, '审计日志');

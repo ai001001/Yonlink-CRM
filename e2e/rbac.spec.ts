@@ -4,7 +4,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import { demoSamples } from '../prisma/demo-data';
-import { nav, selectOption } from './helpers';
+import { closeDrawer, nav, selectOption } from './helpers';
 
 // 演示数据中的样本（由数据集推导，调整数据后测试自动跟随）/ samples derived from the demo dataset
 const S = demoSamples();
@@ -110,7 +110,7 @@ test('演示账号列表与各角色权限 / demo accounts and per-role permissi
   await expect(accDrawer.getByRole('tab', { name: '商机 (1)' })).toBeVisible();
   await accDrawer.getByRole('tab', { name: '商机 (1)' }).click();
   await expect(accDrawer.getByTestId('account-deals')).not.toContainText('E2E 陈静负责的商机');
-  await accDrawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, accDrawer);
   await nav(page, '商机');
   await search(page, DEALS, S.sales1Deal);
   await expect(rowOf(page, S.sales1Deal)).toBeVisible();

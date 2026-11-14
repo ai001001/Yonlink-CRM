@@ -3,7 +3,7 @@
  * Accounts round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
-import { nav, searchList, selectOption, signIn } from './helpers';
+import { closeDrawer, nav, searchList, selectOption, signIn } from './helpers';
 
 const SAVE = /保\s*存/;
 
@@ -57,7 +57,7 @@ test('客户完整业务流程 / full accounts flow', async ({ page }) => {
   await expect(timeline).toContainText('E2E 上门拜访');
   await expect(timeline).toContainText('客户拜访');
   await expect(timeline).toContainText('确认了二期需求');
-  await drawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, drawer);
 
   // 按联系人姓名搜索客户 / search by contact name
   await searchList(page, '搜索客户名称、电话、网站、地址、联系人', '欧阳');

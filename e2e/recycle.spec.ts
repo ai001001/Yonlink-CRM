@@ -4,7 +4,7 @@
  * Recycle bin round 3: end-to-end regression.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { nav, searchList, signIn } from './helpers';
+import { closeDrawer, nav, searchList, signIn } from './helpers';
 
 /** 用当前登录令牌调用 API / call the API with the current session */
 async function api(page: Page, method: 'POST' | 'DELETE', path: string, data?: object) {
@@ -53,7 +53,7 @@ test('删除、恢复、依赖提示、彻底删除与清空 / delete, restore, 
   const drawer = page.getByRole('dialog', { name: /线索详情/ });
   await expect(drawer).toContainText('E2E 回收线索');
   await expect(drawer).toContainText('回收前的备注');
-  await drawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, drawer);
 
   // 依赖缺失：先删商机再删客户，恢复商机提示先恢复客户 / missing account hint
   const acc = await api(page, 'POST', '/api/accounts', { name: 'E2E 回收客户' });

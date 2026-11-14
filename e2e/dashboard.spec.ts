@@ -3,7 +3,7 @@
  * Dashboard round 3: end-to-end regression.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { nav, selectOption, signIn } from './helpers';
+import { closeDrawer, nav, selectOption, signIn } from './helpers';
 
 const SAVE = /保\s*存/;
 
@@ -83,7 +83,7 @@ test('工作台统计与全局搜索 / dashboard figures and global search', asy
   const dealDrawer = page.getByRole('dialog', { name: /商机详情/ });
   await expect(dealDrawer).toContainText('¥7,000,000.00');
   // 抽屉打开时焦点被锁定在抽屉内，先关闭再使用顶部搜索 / focus is trapped in the open drawer; close it first
-  await dealDrawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, dealDrawer);
   await expect(dealDrawer).toBeHidden();
 
   await expect(page.locator('.ant-modal-wrap:visible')).toHaveCount(0);

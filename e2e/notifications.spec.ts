@@ -6,7 +6,7 @@
  * activity detail).
  */
 import { expect, test, type Page } from '@playwright/test';
-import { nav } from './helpers';
+import { closeDrawer, nav } from './helpers';
 
 /** 演示账号一键登录 / demo one-click sign-in */
 async function demoSignIn(page: Page, name: string): Promise<void> {
@@ -60,7 +60,7 @@ test('分配通知：铃铛提醒并在当前页打开记录 / assignment notice
   await expect(drawer).toContainText('E2E 通知公司');
   await expect.poll(() => badge(page)).toBe(before - 1);
   await expect(page.locator('.ant-badge').filter({ has: bell })).toContainText(String(before - 1));
-  await drawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, drawer);
 
   // 通知中心：已读的不加粗；全部标为已读 / center: mark all read
   await bell.click();

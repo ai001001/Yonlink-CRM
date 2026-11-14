@@ -4,7 +4,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import { demoSamples } from '../prisma/demo-data';
-import { nav, searchList, signIn } from './helpers';
+import { closeDrawer, nav, searchList, signIn } from './helpers';
 
 /** 用当前登录令牌调用 API / call the API with the current session */
 async function apiPost(page: Page, path: string, data: object) {
@@ -54,7 +54,7 @@ test('商机备注：新增、纯文本显示、编辑、删除 / deal notes: ad
   await expect(panel.getByTestId('note-item')).toHaveCount(1);
 
   // 操作记录中有备注事件，正文不记录 / the activity log shows note events without the text
-  await drawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, drawer);
   await expect(drawer).toBeHidden();
   await nav(page, '审计日志');
   const table = page.locator('.ant-table');
