@@ -14,7 +14,7 @@ import { hashPassword } from '../src/server/auth';
 import { createHash, randomUUID } from 'node:crypto';
 import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
-import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -77,7 +77,8 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
       if (options.reset) {
         // 仅清空演示组织的业务数据 / wipe business data of the demo organization only
         await tx.notification.deleteMany({ where: { organizationId: o } });
-        // 订单引用报价单与商机（RESTRICT），须先删除 / orders reference quotes and deals (RESTRICT) and go first
+        // 发票引用订单，订单引用报价单与商机（RESTRICT），须先删除 / invoices → orders → quotes/deals (RESTRICT) go first
+        await tx.invoice.deleteMany({ where: { organizationId: o } });
         await tx.salesOrder.deleteMany({ where: { organizationId: o } });
         await tx.note.deleteMany({ where: { organizationId: o } });
         await tx.activity.deleteMany({ where: { organizationId: o } });
@@ -257,6 +258,73 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         });
       }
 
+      // 发票：明细与金额复制自订单；收款按比例，付清时最后一笔补齐余额 / invoices copy order lines and amounts; payments by share
+      const activeOrders = new Map(
+        (await tx.salesOrder.findMany({ where: { organizationId: o, status: { in: ['SHIPPED', 'DELIVERED'] } }, include: { lines: true } })).map((so) => [so.dealId, so]),
+      );
+      for (const [n, inv] of demoInvoices(data).entries()) {
+        const so = activeOrders.get(dealIds[inv.deal]!)!;
+        const invoiceDate = dayOffset(-inv.daysAgo);
+        const totalCents = Math.round(Number(so.total) * 100);
+        let paidCents = 0;
+        const payments = inv.payments.map((p, k) => {
+          const settles = k === inv.payments.length - 1 && inv.payments.reduce((sum, x) => sum + x.share, 0) === 1;
+          const amount = settles ? totalCents - paidCents : Math.round(totalCents * p.share);
+          paidCents += amount;
+          return { ...p, amount: (amount / 100).toFixed(2), paidOn: dayOffset(-inv.daysAgo + p.afterDays) };
+        });
+        const paid = paidCents === totalCents;
+        const invoice = await tx.invoice.create({
+          data: {
+            organizationId: o,
+            salesOrderId: so.id,
+            dealId: so.dealId,
+            invoiceNumber: `INV-${year}-${String(n + 1).padStart(4, '0')}`,
+            subject: so.subject,
+            status: paid ? 'PAID' : paidCents > 0 ? 'PARTIALLY_PAID' : 'UNPAID',
+            currency: so.currency,
+            taxPercent: so.taxPercent,
+            subtotal: so.subtotal,
+            taxAmount: so.taxAmount,
+            total: so.total,
+            paidAmount: (paidCents / 100).toFixed(2),
+            invoiceDate,
+            dueDate: dayOffset(-inv.daysAgo + inv.termDays),
+            billingAddress: so.shippingAddress,
+            notes: '【演示】请在到期日前付款，汇款时注明发票号。',
+            createdById: so.createdById,
+            paidAt: paid ? payments.at(-1)!.paidOn : null,
+            createdAt: invoiceDate,
+          },
+        });
+        await tx.invoiceLineItem.createMany({
+          data: so.lines.map((l) => ({
+            organizationId: o,
+            invoiceId: invoice.id,
+            position: l.position,
+            productSku: l.productSku,
+            productName: l.productName,
+            unit: l.unit,
+            quantity: l.quantity,
+            unitPrice: l.unitPrice,
+            discountPercent: l.discountPercent,
+            lineTotal: l.lineTotal,
+          })),
+        });
+        await tx.invoicePayment.createMany({
+          data: payments.map((p) => ({
+            organizationId: o,
+            invoiceId: invoice.id,
+            amount: p.amount,
+            paidOn: p.paidOn,
+            method: p.method,
+            reference: p.reference,
+            recordedById: so.createdById,
+            createdAt: p.paidOn,
+          })),
+        });
+      }
+
       const leadIds: string[] = [];
       for (const l of data.leads) {
         const created = await tx.lead.create({
@@ -432,7 +500,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length + 1} 客户（含 1 条重复）、${data.accounts.reduce((n, a) => n + a.contacts.length, 0) + 2} 联系人、` +
-      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
+      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
   );
 }
 

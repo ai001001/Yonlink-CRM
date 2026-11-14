@@ -733,6 +733,40 @@ export function demoOrders(data: ReturnType<typeof buildDemoData>): DemoOrder[] 
   });
 }
 
+/** 演示发票 / Demo invoice */
+export interface DemoInvoice {
+  /** 来源订单所属商机 / deal of the source order */
+  deal: string;
+  /** 开票于几天前 / invoiced N days ago */
+  daysAgo: number;
+  /** 付款期限（天）/ payment term (days) */
+  termDays: number;
+  /** 收款：占总计的比例与开票后第几天；最后一笔按余额补齐 / payments: share of the total and days after invoicing; the last one settles the rest when shares sum to 1 */
+  payments: { share: number; afterDays: number; method: 'BANK_TRANSFER' | 'CHECK' | 'CASH'; reference: string }[];
+}
+
+/**
+ * 演示发票：为已发货、已交付的订单各开一张（开票于订单生成 6 天后，付款期限 30 天），从早到晚依次为
+ * 一次付清、分两次付清、部分付款（逾期）、未付款（逾期）、未付款（未到期）。
+ * Demo invoices: one per shipped or delivered order (invoiced 6 days after the order, 30-day term); from oldest to
+ * newest: paid in one go, paid in two instalments, partially paid (overdue), unpaid (overdue), unpaid (not yet due).
+ */
+export function demoInvoices(data: ReturnType<typeof buildDemoData>): DemoInvoice[] {
+  const PLANS: DemoInvoice['payments'][] = [
+    [{ share: 1, afterDays: 25, method: 'BANK_TRANSFER', reference: 'TT-DEMO-001' }],
+    [
+      { share: 0.5, afterDays: 18, method: 'BANK_TRANSFER', reference: 'TT-DEMO-002' },
+      { share: 0.5, afterDays: 38, method: 'CHECK', reference: 'CHK-DEMO-003' },
+    ],
+    [{ share: 0.3, afterDays: 23, method: 'BANK_TRANSFER', reference: 'TT-DEMO-004' }],
+    [],
+    [],
+  ];
+  return demoOrders(data)
+    .filter((o) => o.status === 'SHIPPED' || o.status === 'DELIVERED')
+    .map((o, k) => ({ deal: o.deal, daysAgo: Math.max(0, o.daysAgo - 6), termDays: 30, payments: PLANS[k] ?? [] }));
+}
+
 /** 演示通知 / Demo notification */
 export interface DemoNotification {
   to: OwnerKey;

@@ -15,6 +15,7 @@ import { api, ClientApiError } from '@/lib/api';
 import { fmtDate, fmtDateTime } from '@/lib/format';
 import type { Quote, SalesOrder, SalesOrderStatus } from '@/lib/types';
 import { usePermissions } from './AuthProvider';
+import { CreateInvoiceModal, INVOICE_STATUS_COLOR } from './InvoiceDrawer';
 import { QuoteLinesTable } from './QuoteDrawer';
 
 /** 状态颜色 / Status colours */
@@ -37,6 +38,7 @@ export function OrderStatusTag({ status }: { status: SalesOrderStatus }) {
  */
 export function orderError(err: unknown): string {
   const d = err instanceof ClientApiError ? err.details : undefined;
+  if (d?.invoices) return t('orders.error.has_invoice');
   const code = d?.quoteId?.[0] ?? d?.status?.[0];
   if (code === 'has_order' || code === 'not_accepted' || code === 'final' || code === 'changed') return t(`orders.error.${code}` as MessageKey);
   return (err as Error).message;
@@ -129,6 +131,7 @@ export function SalesOrderDrawer({ orderId, onClose, onChanged }: Props) {
   const [order, setOrder] = useState<SalesOrder | null>(null);
   const [editing, setEditing] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [invoicing, setInvoicing] = useState(false);
   const [form] = Form.useForm<OrderForm>();
   const [cancelForm] = Form.useForm<{ reason?: string }>();
 
@@ -166,6 +169,8 @@ export function SalesOrderDrawer({ orderId, onClose, onChanged }: Props) {
     run(() => api<SalesOrder>(`/api/sales-orders/${order!.id}/status`, { method: 'POST', body: reason ? { status, reason } : { status } }), t('common.saved'));
 
   const editable = !!order && perm.canEdit(order.deal) && !isFinal(order.status);
+  // 未取消且没有未作废发票的订单可开票（含已交付）/ non-cancelled orders without an active invoice can be invoiced
+  const canInvoice = !!order && perm.canEdit(order.deal) && order.status !== 'CANCELLED' && !order.invoices?.some((i) => i.status !== 'VOID');
 
   const openEdit = () => {
     if (!order) return;
@@ -217,6 +222,25 @@ export function SalesOrderDrawer({ orderId, onClose, onChanged }: Props) {
               </Button>
             )}
           </Space>
+          {canInvoice && (
+            <Button type="primary" ghost style={{ marginBottom: 12 }} onClick={() => setInvoicing(true)}>
+              {t('invoices.create')}
+            </Button>
+          )}
+          {!!order.invoices?.length && (
+            <Descriptions column={1} bordered size="small" style={{ marginBottom: 12 }} data-testid="order-invoices">
+              <Descriptions.Item label={t('invoices.title')}>
+                <Space wrap>
+                  {order.invoices.map((i) => (
+                    <Space key={i.id} size={4}>
+                      <Link href={`/invoices?id=${i.id}`}>{i.invoiceNumber}</Link>
+                      <Tag color={INVOICE_STATUS_COLOR[i.status]}>{tEnum('invoiceStatus', i.status)}</Tag>
+                    </Space>
+                  ))}
+                </Space>
+              </Descriptions.Item>
+            </Descriptions>
+          )}
           {isFinal(order.status) && <Alert type="info" showIcon title={t('orders.finalHint')} style={{ marginBottom: 12 }} />}
           <Descriptions column={2} bordered size="small" style={{ marginBottom: 16 }}>
             <Descriptions.Item label={t('orders.number')}>{order.orderNumber}</Descriptions.Item>
@@ -249,6 +273,15 @@ export function SalesOrderDrawer({ orderId, onClose, onChanged }: Props) {
           <QuoteLinesTable quote={order} />
         </div>
       )}
+      <CreateInvoiceModal
+        order={invoicing ? order : null}
+        onClose={() => setInvoicing(false)}
+        onCreated={() => {
+          setInvoicing(false);
+          void load();
+          onChanged();
+        }}
+      />
       <Modal title={t('orders.edit')} open={editing} onOk={saveEdit} onCancel={() => setEditing(false)} okText={t('common.save')} forceRender zIndex={1200}>
         <Form form={form} name="order-edit" layout="vertical">
           <OrderFields />

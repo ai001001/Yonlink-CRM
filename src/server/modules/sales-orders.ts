@@ -77,6 +77,7 @@ const detailInclude = {
   createdBy: { select: { id: true, name: true } },
   organization: { select: { name: true } },
   lines: { orderBy: { position: 'asc' } },
+  invoices: { select: { id: true, invoiceNumber: true, status: true }, orderBy: { createdAt: 'asc' } },
 } satisfies Prisma.SalesOrderInclude;
 
 /** 报价单已有未取消订单 / the quote already has an active order */
@@ -235,6 +236,12 @@ export async function changeOrderStatus(ctx: AuthContext, id: string, input: z.i
     // 条件更新防止并发重复流转 / conditional update guards against concurrent transitions
     const n = await tx.salesOrder.updateMany({ where: { id, status: current.status }, data });
     if (n.count !== 1) throw new ApiError(409, 'CONFLICT', 'Order was changed concurrently', { status: ['changed'] });
+    // 有未作废发票的订单不能取消；在更新（已持有行锁）之后检查，与生成发票互斥
+    // orders with an active invoice cannot be cancelled; checked after the update (row lock held) so it excludes invoicing
+    if (input.status === SalesOrderStatus.CANCELLED) {
+      const invoices = await tx.invoice.count({ where: { organizationId: ctx.organizationId, salesOrderId: id, status: { not: 'VOID' } } });
+      if (invoices > 0) throw new ApiError(409, 'CONFLICT', 'Order has invoices', { invoices: [String(invoices)] });
+    }
     const fields: Record<string, unknown> = { status: [current.status, input.status] };
     // 取消原因属于长文本，审计中脱敏 / the cancellation reason is free text and redacted in the audit
     if (data.cancelReason) fields.cancelReason = [null, REDACTED];

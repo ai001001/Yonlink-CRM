@@ -16,7 +16,7 @@ export interface RequestMeta {
 }
 
 /** 审计对象类型 / Audited entity types */
-export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'order' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
+export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'order' | 'invoice' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
 
 /** 字段策略 / Field policy */
 type Policy = 'plain' | 'mask' | 'redact';
@@ -49,6 +49,11 @@ export const AUDIT_FIELDS: Record<Exclude<AuditEntity, 'auth'>, Record<string, P
   order: {
     orderNumber: 'plain', subject: 'plain', status: 'plain', quoteId: 'plain', dealId: 'plain', currency: 'plain', taxPercent: 'plain',
     subtotal: 'plain', taxAmount: 'plain', total: 'plain', expectedDelivery: 'plain', shippingAddress: 'redact', notes: 'redact', cancelReason: 'redact',
+  },
+  invoice: {
+    invoiceNumber: 'plain', subject: 'plain', status: 'plain', salesOrderId: 'plain', dealId: 'plain', currency: 'plain', taxPercent: 'plain',
+    subtotal: 'plain', taxAmount: 'plain', total: 'plain', paidAmount: 'plain', invoiceDate: 'plain', dueDate: 'plain',
+    billingAddress: 'redact', notes: 'redact', voidReason: 'redact',
   },
   activity: {
     type: 'plain', subject: 'plain', content: 'redact', dueAt: 'plain', completed: 'plain',

@@ -188,6 +188,54 @@ export interface SalesOrder {
   deal: Quote['deal'];
   organization?: { name: string };
   lines?: QuoteLine[];
+  /** 由该订单生成的发票 / invoices generated from this order */
+  invoices?: { id: string; invoiceNumber: string; status: InvoiceStatus }[];
+}
+
+/** 发票状态 / Invoice status */
+export type InvoiceStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID' | 'VOID';
+/** 收款方式 / Payment method */
+export type PaymentMethod = 'BANK_TRANSFER' | 'CASH' | 'CHECK' | 'CARD' | 'OTHER';
+
+/** 收款记录 / Payment */
+export interface InvoicePayment {
+  id: string;
+  amount: string;
+  paidOn: string;
+  method: PaymentMethod;
+  reference: string | null;
+  createdAt: string;
+  recordedBy: { id: string; name: string } | null;
+}
+
+/** 发票 / Invoice */
+export interface Invoice {
+  id: string;
+  salesOrderId: string;
+  dealId: string;
+  invoiceNumber: string;
+  subject: string;
+  status: InvoiceStatus;
+  currency: string;
+  taxPercent: string;
+  subtotal: string;
+  taxAmount: string;
+  total: string;
+  paidAmount: string;
+  invoiceDate: string;
+  dueDate: string;
+  billingAddress: string | null;
+  notes: string | null;
+  voidReason: string | null;
+  paidAt: string | null;
+  voidedAt: string | null;
+  createdAt: string;
+  createdBy: { id: string; name: string } | null;
+  salesOrder: { id: string; orderNumber: string };
+  deal: Quote['deal'];
+  organization?: { name: string };
+  lines?: QuoteLine[];
+  payments?: InvoicePayment[];
 }
 
 /** 标签 / Tag */

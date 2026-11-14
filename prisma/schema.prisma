@@ -42,6 +42,9 @@ model Organization {
   notifications   Notification[]
   salesOrders     SalesOrder[]
   salesOrderItems SalesOrderLineItem[]
+  invoices        Invoice[]
+  invoiceItems    InvoiceLineItem[]
+  invoicePayments InvoicePayment[]
 
   @@map("organizations")
 }
@@ -55,6 +58,8 @@ model User {
   notifications     Notification[]    @relation("NotificationRecipient")
   notificationsSent Notification[]    @relation("NotificationActor")
   createdOrders     SalesOrder[]      @relation("OrderCreator")
+  createdInvoices   Invoice[]         @relation("InvoiceCreator")
+  recordedPayments  InvoicePayment[]  @relation("PaymentRecorder")
   /// 角色（服务端每个请求从数据库读取）/ role (read from the DB on every request)
   role              UserRole          @default(SALES)
   isActive          Boolean           @default(true) @map("is_active")
@@ -235,6 +240,7 @@ model Deal {
   owner             User?          @relation("DealOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
   notifications     Notification[]
   salesOrders       SalesOrder[]
+  invoices          Invoice[]
   // 有商机的客户不能删除 / accounts with deals cannot be deleted
   account           Account        @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Restrict)
   activities        Activity[]
@@ -728,6 +734,7 @@ model SalesOrder {
   organizationId   String               @map("organization_id") @db.Uuid
   quoteId          String               @map("quote_id") @db.Uuid
   dealId           String               @map("deal_id") @db.Uuid
+  invoices         Invoice[]
   /// 组织内唯一的订单号，如 SO-2026-0001 / per-organization unique number
   orderNumber      String               @map("order_number") @db.VarChar(30)
   subject          String               @db.VarChar(200)
@@ -782,4 +789,112 @@ model SalesOrderLineItem {
   @@unique([salesOrderId, position])
   @@index([organizationId, salesOrderId])
   @@map("sales_order_line_items")
+}
+
+/// 发票状态（逾期由到期日推算，不单独存储）/ invoice status (overdue is derived from the due date)
+enum InvoiceStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  VOID
+
+  @@map("invoice_status")
+}
+
+/// 收款方式 / payment method
+enum PaymentMethod {
+  BANK_TRANSFER
+  CASH
+  CHECK
+  CARD
+  OTHER
+
+  @@map("payment_method")
+}
+
+/// 发票：由销售订单生成，明细与金额为订单的快照；已收金额由收款记录汇总，状态随之变化；没有收款时可作废。
+/// 同一订单只能有一张未作废的发票（部分唯一索引）；发票不能删除。
+/// Invoice generated from a sales order with a snapshot of its lines and amounts; paid amount is the sum of
+/// payments and drives the status; void only without payments. One non-void invoice per order (partial unique
+/// index); invoices are never deleted.
+model Invoice {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  salesOrderId   String            @map("sales_order_id") @db.Uuid
+  dealId         String            @map("deal_id") @db.Uuid
+  /// 组织内唯一的发票号，如 INV-2026-0001 / per-organization unique number
+  invoiceNumber  String            @map("invoice_number") @db.VarChar(30)
+  subject        String            @db.VarChar(200)
+  status         InvoiceStatus     @default(UNPAID)
+  currency       String            @db.Char(3)
+  taxPercent     Decimal           @map("tax_percent") @db.Decimal(5, 2)
+  subtotal       Decimal           @db.Decimal(18, 2)
+  taxAmount      Decimal           @map("tax_amount") @db.Decimal(18, 2)
+  total          Decimal           @db.Decimal(18, 2)
+  paidAmount     Decimal           @default(0) @map("paid_amount") @db.Decimal(18, 2)
+  invoiceDate    DateTime          @map("invoice_date") @db.Date
+  dueDate        DateTime          @map("due_date") @db.Date
+  billingAddress String?           @map("billing_address") @db.VarChar(500)
+  notes          String?           @db.Text
+  voidReason     String?           @map("void_reason") @db.VarChar(500)
+  createdById    String?           @map("created_by_id") @db.Uuid
+  paidAt         DateTime?         @map("paid_at") @db.Timestamptz(6)
+  voidedAt       DateTime?         @map("voided_at") @db.Timestamptz(6)
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // 有发票的订单、商机不能删除 / orders and deals with invoices cannot be deleted
+  salesOrder     SalesOrder        @relation(fields: [organizationId, salesOrderId], references: [organizationId, id], onDelete: Restrict)
+  deal           Deal              @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Restrict)
+  createdBy      User?             @relation("InvoiceCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  lines          InvoiceLineItem[]
+  payments       InvoicePayment[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, invoiceNumber])
+  @@index([organizationId, dealId])
+  @@index([organizationId, salesOrderId])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, status, dueDate])
+  @@map("invoices")
+}
+
+/// 发票明细（订单明细的快照）/ Invoice line item (snapshot of the order line)
+model InvoiceLineItem {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  invoiceId       String       @map("invoice_id") @db.Uuid
+  position        Int
+  productSku      String       @map("product_sku") @db.VarChar(50)
+  productName     String       @map("product_name") @db.VarChar(200)
+  unit            String       @db.VarChar(20)
+  quantity        Decimal      @db.Decimal(18, 2)
+  unitPrice       Decimal      @map("unit_price") @db.Decimal(18, 2)
+  discountPercent Decimal      @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  lineTotal       Decimal      @map("line_total") @db.Decimal(18, 2)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoice         Invoice      @relation(fields: [organizationId, invoiceId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([invoiceId, position])
+  @@index([organizationId, invoiceId])
+  @@map("invoice_line_items")
+}
+
+/// 收款记录（撤销即删除，并写审计）/ Payment record (reverting deletes it, with an audit entry)
+model InvoicePayment {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  invoiceId      String        @map("invoice_id") @db.Uuid
+  amount         Decimal       @db.Decimal(18, 2)
+  paidOn         DateTime      @map("paid_on") @db.Date
+  method         PaymentMethod
+  reference      String?       @db.VarChar(100)
+  recordedById   String?       @map("recorded_by_id") @db.Uuid
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoice        Invoice       @relation(fields: [organizationId, invoiceId], references: [organizationId, id], onDelete: Cascade)
+  recordedBy     User?         @relation("PaymentRecorder", fields: [organizationId, recordedById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organizationId, invoiceId, paidOn])
+  @@map("invoice_payments")
 }

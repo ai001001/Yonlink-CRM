@@ -65,6 +65,13 @@ const FIELD_LABELS: Record<string, MessageKey> = {
   expectedDelivery: 'orders.expectedDelivery',
   shippingAddress: 'orders.shippingAddress',
   cancelReason: 'orders.cancelReason',
+  invoiceNumber: 'invoices.number',
+  salesOrderId: 'invoices.order',
+  paidAmount: 'invoices.paidAmount',
+  invoiceDate: 'invoices.invoiceDate',
+  dueDate: 'invoices.dueDate',
+  billingAddress: 'invoices.billingAddress',
+  voidReason: 'invoices.voidReason',
 };
 
 // 枚举字段 → 翻译前缀 / enum field → translation prefix
@@ -109,6 +116,9 @@ const fieldLabel = (field: string, entityType: string): string => {
   if (entityType === 'order' && field === 'subject') return t('orders.subject');
   if (entityType === 'order' && field === 'status') return t('orders.status');
   if (entityType === 'order' && field === 'notes') return t('orders.notes');
+  if (entityType === 'invoice' && field === 'subject') return t('invoices.subject');
+  if (entityType === 'invoice' && field === 'status') return t('invoices.status');
+  if (entityType === 'invoice' && field === 'notes') return t('invoices.notes');
   const key = FIELD_LABELS[field];
   return key ? t(key) : field;
 };
@@ -125,8 +135,9 @@ function value(field: string, v: unknown, users: Map<string, string>, entityType
   if (field.endsWith('Id')) return String(v).slice(0, 8);
   if (entityType === 'quote' && field === 'status') return tEnum('quoteStatus', String(v));
   if (entityType === 'order' && field === 'status') return tEnum('orderStatus', String(v));
+  if (entityType === 'invoice' && field === 'status') return tEnum('invoiceStatus', String(v));
   if (ENUM_PREFIX[field]) return tEnum(ENUM_PREFIX[field]!, String(v));
-  if (field === 'expectedCloseDate' || field === 'validUntil' || field === 'expectedDelivery') return String(v).slice(0, 10);
+  if (field === 'expectedCloseDate' || field === 'validUntil' || field === 'expectedDelivery' || field === 'invoiceDate' || field === 'dueDate') return String(v).slice(0, 10);
   if (field === 'dueAt') return String(v).replace('T', ' ').slice(0, 16);
   return String(v);
 }
@@ -143,6 +154,10 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
   if (entry.entityType === 'target' && typeof c.month === 'string') {
     // 销售目标：负责人 · 月份 · 币种 / sales target: owner · month · currency
     lines.push(`${value('ownerId', c.userId, users)} · ${c.month} · ${String(c.currency ?? '')}`);
+  }
+  if (entry.entityType === 'invoice' && typeof c.amount === 'string') {
+    // 收款或撤销收款：金额与方式 / payment or reversal: amount and method
+    lines.push(t('invoices.auditPayment', { amount: c.amount, method: tEnum('paymentMethod', String(c.method ?? '')) }));
   }
   if (fields) {
     for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, b, users, entry.entityType)} → ${value(f, a, users, entry.entityType)}`);
