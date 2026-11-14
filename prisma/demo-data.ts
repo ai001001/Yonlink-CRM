@@ -675,6 +675,29 @@ export function demoTargetAmount(base: number, offset: number): string {
 }
 
 /**
+ * 演示用的重复记录（展示查重合并）：在原始数据之后单独写入，不影响其他样本。
+ * - 线索 A：与第 11 条线索邮箱相同（大小写不同）、电话格式不同；
+ * - 线索 B：与第 8 条线索姓名、公司相同；
+ * - 客户：名称只差空格与标点、网站域名相同（带路径）。
+ * Demo duplicates (to show deduplication), written after the main data so other samples are unaffected.
+ */
+export function demoDuplicates(data: ReturnType<typeof buildDemoData>) {
+  // 源记录不能是 E2E 使用的样本（否则按名称搜索会出现两行）/ sources must not be E2E samples (name searches would match twice)
+  const l1 = data.leads[10]!;
+  const l2 = data.leads[7]!;
+  const samples = new Set(Object.values(demoSamples()));
+  if (samples.has(l1.name) || samples.has(l2.name)) throw new Error('demo duplicates must not copy E2E sample leads');
+  const acc = data.accounts[2]!;
+  return {
+    leads: [
+      { ...l1, email: l1.email.toUpperCase(), phone: l1.phone.replace(/ /g, '-'), description: '重复录入：同一联系人在官网再次留资。', daysAgo: 2, convertedDeal: undefined },
+      { ...l2, email: `sales.${l2.email}`, phone: l2.phone.replace(/\d{2}$/, '99'), description: '重复录入：展会名片再次录入。', daysAgo: 1, convertedDeal: undefined },
+    ],
+    accounts: [{ of: acc.key, name: `${acc.name.replace('】', '】 ')} `, website: `http://${acc.domain}/contact-us`, phone: acc.phone.replace(/ /g, '') }],
+  };
+}
+
+/**
  * E2E 测试使用的样本（由数据集推导，数据调整后测试自动跟随）。
  * Samples used by the E2E tests (derived from the dataset so tests follow data changes).
  */

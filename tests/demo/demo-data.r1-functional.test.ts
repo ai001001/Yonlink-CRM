@@ -3,13 +3,15 @@
  * Turbocharger demo data round 1: functional tests.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
-import { buildDemoData, DEMO_ORG_NAME, DEMO_USERS } from '../../prisma/demo-data';
+import { buildDemoData, demoDuplicates, DEMO_ORG_NAME, DEMO_USERS } from '../../prisma/demo-data';
 import { seedDemo } from '../../prisma/seed-demo';
 import { prisma } from '@/server/db';
 import { resetDb } from '../helpers';
 
 let orgId: string;
 const data = buildDemoData();
+// 另外写入的演示重复记录（查重合并）/ demo duplicates written separately for deduplication
+const dups = demoDuplicates(data);
 
 beforeAll(async () => {
   await resetDb();
@@ -27,9 +29,9 @@ describe('demo data R1', () => {
       activities: await prisma.activity.count({ where: { organizationId: orgId } }),
     };
     expect(counts).toEqual({
-      accounts: data.accounts.length,
-      contacts: data.accounts.reduce((n, a) => n + a.contacts.length, 0),
-      leads: data.leads.length,
+      accounts: data.accounts.length + dups.accounts.length,
+      contacts: data.accounts.reduce((n, a) => n + a.contacts.length, 0) + dups.accounts.length * 2,
+      leads: data.leads.length + dups.leads.length,
       deals: data.deals.length,
       activities: data.activities.length,
     });

@@ -1,0 +1,27 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 permissions > 查重遵循可见范围：销售代表看不到与他人记录组成的重复组 / detection follows visibility 656ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 permissions > 合并需删除权限：销售与只读 403，经理可以 / merging needs delete permission 196ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 safety > 跨组织或类型不符的记录：404，整体不变 / foreign or mismatched records roll back 259ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 safety > 已转化线索不能合并（409），数据不变 / converted leads are refused 175ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 safety > 合并后标签超过 20 个：400，数据不变 / tag limit 178ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 safety > 并发：同一条重复记录同时合并到两个主记录，只成功一次 / concurrent merges 183ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 input > 非法合并参数 #0 → 400 / invalid merge input 123ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 input > 非法合并参数 #1 → 400 / invalid merge input 111ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 input > 非法合并参数 #2 → 400 / invalid merge input 125ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 input > 非法合并参数 #3 → 400 / invalid merge input 119ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 input > 非法合并参数 #4 → 400 / invalid merge input 110ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 input > 非法合并参数 #5 → 400 / invalid merge input 102ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 input > 非法合并参数 #6 → 400 / invalid merge input 111ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 input > 非法合并参数 #7 → 400 / invalid merge input 106ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 input > 非法查重参数与未登录 / invalid query and authentication 94ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  04:29:56
+   Duration  4.90s (tests 88%, import 8%, transform 4%)

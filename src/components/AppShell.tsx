@@ -11,6 +11,7 @@ import { Avatar, Dropdown, Layout, Menu, Spin, Tag, Typography } from 'antd';
 import {
   BankOutlined,
   BarChartOutlined,
+  BlockOutlined,
   DashboardOutlined,
   DeleteOutlined,
   FileTextOutlined,
@@ -38,6 +39,7 @@ const NAV: { key: string; icon: React.ReactNode; label: string; permission?: str
   { key: '/reports', icon: <BarChartOutlined />, label: t('nav.reports') },
   { key: '/forecasts', icon: <AimOutlined />, label: t('nav.forecasts') },
   { key: '/products', icon: <AppstoreOutlined />, label: t('nav.products') },
+  { key: '/duplicates', icon: <BlockOutlined />, label: t('nav.duplicates') },
   { key: '/recycle-bin', icon: <DeleteOutlined />, label: t('nav.recycleBin'), permission: 'record.delete' },
   { key: '/audit-logs', icon: <AuditOutlined />, label: t('nav.audit'), permission: 'audit.read' },
   { key: '/users', icon: <TeamOutlined />, label: t('nav.users'), permission: 'user.manage' },

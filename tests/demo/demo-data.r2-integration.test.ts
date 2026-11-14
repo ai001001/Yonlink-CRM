@@ -3,7 +3,7 @@
  * Turbocharger demo data round 2: integration tests.
  */
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildDemoData, DEMO_ORG_NAME, DEMO_USERS, LEGACY_DEMO_ORG_NAMES } from '../../prisma/demo-data';
+import { buildDemoData, demoDuplicates, DEMO_ORG_NAME, DEMO_USERS, LEGACY_DEMO_ORG_NAMES } from '../../prisma/demo-data';
 import { seedDemo } from '../../prisma/seed-demo';
 import * as board from '@/app/api/deals/board/route';
 import * as dashboard from '@/app/api/dashboard/route';
@@ -13,6 +13,9 @@ import { prisma } from '@/server/db';
 import { call, createTenant, resetDb } from '../helpers';
 
 const data = buildDemoData();
+// 另外写入的演示重复记录（查重合并）/ demo duplicates written separately for deduplication
+const dups = demoDuplicates(data);
+const allLeads = [...data.leads, ...dups.leads];
 const orgOf = () => prisma.organization.findFirstOrThrow({ where: { name: DEMO_ORG_NAME } });
 const count = async (organizationId: string) => ({
   accounts: await prisma.account.count({ where: { organizationId } }),
@@ -47,7 +50,7 @@ describe('demo data R2 idempotency & reset', () => {
     const oldIds = (await prisma.deal.findMany({ where: { organizationId: org.id }, select: { id: true } })).map((d) => d.id);
     const userIds = (await prisma.user.findMany({ where: { organizationId: org.id }, select: { id: true } })).map((u) => u.id).sort();
     await seedDemo({ reset: true });
-    expect(await count(org.id)).toEqual({ accounts: data.accounts.length, leads: data.leads.length, deals: data.deals.length, activities: data.activities.length });
+    expect(await count(org.id)).toEqual({ accounts: data.accounts.length + dups.accounts.length, leads: allLeads.length, deals: data.deals.length, activities: data.activities.length });
     expect(await prisma.deal.count({ where: { id: { in: oldIds } } })).toBe(0);
     expect((await prisma.user.findMany({ where: { organizationId: org.id }, select: { id: true } })).map((u) => u.id).sort()).toEqual(userIds);
   });
@@ -84,11 +87,11 @@ describe('demo data R2 roles & consistency', () => {
     for (const [key, email] of Object.entries(owners)) {
       const token = await tokenFor(email);
       const total = (await call(leads.GET, { token })).json.total;
-      if (key === 'manager') expect(total).toBe(data.leads.length);
-      else expect(total).toBe(data.leads.filter((l) => l.owner === key).length);
+      if (key === 'manager') expect(total).toBe(allLeads.length);
+      else expect(total).toBe(allLeads.filter((l) => l.owner === key).length);
     }
     const viewer = await tokenFor('viewer@demo.yonlink.test');
-    expect((await call(leads.GET, { token: viewer })).json.total).toBe(data.leads.length);
+    expect((await call(leads.GET, { token: viewer })).json.total).toBe(allLeads.length);
   });
 
   it('看板各列合计与数据集金额一致（按币种精确）/ board totals equal dataset amounts per currency', async () => {
@@ -126,7 +129,7 @@ describe('demo data R2 roles & consistency', () => {
       ...(await prisma.lead.findMany({ where: { organizationId: org.id }, select: { email: true } })),
     ].map((x) => x.email!);
     for (const s of sites) expect(new URL(s).hostname.endsWith('.example')).toBe(true);
-    for (const e of emails) expect(e).toMatch(/@[a-z0-9.-]+\.example$/);
+    for (const e of emails) expect(e).toMatch(/@[a-z0-9.-]+\.example$/i);
     const text = JSON.stringify(data);
     expect(text).not.toMatch(/jrone/i);
   });

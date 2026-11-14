@@ -1,0 +1,23 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+
+
+
+
+ ✓ tests/duplicates/duplicates.r1-functional.test.ts > duplicates R1 keys & grouping > 匹配键：电话只比数字（兼容 +86）、域名去协议/www/路径、名称忽略标点与空白 / normalised keys 397ms
+ ✓ tests/duplicates/duplicates.r1-functional.test.ts > duplicates R1 keys & grouping > 分组可传递：A~B（邮箱）、B~C（电话）归为一组并列出两种依据 / groups are transitive 98ms
+ ✓ tests/duplicates/duplicates.r1-functional.test.ts > duplicates R1 keys & grouping > 线索分组：邮箱、电话与手机交叉、姓名+公司；按创建时间排序 / lead groups 344ms
+ ✓ tests/duplicates/duplicates.r1-functional.test.ts > duplicates R1 keys & grouping > 客户分组：名称、网站域名、电话 / account groups 210ms
+ ✓ tests/duplicates/duplicates.r1-functional.test.ts > duplicates R1 merge > 合并线索：备注、跟进、附件、标签转到主记录，字段按选择保留，被合并的进入回收站并审计 / merge leads 363ms
+ ✓ tests/duplicates/duplicates.r1-functional.test.ts > duplicates R1 merge > 合并客户：联系人（保留主客户的主要联系人）、商机、转化来源线索、负责人字段 / merge accounts 319ms
+ ✓ tests/duplicates/duplicates.r1-functional.test.ts > duplicates R1 merge > 从回收站恢复被合并的记录：只找回记录本身，相关数据仍在主记录 / restoring a merged record 156ms
+stdout | tests/duplicates/duplicates.r1-functional.test.ts > duplicates R1 merge > 演示数据：重复线索与重复客户能被找到 / demo duplicates are detected
+演示数据已创建：31 客户（含 1 条重复）、64 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、6 标签、11 附件、24 条销售目标 / demo data ready
+
+ ✓ tests/duplicates/duplicates.r1-functional.test.ts > duplicates R1 merge > 演示数据：重复线索与重复客户能被找到 / demo duplicates are detected 978ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  04:28:14
+   Duration  5.22s (tests 86%, import 8%, transform 4%, setup 1%)

@@ -14,7 +14,7 @@ import { hashPassword } from '../src/server/auth';
 import { createHash, randomUUID } from 'node:crypto';
 import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
-import { buildDemoData, dealCreatedDaysAgo, demoAttachments, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -258,6 +258,44 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         files.push({ id, data: body });
       }
 
+      // 演示用的重复记录（查重合并）/ demo duplicates for deduplication
+      const dups = demoDuplicates(data);
+      for (const l of dups.leads) {
+        await tx.lead.create({
+          data: {
+            organizationId: o,
+            ownerId: owner(l.owner),
+            name: l.name,
+            company: l.company,
+            title: l.title,
+            email: l.email,
+            phone: l.phone,
+            source: l.source,
+            status: l.status === 'CONVERTED' ? 'NEW' : l.status,
+            description: l.description,
+            createdAt: new Date(Date.now() - l.daysAgo * DAY),
+          },
+        });
+      }
+      for (const d of dups.accounts) {
+        const src = data.accounts.find((a) => a.key === d.of)!;
+        const dupAccount = await tx.account.create({
+          data: { organizationId: o, ownerId: owner(src.owner), name: d.name, industry: src.industry, phone: d.phone, website: d.website, description: '重复录入：同一客户的第二条记录。', createdAt: new Date(Date.now() - DAY) },
+        });
+        // 重复客户也录入了同样的前两位联系人（第一位为主要联系人）/ the duplicate repeats the first two contacts (first is primary)
+        await tx.contact.createMany({
+          data: src.contacts.slice(0, 2).map((c, i) => ({
+            organizationId: o,
+            accountId: dupAccount.id,
+            name: `【演示】${c.name}`,
+            title: c.title,
+            email: `dup${i + 1}@${src.domain}`,
+            phone: src.phone,
+            isPrimary: i === 0,
+          })),
+        });
+      }
+
       // 销售目标：按月（当月 1 日，UTC）/ monthly sales targets (first day of the month, UTC)
       const now = new Date();
       await tx.salesTarget.createMany({
@@ -323,8 +361,8 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
   for (const f of files) await saveFile(o, f.id, f.data);
 
   console.log(
-    `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length} 客户、${data.accounts.reduce((n, a) => n + a.contacts.length, 0)} 联系人、` +
-      `${data.leads.length} 线索、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标 / demo data ready`,
+    `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length + 1} 客户（含 1 条重复）、${data.accounts.reduce((n, a) => n + a.contacts.length, 0) + 2} 联系人、` +
+      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标 / demo data ready`,
   );
 }
 

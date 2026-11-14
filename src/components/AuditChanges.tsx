@@ -127,6 +127,10 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
   const lines: string[] = [];
   const fields = c.fields as Record<string, [unknown, unknown]> | undefined;
   const snap = (c.after ?? c.before) as Record<string, unknown> | undefined;
+  if (Array.isArray(c.merged)) {
+    // 合并：被合并的记录名称 / merge: names of the merged records
+    lines.push(t('duplicates.auditMerged', { names: (c.merged as { name: string }[]).map((m) => m.name).join(t('common.listSep')) }));
+  }
   if (entry.entityType === 'target' && typeof c.month === 'string') {
     // 销售目标：负责人 · 月份 · 币种 / sales target: owner · month · currency
     lines.push(`${value('ownerId', c.userId, users)} · ${c.month} · ${String(c.currency ?? '')}`);
