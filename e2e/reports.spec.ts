@@ -4,7 +4,7 @@
  */
 import { expect, test, type Page, type Response } from '@playwright/test';
 import { fmtMoney } from '../src/lib/format';
-import { clickOption, nav } from './helpers';
+import { nav } from './helpers';
 
 /** 演示账号一键登录 / one-click demo login */
 async function demoLogin(page: Page, name: string): Promise<void> {
@@ -35,7 +35,7 @@ test('报表数字与接口一致，可切换币种与负责人 / figures match 
   // 切换币种 / switch currency
   let next = page.waitForResponse((r) => isReport(r) && r.url().includes('currency=USD'));
   await page.getByLabel('币种').click();
-  await clickOption(page, page.locator('.ant-select-dropdown:visible').getByTitle('USD', { exact: true }));
+  await page.locator('.ant-select-dropdown:visible').getByTitle('USD', { exact: true }).click();
   data = await (await next).json();
   expect(data.currency).toBe('USD');
   await expect(page.getByTestId('kpi-open')).toContainText(fmtMoney(data.summary.openAmount, 'USD'));
@@ -44,7 +44,7 @@ test('报表数字与接口一致，可切换币种与负责人 / figures match 
   // 负责人筛选：排行只剩该负责人 / owner filter
   next = page.waitForResponse((r) => isReport(r) && r.url().includes('ownerId='));
   await page.getByLabel('负责人').click();
-  await clickOption(page, page.locator('.ant-select-dropdown:visible').getByTitle('陈静', { exact: true }));
+  await page.locator('.ant-select-dropdown:visible').getByTitle('陈静', { exact: true }).click();
   data = await (await next).json();
   await expect(page.getByTestId('kpi-open')).toContainText(fmtMoney(data.summary.openAmount, 'USD'));
   const rows = page.getByTestId('table-owners').locator('tbody tr.ant-table-row');

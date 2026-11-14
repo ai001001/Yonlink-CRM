@@ -4,7 +4,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import { demoSamples } from '../prisma/demo-data';
-import { clickOption, nav, searchList, signIn } from './helpers';
+import { nav, searchList, signIn } from './helpers';
 
 const S = demoSamples();
 
@@ -44,7 +44,7 @@ test('商机看板拖动与移动 / deal board drag and move', async ({ page }) 
 
   // 用“移动到”把另一张卡片移到“商务谈判”（无需鼠标拖动）/ use the Move-to select
   await qualification.getByLabel('移动到 E2E 看板商机乙').click();
-  await clickOption(page, page.locator('.ant-select-dropdown:visible').getByTitle('商务谈判', { exact: true }));
+  await page.locator('.ant-select-dropdown:visible').getByTitle('商务谈判', { exact: true }).click();
   await expect(negotiation.getByLabel('E2E 看板商机乙', { exact: true })).toBeVisible();
 
   // 刷新后保持，列表视图一致 / persisted after reload and consistent with the list

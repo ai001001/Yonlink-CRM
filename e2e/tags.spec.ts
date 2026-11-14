@@ -3,7 +3,7 @@
  * Tags round 3: end-to-end regression.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { clickOption, closeDrawer, nav, searchList, signIn } from './helpers';
+import { closeDrawer, nav, searchList, signIn } from './helpers';
 
 /** 用当前登录令牌调用 API / call the API with the current session */
 async function apiPost(page: Page, path: string, data: object) {
@@ -27,10 +27,21 @@ test('标签：添加、筛选、移除、批量、管理 / tags: add, filter, r
   await page.getByRole('button', { name: 'E2E 标签客户甲' }).click();
   const drawer = page.getByRole('dialog', { name: /客户详情/ });
   const editor = drawer.getByTestId('tag-editor');
-  await editor.getByText('标签', { exact: true }).click();
-  await page.keyboard.type('E2E 重要');
-  await clickOption(page, dropdown(page).getByText('新建标签“E2E 重要”'));
-  await expect(editor).toContainText('E2E 重要');
+  // 下拉展开动画期间的点击可能被忽略：按结果重试——已添加则结束；选项还在就再点；下拉已关但未添加则重新打开并输入
+  // clicks during the dropdown's opening animation can be ignored, so retry by outcome: done once added; click again
+  // while the option shows; reopen and retype if the dropdown closed without adding
+  const create = dropdown(page).getByText('新建标签“E2E 重要”');
+  await expect(async () => {
+    if ((await editor.locator('.ant-tag', { hasText: 'E2E 重要' }).count()) > 0) return;
+    if (await create.isVisible()) {
+      await create.click({ timeout: 2000 });
+    } else {
+      await editor.getByText('标签', { exact: true }).click({ timeout: 2000 });
+      await page.keyboard.type('E2E 重要');
+      await create.click({ timeout: 2000 });
+    }
+    await expect(editor.locator('.ant-tag', { hasText: 'E2E 重要' })).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 20000 });
   await closeDrawer(page, drawer);
   await expect(drawer).toBeHidden();
   await expect(page.getByRole('row', { name: /E2E 标签客户甲/ })).toContainText('E2E 重要');
@@ -39,7 +50,7 @@ test('标签：添加、筛选、移除、批量、管理 / tags: add, filter, r
   await searchList(page, ACCOUNTS, 'E2E 标签客户');
   await expect(page.getByRole('row', { name: /E2E 标签客户/ })).toHaveCount(2);
   await page.getByLabel('按标签筛选').click();
-  await clickOption(page, dropdown(page).getByTitle('E2E 重要', { exact: true }));
+  await dropdown(page).getByTitle('E2E 重要', { exact: true }).click();
   await expect(page.getByRole('row', { name: /E2E 标签客户/ })).toHaveCount(1);
   await expect(page.getByRole('row', { name: /E2E 标签客户甲/ })).toBeVisible();
 
@@ -65,7 +76,7 @@ test('标签：添加、筛选、移除、批量、管理 / tags: add, filter, r
   const bar = page.getByTestId('bulk-bar');
   await expect(bar).toContainText('已选择 2 条');
   await bar.getByLabel('添加标签').click();
-  await clickOption(page, dropdown(page).getByTitle('E2E 重要', { exact: true }));
+  await dropdown(page).getByTitle('E2E 重要', { exact: true }).click();
   await expect(page.locator('.ant-modal-confirm-title')).toHaveText('为选中的 2 条记录添加标签“E2E 重要”？');
   await page.getByRole('button', { name: /保\s*存/ }).click();
   await expect(page.getByText('已处理 2 条').first()).toBeVisible();
@@ -97,7 +108,7 @@ test('只读用户：可看到演示标签，不能添加或管理 / read-only u
   await expect(page.getByTestId('current-role')).toHaveText('只读用户');
   await nav(page, '客户');
   await page.getByLabel('按标签筛选').click();
-  await clickOption(page, dropdown(page).getByTitle('重点客户', { exact: true }));
+  await dropdown(page).getByTitle('重点客户', { exact: true }).click();
   const first = page.locator('tbody tr.ant-table-row').first();
   await expect(first).toContainText('重点客户');
   await expect(page.getByRole('button', { name: '管理标签' })).toHaveCount(0);

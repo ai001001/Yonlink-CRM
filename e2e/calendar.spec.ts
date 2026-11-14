@@ -3,7 +3,7 @@
  * Activity calendar round 3: end-to-end regression.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { clickOption, closeDrawer, nav, signIn } from './helpers';
+import { closeDrawer, nav, signIn } from './helpers';
 
 // 固定北京时间，日期计算稳定 / fixed time zone for stable dates
 test.use({ timezoneId: 'Asia/Shanghai' });
@@ -70,7 +70,7 @@ test('日历查看、完成、拖动改期、在某天新建 / calendar view, co
 
   // 类型筛选：只看客户拜访 / type filter
   await cal.getByLabel('类型').click();
-  await clickOption(page, page.locator('.ant-select-dropdown:visible').getByTitle('客户拜访', { exact: true }));
+  await page.locator('.ant-select-dropdown:visible').getByTitle('客户拜访', { exact: true }).click();
   await expect(tomorrowCell.getByTestId('calendar-item').filter({ hasText: 'E2E 日历拜访' })).toBeVisible();
   await expect(tomorrowCell.getByTestId('calendar-item').filter({ hasText: 'E2E 日历新建任务' })).toHaveCount(0);
 

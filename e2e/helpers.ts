@@ -65,24 +65,3 @@ export async function closeDrawer(page: Page, drawer: Locator): Promise<void> {
   await expect(page.locator('.ant-message-notice')).toHaveCount(0, { timeout: 15000 });
   await drawer.getByRole('button', { name: '关闭' }).first().click();
 }
-
-/**
- * 点击已展开下拉中的选项，并确认生效（下拉收起）。Ant Design 下拉在展开动画期间的点击可能被忽略，忽略时重试；
- * 只在下拉仍处于展开状态（不是正在收起）时才再次点击，避免同一选项被选两次（如批量操作弹出两个确认框）。
- * 所有 E2E 点击下拉选项都应使用本函数或 selectOption。
- * Click an option in an open dropdown and confirm it took effect (the dropdown closes). Clicks during the opening
- * animation can be ignored, so they are retried, but only while the dropdown is still open (not closing) so an option
- * is never picked twice (e.g. two bulk confirmations). Every E2E dropdown pick should use this or selectOption.
- * @param option 下拉中的选项 / the option inside the dropdown
- */
-export async function clickOption(page: Page, option: Locator): Promise<void> {
-  // 正在收起的下拉带 *-leave 类名 / closing dropdowns carry a *-leave class
-  const open = page.locator('.ant-select-dropdown:visible:not([class*="-leave"])');
-  // 先等下拉展开、选项出现：否则“下拉已收起”在展开之前也成立，会一次都没点就返回
-  // wait for the option first: "no open dropdown" is also true before it opens, which would return without clicking
-  await expect(option).toBeVisible();
-  await expect(async () => {
-    if ((await open.count()) > 0 && (await option.isVisible())) await option.click({ timeout: 2000 });
-    await expect(open).toHaveCount(0, { timeout: 2000 });
-  }).toPass({ timeout: 15000 });
-}
