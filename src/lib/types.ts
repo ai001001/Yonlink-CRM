@@ -154,6 +154,40 @@ export interface Quote {
   };
   organization?: { name: string };
   lines?: QuoteLine[];
+  /** 由该报价单生成的订单 / orders generated from this quote */
+  salesOrders?: { id: string; orderNumber: string; status: SalesOrderStatus }[];
+}
+
+/** 销售订单状态 / Sales order status */
+export type SalesOrderStatus = 'CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+
+/** 销售订单 / Sales order */
+export interface SalesOrder {
+  id: string;
+  quoteId: string;
+  dealId: string;
+  orderNumber: string;
+  subject: string;
+  status: SalesOrderStatus;
+  currency: string;
+  taxPercent: string;
+  subtotal: string;
+  taxAmount: string;
+  total: string;
+  expectedDelivery: string | null;
+  shippingAddress: string | null;
+  notes: string | null;
+  cancelReason: string | null;
+  shippedAt: string | null;
+  deliveredAt: string | null;
+  cancelledAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: { id: string; name: string } | null;
+  quote: { id: string; quoteNumber: string };
+  deal: Quote['deal'];
+  organization?: { name: string };
+  lines?: QuoteLine[];
 }
 
 /** 标签 / Tag */

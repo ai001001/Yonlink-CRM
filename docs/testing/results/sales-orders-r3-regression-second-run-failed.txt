@@ -1,0 +1,1281 @@
+# Round 3 regression: sales-orders — 2026-11-14T10:06:24Z — commit 8f5ddda
+===== [lint] npm run lint =====
+
+> yonlink-crm@0.1.0 lint
+> eslint .
+
+===== [lint] exit=0 duration=18s =====
+
+===== [typecheck] npm run typecheck =====
+
+> yonlink-crm@0.1.0 typecheck
+> prisma generate && tsc --noEmit
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+
+✔ Generated Prisma Client (7.10.1) to ./src/generated/prisma in 566ms
+
+===== [typecheck] exit=0 duration=7s =====
+
+===== [unit-integration] npx vitest run --reporter=verbose =====
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+17 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:1840162) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/backup/backup.r2-integration.test.ts > backup R2 integrity > 附件文件缺失时备份仍完成并在清单中列出 / missing attachment files are listed 4ms
+ ✓ tests/backup/backup.r2-integration.test.ts > backup R2 integrity > 数据文件被篡改：校验失败，恢复中止且不改动目标库 / tampered data aborts the restore 67ms
+ ✓ tests/backup/backup.r2-integration.test.ts > backup R2 integrity > 附件被篡改、清单缺失：校验失败 / tampered attachment and missing manifest 31ms
+ ✓ tests/backup/backup.r2-integration.test.ts > backup R2 restore safety > 目标库迁移不一致时拒绝恢复 / migration mismatch is refused 2414ms
+ ✓ tests/backup/backup.r2-integration.test.ts > backup R2 restore safety > 非空目标：不加 replace 拒绝；加 replace 后清空并与备份一致 / non-empty targets need replace 331ms
+ ✓ tests/backup/backup.r2-integration.test.ts > backup R2 robustness & CLI > 并发：锁文件存在时备份失败且不留下目录 / a held lock blocks a second backup 2ms
+ ✓ tests/backup/backup.r2-integration.test.ts > backup R2 robustness & CLI > 数据库不可用：失败并清理不完整目录与锁 / failures clean up 12ms
+ ✓ tests/backup/backup.r2-integration.test.ts > backup R2 robustness & CLI > 命令行：缺少参数 2、仅校验 0、篡改 1、恢复需显式目标 2 / CLI exit codes 4013ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 permissions > 导出仅管理员与经理；销售代表与只读用户 403 / export is admin and manager only 625ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 permissions > 只读用户不能导入；销售代表可导入，负责人只能是自己 / read-only cannot import; sales own only 133ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 permissions > 经理可把导入记录指派给他人 / managers can assign imported records 113ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 permissions > 未登录 401 / unauthenticated → 401 98ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 isolation > 其他组织用户的邮箱不能作为负责人；停用用户也不行 / owners must be active users of this org 131ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 isolation > 查重只在本组织范围；导入记录归属本组织 / duplicates are organization scoped 167ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 isolation > 导出不含其他组织数据 / exports never include other organizations 148ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 逐行错误：必填、邮箱、长度、枚举、已转化状态、联系人邮箱；行号正确 / row errors with correct line numbers 104ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 错误行不写入，有效行写入 / only valid rows are written 108ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 文件级错误：只有表头 / header only → 400 91ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 文件级错误：缺少必填列 / missing name column → 400 94ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 文件级错误：引号未闭合 / unterminated quote → 400 94ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 文件级错误：超过 2000 行 / too many rows → 400 100ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 2000 行边界可导入 / exactly 2000 rows are accepted 3729ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 非法请求 0 → 400 84ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 非法请求 1 → 400 94ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 非法请求 2 → 400 87ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 非法请求 3 → 400 84ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 invalid rows & files > 非法请求 4 → 400 85ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 security & limits > 导出时对公式开头的内容加单引号 / formula-like values are neutralised in exports 100ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 security & limits > 超过 10000 条时只导出前 10000 条并标记截断 / exports cap at 10000 rows and flag truncation 2750ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 security & limits > 导入审计只记数量，不含文件原文 / import audit stores counts only 107ms
+ ✓ tests/import-export/import-export.r2-integration.test.ts > import/export R2 security & limits > 预检不写审计，不产生任何记录 / dry runs write nothing at all 113ms
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > 不带 --reset 重复执行不会重复写入 / re-running without reset adds nothing
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > 不带 --reset 重复执行不会重复写入 / re-running without reset adds nothing
+演示组织已存在，已补齐账号（如需重建数据请加 --reset）/ demo org exists, accounts ensured: 演示涡轮增压器有限公司（演示数据）
+
+ ✓ tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > 不带 --reset 重复执行不会重复写入 / re-running without reset adds nothing 1553ms
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > --reset 重建业务数据：数量不变、记录为新、账号保留 / reset regenerates data and keeps users
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > --reset 重建业务数据：数量不变、记录为新、账号保留 / reset regenerates data and keeps users
+演示数据已重建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > --reset 重建业务数据：数量不变、记录为新、账号保留 / reset regenerates data and keeps users 1221ms
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > 旧演示组织改名复用，账号与审计日志保留，旧业务数据被替换 / legacy org renamed with users and audit kept
+演示数据已重建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > 旧演示组织改名复用，账号与审计日志保留，旧业务数据被替换 / legacy org renamed with users and audit kept 634ms
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > 重建只影响演示组织，其他组织数据不变 / reset touches the demo org only
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > 重建只影响演示组织，其他组织数据不变 / reset touches the demo org only
+演示数据已重建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/demo/demo-data.r2-integration.test.ts > demo data R2 idempotency & reset > 重建只影响演示组织，其他组织数据不变 / reset touches the demo org only 1172ms
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 roles & consistency > 各角色看到的数量符合负责人分配 / counts per role follow ownership
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+(node:1840972) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/demo/demo-data.r2-integration.test.ts > demo data R2 roles & consistency > 各角色看到的数量符合负责人分配 / counts per role follow ownership 731ms
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 roles & consistency > 看板各列合计与数据集金额一致（按币种精确）/ board totals equal dataset amounts per currency
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/demo/demo-data.r2-integration.test.ts > demo data R2 roles & consistency > 看板各列合计与数据集金额一致（按币种精确）/ board totals equal dataset amounts per currency 715ms
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 roles & consistency > 工作台：销售代表有待办与逾期提醒 / sales reps get to-dos and overdue items on the dashboard
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/demo/demo-data.r2-integration.test.ts > demo data R2 roles & consistency > 工作台：销售代表有待办与逾期提醒 / sales reps get to-dos and overdue items on the dashboard 700ms
+stdout | tests/demo/demo-data.r2-integration.test.ts > demo data R2 roles & consistency > 不使用真实域名：网站与邮箱都是保留域名 / only reserved domains are used
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/demo/demo-data.r2-integration.test.ts > demo data R2 roles & consistency > 不使用真实域名：网站与邮箱都是保留域名 / only reserved domains are used 660ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 relations > 必须关联客户 / account is required 641ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 relations > 关联不存在的客户 → 400 / unknown account → 400 172ms
+(node:1841165) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 relations > 有商机时客户不可删，删商机后可删 / account deletable only after its deals are gone 345ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 relations > 删除商机级联删除其跟进记录，但不影响客户跟进 / deleting a deal cascades its activities only 259ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 负数 / negative → 400 162ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 三位小数 / 3 decimals → 400 136ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 17 位整数 / 17 integer digits → 400 167ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 非数字 / not numeric → 400 134ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 科学计数 / scientific → 400 143ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 空串 / empty → 400 132ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 浮点误差数字 / float artefact → 400 139ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法金额 负数字 / negative number → 400 147ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 金额上限 9999999999999999.99 与 0 可保存 / max and zero amounts accepted 175ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 数据库 CHECK 拒绝负金额（纵深防御）/ DB CHECK rejects negative amounts 158ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法日期 2027-02-30 → 400 150ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法日期 2027-13-01 → 400 138ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法日期 2027/01/01 → 400 147ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法日期 2027-1-1 → 400 139ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法日期 tomorrow → 400 139ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 闰日有效 / leap day accepted 144ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法字段 {"stage":"WON"} → 400 136ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法字段 {"currency":"GBP"} → 400 132ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法字段 {"name":""} → 400 135ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法字段 {"name":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 133ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 非法字段 {"organizationId":"00000000-0000-4000-8000-000000000000"} → 400 150ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 invalid input & boundaries > 更新时不允许把必填字段清空 / required fields cannot be cleared on update 168ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 organization isolation > 不能把商机挂到其他组织客户（新建/更新）/ cannot attach to another org account 158ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 organization isolation > 跨组织读/改/删商机 → 404 / IDOR on deals 162ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 organization isolation > 列表、搜索、金额合计只统计本组织 / list, search and totals are scoped 206ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 organization isolation > 不能为其他组织商机建跟进 / cannot attach activity to another org deal 151ms
+ ✓ tests/deals/deals.r2-integration.test.ts > deals R2 organization isolation > 数据库复合外键阻止跨组织客户 / composite FK blocks cross-org account 138ms
+(node:1841318) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 permissions > 生成：负责人与经理可以；其他销售 404；只读 403 / create follows deal edit rights 871ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 permissions > 查看：只读可看全部；其他销售列表与详情都看不到 / visibility follows the deal 235ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 permissions > 修改/同步/状态/删除：只读 403，其他销售 404 / mutations by others are refused 243ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 permissions > 商机改派后，原负责人看不到报价单，新负责人可以操作 / reassignment moves access 238ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 rules > 非法状态流转 409，状态不变 / invalid transitions 256ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 rules > 非草稿不能修改、同步、删除（409 not_draft）/ only drafts can change 207ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 rules > 商机没有明细时不能生成，也不能把草稿同步为空 / no items 206ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 rules > 并发生成：报价单号不重复且连续 / concurrent creation yields unique numbers 218ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 rules > 并发状态变更：只有一个成功，审计只记一次 / concurrent transitions 195ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 rules > 审计日志可按报价单筛选 / audit log filter by entity 176ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 跨组织：看不到、改不了、不能用他人商机生成，编号各自从 0001 开始 / cross-org isolation 268ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"taxPercent":"100.01"} → 400 / invalid create input 148ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"taxPercent":"-1"} → 400 / invalid create input 130ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"taxPercent":"1.234"} → 400 / invalid create input 131ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"validUntil":"2026-02-30"} → 400 / invalid create input 136ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"validUntil":"31/12/2026"} → 400 / invalid create input 132ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"subject":"   "} → 400 / invalid create input 131ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"subject":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 / invalid create input 126ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"dealId":"not-a-uuid"} → 400 / invalid create input 132ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"organizationId":"00000000-0000-4000-8000-000000000000"} → 400 / invalid create input 145ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"status":"SENT"} → 400 / invalid create input 128ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法生成参数 {"quoteNumber":"QT-HACK-1"} → 400 / invalid create input 137ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 非法修改与状态参数 → 400；未知查询参数与状态 → 400 / invalid update, status and list input 154ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 数据库约束：总计 = 小计 + 税额、税率范围、组织内编号唯一、明细数量 > 0 / DB constraints 216ms
+ ✓ tests/quotes/quotes.r2-integration.test.ts > quotes R2 isolation & input > 未登录 401 / unauthenticated 138ms
+(node:1841465) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/backup/backup.r1-functional.test.ts > backup R1 manifest > 清单：全部业务表（不含会话与迁移表）、行数与源库一致、迁移清单、权限 700/600 / manifest content 277ms
+ ✓ tests/backup/backup.r1-functional.test.ts > backup R1 manifest > 附件：在用与回收站快照中的附件都备份，校验和正确 / live and recycled attachments are included 1ms
+ ✓ tests/backup/backup.r1-functional.test.ts > backup R1 manifest > 校验通过；会话不在备份中 / verify passes; sessions are excluded 18ms
+ ✓ tests/backup/backup.r1-functional.test.ts > backup R1 restore > 恢复到全新目标库：每张表逐行一致；会话为空；附件文件一致 / restore reproduces every row 3348ms
+ ✓ tests/backup/backup.r1-functional.test.ts > backup R1 restore > 数据精度：金额、折扣、时间（微秒）、JSON 快照、文本数组、枚举原样恢复 / precision is preserved 23ms
+ ✓ tests/backup/backup.r1-functional.test.ts > backup R1 restore > 追加型审计触发器在恢复后仍然有效（replica 只在恢复事务内）/ the audit trigger is still enforced 13ms
+ ✓ tests/backup/backup.r1-functional.test.ts > backup R1 retention > 只保留最近 N 份，忽略不符合命名或不完整的目录 / prune keeps the newest N 3ms
+(node:1841722) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/products/products.r2-integration.test.ts > products R2 permissions > 只有管理员与经理能维护产品；所有角色可查看 / only admins and managers maintain products 724ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 permissions > 明细：销售代表只能改自己的商机，只读不能改，经理可改 / line items follow deal edit rights 219ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 business rules > 有明细时不能手工改金额或币种；金额不变的保存允许；明细清空后恢复手工 / amount and currency lock 234ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 business rules > 币种不一致与停用产品不能添加 / currency mismatch and inactive products are rejected 152ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 business rules > 停用产品不影响已有明细，明细仍可修改 / deactivation keeps existing items editable 156ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 business rules > 使用中的产品不能删除（409），数据库 RESTRICT 兜底 / products in use cannot be deleted 157ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 business rules > SKU 组织内唯一且不区分大小写（409）；其他组织可用同一 SKU / SKU uniqueness 198ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 business rules > 批量改阶段不影响由明细计算的金额 / bulk stage changes keep computed amounts 168ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 其他组织的产品不能用于本组织商机；明细与产品跨组织 404 / cross-org isolation 195ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法明细 {"quantity":"0"} → 400 / invalid line items 119ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法明细 {"quantity":"-1"} → 400 / invalid line items 120ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法明细 {"quantity":"1.234"} → 400 / invalid line items 120ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法明细 {"quantity":"abc"} → 400 / invalid line items 116ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法明细 {"quantity":"1","discountPercent":"100.01"} → 400 / invalid line items 119ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法明细 {"quantity":"1","discountPercent":"-5"} → 400 / invalid line items 139ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法明细 {"quantity":"1","unitPrice":"-1"} → 400 / invalid line items 124ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法明细 {"quantity":"1","lineTotal":"1"} → 400 / invalid line items 123ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法明细 {} → 400 / invalid line items 118ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 折扣 100% 小计为 0；数量小数可用 / 100% discount and decimal quantities 140ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法产品 {"sku":"","name":"x"} → 400 / invalid products 119ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法产品 {"sku":"a b","name":"x"} → 400 / invalid products 114ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法产品 {"sku":"中文","name":"x"} → 400 / invalid products 118ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法产品 {"sku":"X","name":""} → 400 / invalid products 119ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法产品 {"sku":"X","name":"x","unitPrice":"-1"} → 400 / invalid products 119ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法产品 {"sku":"X","name":"x","currency":"GBP"} → 400 / invalid products 115ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 非法产品 {"sku":"X","name":"x","organizationId":"00000000-0000-4000-8000-000000000000"} → 400 / invalid products 124ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 数据库约束：数量 > 0、折扣 0–100、单价非负 / DB CHECK constraints 132ms
+ ✓ tests/products/products.r2-integration.test.ts > products R2 isolation & input > 未登录 401 / unauthenticated 147ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 relations > 关联不存在的 accountId → 400 591ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 relations > 关联不存在的 leadId → 400 118ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 relations > 关联不存在的 dealId → 400 116ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 relations > 多个关联同时非法时返回全部字段错误 / reports every bad relation 124ms
+(node:1841844) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 relations > 删除线索只级联仅关联该线索的跟进 / lead deletion cascades lead-only activities 345ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 relations > 删除线索/商机时，同时关联其他对象的跟进保留并解除该关联 / shared activities survive deletion and are unlinked 310ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 relations > 不关联任何对象的独立任务允许保存 / standalone task without relations is allowed 130ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 relations > 数据库 CHECK 保证完成状态与完成时间一致 / DB CHECK keeps completed and completedAt consistent 139ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"subject":"x"} → 400 128ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"EMAIL","subject":"x"} → 400 128ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL"} → 400 125ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL","subject":" "} → 400 112ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL","subject":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 126ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL","subject":"x","content":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 119ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL","subject":"x","dueAt":"2027-01-01"} → 400 116ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL","subject":"x","dueAt":"2027-01-01T10:00:00"} → 400 118ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL","subject":"x","dueAt":"not-a-date"} → 400 121ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL","subject":"x","completed":"yes"} → 400 118ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL","subject":"x","completedAt":"2027-01-01T00:00:00Z"} → 400 124ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法输入 {"type":"CALL","subject":"x","organizationId":"00000000-0000-4000-8000-000000000000"} → 400 115ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 主题 200 字、内容 10000 字边界可保存 / length boundaries accepted 145ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 更新时不可清空类型/主题 / type and subject cannot be cleared 127ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法查询 {"type":"X"} → 400 124ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法查询 {"completed":"1"} → 400 118ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法查询 {"sort":"subject"} → 400 120ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 invalid input & boundaries > 非法查询 {"dealId":"abc"} → 400 116ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 organization isolation > 列表与筛选只含本组织 / list scoped 150ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 organization isolation > 跨组织读/改/删跟进 → 404 且数据不变 / IDOR on activities 169ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 organization isolation > 不能通过更新把跟进挂到其他组织的客户/线索/商机 / cannot relink to another org on update 206ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 organization isolation > 不能把负责人设为其他组织用户 / owner from another org rejected 112ms
+ ✓ tests/activities/activities.r2-integration.test.ts > activities R2 organization isolation > 数据库复合外键阻止跨组织关联 / composite FKs block cross-org links 133ms
+(node:1842005) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/sales-orders/sales-orders.r2-integration.test.ts > sales orders R2 permissions & isolation > 生成：负责人与经理可以，其他销售 404，只读 403 / create follows deal edit rights 1096ms
+ ✓ tests/sales-orders/sales-orders.r2-integration.test.ts > sales orders R2 permissions & isolation > 查看与操作：只读可看不可改；其他销售看不到也改不了 / view and change rights 375ms
+ ✓ tests/sales-orders/sales-orders.r2-integration.test.ts > sales orders R2 permissions & isolation > 跨组织：看不到、改不了、不能用对方报价单生成 / cross-tenant isolation 304ms
+ ✓ tests/sales-orders/sales-orders.r2-integration.test.ts > sales orders R2 permissions & isolation > 未登录 401 / unauthenticated 224ms
+ ✓ tests/sales-orders/sales-orders.r2-integration.test.ts > sales orders R2 concurrency > 同一报价单并发生成只成功一张 / concurrent creation yields one order 315ms
+ ✓ tests/sales-orders/sales-orders.r2-integration.test.ts > sales orders R2 concurrency > 不同报价单并发生成，订单号连续不重复 / concurrent numbering 469ms
+ ✓ tests/sales-orders/sales-orders.r2-integration.test.ts > sales orders R2 concurrency > 并发发货与取消只成功一个 / concurrent transitions 265ms
+ ✓ tests/sales-orders/sales-orders.r2-integration.test.ts > sales orders R2 validation & integrity > 参数校验 / validation 300ms
+ ✓ tests/sales-orders/sales-orders.r2-integration.test.ts > sales orders R2 validation & integrity > 订单是快照：之后改产品价格、商机明细不影响订单 / orders are snapshots 248ms
+ ✓ tests/sales-orders/sales-orders.r2-integration.test.ts > sales orders R2 validation & integrity > 数据库兜底：第二张未取消订单、金额不一致、无发货时间的已发货状态都被拒绝；报价单不能被删除 / DB guards 286ms
+ ✓ tests/sales-orders/sales-orders.r2-integration.test.ts > sales orders R2 validation & integrity > 批量删除商机时有订单的商机失败并说明原因 / bulk delete reports deals with orders 306ms
+ ✓ tests/sales-orders/sales-orders.r2-integration.test.ts > sales orders R2 validation & integrity > 审计日志可按销售订单筛选 / audit log filter by order 267ms
+ ✓ tests/sales-orders/sales-orders.r2-integration.test.ts > sales orders R2 cors > 跨域预检允许 GET/POST/PATCH / preflight 217ms
+(node:1842129) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 repeat & concurrency > 重复转化 → 409，不产生多余记录 / second conversion is 409 without side effects 731ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 repeat & concurrency > 并发转化同一线索只成功一次，失败方事务完整回滚 / concurrent conversions: one wins, loser fully rolls back 275ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 缺少 account / missing account → 400 且无任何写入 140ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 非法模式 / bad mode → 400 且无任何写入 133ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 已有客户缺 id / existing without id → 400 且无任何写入 128ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 已有客户 id 非 UUID / bad uuid → 400 且无任何写入 135ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 新客户名为空白 / blank name → 400 且无任何写入 135ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 新客户名超长 / name too long → 400 且无任何写入 134ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 商机缺名称 / deal without name → 400 且无任何写入 152ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 商机金额非法 / bad amount → 400 且无任何写入 145ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 商机阶段非法 / bad stage → 400 且无任何写入 133ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 商机日期非法 / bad date → 400 且无任何写入 129ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 未知字段 / unknown field → 400 且无任何写入 137ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 联系人字段注入 / contact injection → 400 且无任何写入 127ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 已有客户不存在 → 400，事务回滚 / unknown existing account → 400, rolled back 141ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 不能通过新建或编辑把状态设为“已转化” / CONVERTED cannot be set via create or update 133ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 已转化线索不能改状态（409）/ converted lead status is locked 159ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 invalid input > 非法线索 id → 404 / malformed or unknown lead id → 404 135ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 relations after conversion > 删除转化出的商机/客户后，线索仍为已转化且链接置空 / deleting results nulls the links 286ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 relations after conversion > 删除已转化线索不影响客户、联系人、商机 / deleting the lead keeps converted records 185ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 organization isolation > 未登录 401 / unauthenticated 122ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 organization isolation > 不能转化其他组织的线索（404，无写入）/ cannot convert another org lead 128ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 organization isolation > 不能把线索转化到其他组织的客户（400）/ cannot convert into another org account 142ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 organization isolation > 转化产生的记录都属于当前组织 / created records belong to the caller org 158ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 organization isolation > 数据库触发器阻止跨组织转化链接 / DB trigger blocks cross-org links 203ms
+ ✓ tests/leads/lead-conversion.r2-integration.test.ts > lead conversion R2 organization isolation > 数据库 CHECK：已转化必须有转化时间，反之亦然 / DB CHECK keeps status and convertedAt consistent 133ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 relations & constraints > 存在商机的客户不能删除（409），客户与商机均保留 / account with deals cannot be deleted 603ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 relations & constraints > 数据库 RESTRICT 外键兜底（绕过服务层直接删除）/ DB RESTRICT FK backs it up 171ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 relations & constraints > 列表 _count 正确反映联系人与商机数 / list counts contacts and deals 187ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 relations & constraints > 联系人必须挂在已存在的客户下 / contacts require an existing account 119ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 relations & constraints > 跟进记录引用不存在的客户 → 400 / activity with unknown account → 400 122ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {} → 400 119ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {"name":""} → 400 114ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {"name":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 118ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {"name":"x","industry":"SPACE"} → 400 116ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {"name":"x","address":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 119ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {"name":"x","organizationId":"00000000-0000-4000-8000-000000000000"} → 400 116ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法客户输入 {"name":"x","_count":{"deals":0}} → 400 123ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法联系人输入 {} → 400 124ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法联系人输入 {"name":"  "} → 400 137ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法联系人输入 {"name":"x","email":"bad@"} → 400 154ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法联系人输入 {"name":"x","isPrimary":"yes"} → 400 138ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法联系人输入 {"name":"x","accountId":"00000000-0000-4000-8000-000000000000"} → 400 131ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 联系人不能通过更新改挂到其他客户 / a contact cannot be moved by update 141ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 客户名称 200 字符边界 / 200-char name boundary 126ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法查询 {"industry":"nope"} → 400 122ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法查询 {"pageSize":"0"} → 400 119ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 invalid input & boundaries > 非法查询 {"ownerId":"x"} → 400 123ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 列表、搜索只含本组织 / list and search scoped 163ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 跨组织读/改/删客户 → 404 且数据不变 / IDOR on accounts 146ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 跨组织读/建联系人 → 404 / IDOR on account contacts 141ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 跨组织改/删联系人 → 404 / IDOR on contacts 172ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 设置主要联系人不影响其他组织 / setting primary does not touch other orgs 200ms
+(node:1842262) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 不能为其他组织客户创建跟进记录 / cannot attach activity to another org account 147ms
+ ✓ tests/accounts/accounts.r2-integration.test.ts > accounts R2 organization isolation > 数据库复合外键阻止跨组织联系人 / composite FK blocks cross-org contact 190ms
+ ✓ tests/maintenance/cleanup.r1-functional.test.ts > cleanup R1 tag deletion > 删除标签：所有用户的私有与共享视图去掉该标签筛选，其他条件保留，审计记录数量 / views lose only the deleted tag 707ms
+(node:1842396) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/maintenance/cleanup.r1-functional.test.ts > cleanup R1 tag deletion > 清理后的视图套用时返回正常结果而不是空列表 / a cleaned view no longer yields an empty list 251ms
+stdout | tests/maintenance/cleanup.r1-functional.test.ts > cleanup R1 demo reset > 演示标签 ID 固定：两次重置后相同，按演示标签筛选的视图仍有效 / stable demo tag ids across resets
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+stdout | tests/maintenance/cleanup.r1-functional.test.ts > cleanup R1 demo reset > 演示标签 ID 固定：两次重置后相同，按演示标签筛选的视图仍有效 / stable demo tag ids across resets
+演示数据已重建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/maintenance/cleanup.r1-functional.test.ts > cleanup R1 demo reset > 演示标签 ID 固定：两次重置后相同，按演示标签筛选的视图仍有效 / stable demo tag ids across resets 1667ms
+stdout | tests/maintenance/cleanup.r1-functional.test.ts > cleanup R1 demo reset > 重置时清理指向已不存在标签的视图筛选，其他视图不变 / the reset drops stale tag filters only
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+stdout | tests/maintenance/cleanup.r1-functional.test.ts > cleanup R1 demo reset > 重置时清理指向已不存在标签的视图筛选，其他视图不变 / the reset drops stale tag filters only
+演示数据已重建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/maintenance/cleanup.r1-functional.test.ts > cleanup R1 demo reset > 重置时清理指向已不存在标签的视图筛选，其他视图不变 / the reset drops stale tag filters only 1184ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 缺少姓名 / missing name → 400 503ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 空白姓名 / blank name → 400 138ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 姓名超长 / name too long → 400 125ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 邮箱非法 / bad email → 400 118ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 状态非法 / bad status → 400 118ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 来源非法 / bad source → 400 114ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 负责人非 UUID / owner not uuid → 400 121ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 类型错误 / wrong type → 400 117ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非 JSON 请求体 → 400 / non-JSON body 122ms
+(node:1842494) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 姓名恰好 100 字符可保存，首尾空白被去除 / exactly 100 chars accepted, whitespace trimmed 150ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 字段错误按字段返回 / field errors are keyed by field 125ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"page":"0"} → 400 / bad query params 116ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"pageSize":"101"} → 400 / bad query params 116ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"page":"abc"} → 400 / bad query params 113ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"status":"nope"} → 400 / bad query params 114ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法查询参数 {"q":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 / bad query params 112ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 超出最后一页返回空列表但 total 正确 / page past the end is empty with correct total 156ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 搜索中的 SQL/LIKE 特殊字符按字面处理 / SQL & LIKE metacharacters are literal 232ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 非法 id 视为不存在 / malformed id is 404 160ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 invalid input & boundaries > 删除线索时关联跟进记录级联删除 / deleting a lead cascades its activities 199ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 未登录不可访问 / unauthenticated requests are rejected 108ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 列表与搜索只返回本组织数据 / list and search are organization scoped 143ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 篡改 ID 访问其他组织线索：读/改/删均为 404 且数据不变 / IDOR read/update/delete → 404, data untouched 154ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 不能把负责人设为其他组织用户 / owner from another organization is rejected 142ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 请求体中的 organizationId/id 等字段被拒绝 / organizationId or id in the body is rejected 120ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 organization isolation > 数据库复合外键阻止跨组织负责人（纵深防御）/ composite FK blocks cross-org owner at DB level 141ms
+ ✓ tests/leads/leads.r2-integration.test.ts > leads R2 search literal wildcards (regression for R2 defect) > 包含 % 的真实名字仍可被搜索到 / names containing % are still found 245ms
+(node:1842625) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/sales-orders/sales-orders.r1-functional.test.ts > sales orders R1 create > 由已接受报价单生成：明细与金额快照、编号、默认主题与收货地址 / create from an accepted quote 920ms
+ ✓ tests/sales-orders/sales-orders.r1-functional.test.ts > sales orders R1 create > 可自定义主题与收货地址（空表示不填）/ custom subject and empty address 232ms
+ ✓ tests/sales-orders/sales-orders.r1-functional.test.ts > sales orders R1 create > 未接受的报价单不能生成；已有未取消订单不能重复生成，取消后可以 / guard rules 289ms
+ ✓ tests/sales-orders/sales-orders.r1-functional.test.ts > sales orders R1 lifecycle > 已确认 → 已发货 → 已交付，记录时间；终态不能再改 / confirmed → shipped → delivered 301ms
+ ✓ tests/sales-orders/sales-orders.r1-functional.test.ts > sales orders R1 lifecycle > 不能跳过发货直接交付；已发货也可取消，取消原因保存但审计中脱敏 / no skipping; cancel after shipping 259ms
+ ✓ tests/sales-orders/sales-orders.r1-functional.test.ts > sales orders R1 lifecycle > 修改主题、预计交付、收货地址、备注并写审计（长文本脱敏）/ update with audit 244ms
+ ✓ tests/sales-orders/sales-orders.r1-functional.test.ts > sales orders R1 list & deal > 列表按状态筛选、按订单号/报价单号/客户搜索 / list filters and search 335ms
+ ✓ tests/sales-orders/sales-orders.r1-functional.test.ts > sales orders R1 list & deal > 有订单的商机不能删除（含已取消订单）/ deals with orders cannot be deleted 235ms
+stdout | tests/sales-orders/sales-orders.r1-functional.test.ts > sales orders R1 demo > 演示订单：来自已接受报价单，金额与明细一致，状态时间符合约束 / demo orders
+演示数据已重建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/sales-orders/sales-orders.r1-functional.test.ts > sales orders R1 demo > 演示订单：来自已接受报价单，金额与明细一致，状态时间符合约束 / demo orders 1029ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 visibility > 销售代表只统计自己负责的数据（各部分）/ sales reps only see their own figures 767ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 visibility > 销售代表指定他人为负责人：结果为空，不泄露他人数据 / sales reps cannot query others 205ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 visibility > 只读用户与管理员看到全部，并可按负责人筛选 / read-only and admins see everything 253ms
+(node:1842722) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 visibility > 与工作台进行中商机金额一致 / matches the dashboard open amount 252ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 跨组织：看不到他组织数据；用他组织用户 ID 筛选结果为空 / cross-org isolation 221ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 非法参数 {"currency":"GBP"} → 400 / invalid query 143ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 非法参数 {"from":"2026-02-30"} → 400 / invalid query 129ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 非法参数 {"to":"2026/06/30"} → 400 / invalid query 119ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 非法参数 {"from":"2026-07-01","to":"2026-06-30"} → 400 / invalid query 123ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 非法参数 {"from":"2024-01-01","to":"2026-01-01"} → 400 / invalid query 123ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 非法参数 {"ownerId":"nobody"} → 400 / invalid query 125ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 非法参数 {"organizationId":"00000000-0000-4000-8000-000000000000"} → 400 / invalid query 131ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 非法参数 {"stage":"CLOSED_WON"} → 400 / invalid query 129ms
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 未登录 401 / unauthenticated 126ms
+stdout | tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 演示数据：报表与数据库直接汇总一致 / demo data matches direct aggregates
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/reports/reports.r2-integration.test.ts > reports R2 isolation & input > 演示数据：报表与数据库直接汇总一致 / demo data matches direct aggregates 1096ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 非管理员不能修改任何人的角色（包括自己）/ non-admins cannot change roles, including their own 568ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 新建用户 注入 isDemo / inject isDemo → 400 113ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 新建用户 注入 organizationId → 400 94ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 新建用户 非法角色 / bad role → 400 100ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 新建用户 密码过短 / short password → 400 107ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 新建用户 邮箱非法 / bad email → 400 101ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 新建用户 缺姓名 / missing name → 400 98ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 更新用户非法字段 {"email":"x@yonlink.test"} → 400 99ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 更新用户非法字段 {"password":"Long-Enough-1"} → 400 100ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 更新用户非法字段 {"isDemo":true} → 400 101ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 更新用户非法字段 {"role":"ROOT"} → 400 92ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 更新用户非法字段 {"isActive":"no"} → 400 89ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 邮箱重复 → 409（不区分大小写）/ duplicate email → 409 154ms
+(node:1842849) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 销售代表即使带 ownerId 筛选也看不到他人数据 / visibility cannot be bypassed with an ownerId filter 234ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 未分配负责人的记录对销售代表不可见 / unassigned records are invisible to sales reps 166ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 销售代表对他人记录的读/改/删：404/404/403，数据不变 / IDOR between sales reps 148ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 联系人与跟进同样受可见范围约束 / contacts and activities follow visibility 194ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 privilege escalation > 商机金额合计与全局搜索按可见范围 / deal totals and global search follow visibility 213ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 last-admin protection > 不能修改自己的角色或停用自己 / cannot change own role or deactivate self 118ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 last-admin protection > 两名管理员时可降级其一；并发互相降级后至少保留一名 / concurrent mutual demotion keeps an admin 162ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 last-admin protection > 停用用户后其现有会话立即失效 / deactivation invalidates existing sessions immediately 121ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 cross-organization > 其他组织管理员看不到、改不了本组织用户 / admins of another org cannot see or change users 134ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 cross-organization > 用户管理审计记录：邮箱打码、不含密码 / user audit entries mask email and omit passwords 128ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 demo login edge cases > 非演示账号、停用的演示账号不能一键登录 / non-demo and inactive demo users are rejected 101ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 demo login edge cases > 非法请求 {} → 400 94ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 demo login edge cases > 非法请求 {"userId":"x"} → 400 94ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 demo login edge cases > 非法请求 {"userId":"00000000-0000-4000-8000-000000000000","role":"ADMIN"} → 400 90ms
+ ✓ tests/rbac/rbac.r2-integration.test.ts > RBAC R2 demo login edge cases > 演示账号的权限与其角色一致（不因演示而放宽）/ demo users get exactly their role permissions 122ms
+(node:1842957) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 create > 由商机生成：复制明细快照、默认主题、编号、税额与总计 / generate from a deal 748ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 create > 报价单号按组织连续编号，删除草稿后不复用中间号 / sequential numbers 278ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 create > 税额按十进制四舍五入到分 / tax rounding 136ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 create > 快照：之后修改商机明细与产品不影响报价单 / later changes do not affect the quote 208ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 draft editing > 修改草稿：税率变化重算；审计记录变化字段，条款脱敏 / update a draft 168ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 draft editing > 从商机同步明细：明细与金额更新为商机当前明细 / re-sync from the deal 213ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 draft editing > 删除草稿：明细一并删除，写审计 / delete a draft 172ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 status > 草稿 → 已发送 → 已接受，记录发送与答复时间及审计 / draft → sent → accepted 202ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 status > 已发送可退回草稿（清除发送时间）后再修改；也可标记为已拒绝 / sent → draft, sent → rejected 226ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 status > 列表：按状态、商机筛选，按编号/主题/客户搜索 / list filters and search 249ms
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 status > 删除商机时其报价单随之删除 / quotes cascade with the deal 183ms
+stdout | tests/quotes/quotes.r1-functional.test.ts > quotes R1 demo data > 演示报价单：明细 = 商机明细，金额一致，编号按创建时间递增 / demo quotes are consistent
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/quotes/quotes.r1-functional.test.ts > quotes R1 demo data > 演示报价单：明细 = 商机明细，金额一致，编号按创建时间递增 / demo quotes are consistent 990ms
+(node:1843067) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 transactional consistency > 业务失败不产生审计记录（校验失败、409、404）/ failed operations leave no audit rows 704ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 transactional consistency > 并发转化：只有一条 lead.convert，失败方的创建记录随事务回滚 / concurrent conversion audits only the winner 295ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 transactional consistency > 审计写入失败时业务写入一并回滚 / an audit failure rolls back the business write 156ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 append-only > ORM 与原生 SQL 均无法修改或删除审计记录 / UPDATE and DELETE are rejected 179ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 append-only > API 只提供查询，不提供修改/删除 / the API exposes no write methods 120ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 append-only > 删除业务记录后其审计记录仍保留可查 / logs outlive deleted records 198ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 redaction > 打码规则 / masking rules 117ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 redaction > 邮箱/电话打码，长文本不记原文，密码与令牌从不出现 / PII masked, long text redacted, secrets never stored 275ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 redaction > 不存在的邮箱登录失败不写日志（无所属组织）/ unknown-email failures are not logged 151ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 只能查询本组织审计记录 / logs are organization scoped 172ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 未登录 401 / unauthenticated 115ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"entityType":"session"} → 400 112ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"entityId":"abc"} → 400 121ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"action":"DROP TABLE"} → 400 119ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"action":"lead"} → 400 115ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"actorId":"1"} → 400 121ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"from":"yesterday"} → 400 115ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"to":"2027-01-01"} → 400 119ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"pageSize":"101"} → 400 117ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"q":"x"} → 400 113ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 非法查询 {"actor":"00000000-0000-4000-8000-000000000000"} → 400 112ms
+ ✓ tests/audit/audit.r2-integration.test.ts > audit R2 isolation & input > 数据库复合外键阻止跨组织操作人 / composite FK blocks cross-org actor 123ms
+(node:1843185) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 permissions > 新建标签：能编辑记录的角色可以，只读 403 / create needs edit rights 678ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 permissions > 改名、改色、删除：管理员与经理可以，销售与只读 403 / manage needs tag.manage 192ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 permissions > 打标签遵循记录编辑权限：本人 200、他人 404、只读 403、经理 200 / tagging follows edit rights 181ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 permissions > 使用次数与筛选遵循可见范围 / usage counts and filters follow visibility 175ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 permissions > 批量：他人记录逐条失败，自己的成功 / bulk reports per-record failures 162ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 跨组织：不能使用、修改、筛选他组织标签；批量用他组织标签整批 400 / cross-org isolation 206ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 上限：每条记录 20 个、每组织 200 个 / limits 410ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 非法标签 {"name":""} → 400 / invalid tag input 132ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 非法标签 {"name":"   "} → 400 / invalid tag input 128ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 非法标签 {"name":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 / invalid tag input 173ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 非法标签 {"name":"<b>"} → 400 / invalid tag input 150ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 非法标签 {"name":"a,b"} → 400 / invalid tag input 121ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 非法标签 {"name":"正常","color":"black"} → 400 / invalid tag input 124ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 非法标签 {"name":"正常","organizationId":"00000000-0000-4000-8000-000000000000"} → 400 / invalid tag input 115ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 非法标签 {"name":"正常","nameKey":"hack"} → 400 / invalid tag input 115ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 非法打标签与筛选参数 → 400 / invalid tagging and filter input 116ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 数据库约束：name_key 一致、颜色预设、跨组织关联被复合外键拒绝 / DB constraints 196ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 isolation & limits > 未登录 401 / unauthenticated 135ms
+ ✓ tests/tags/tags.r2-integration.test.ts > tags R2 CORS > 跨域预检允许 PUT（演示前端在另一域名）/ CORS preflight allows PUT 120ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 permissions > 销售代表只看到自己一行，合计等于自己；不能编辑 / sales reps see only themselves 686ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 permissions > 只读看全部不能改；经理与管理员可改 / read-only views all, managers edit 225ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 跨组织：不能给他组织用户设目标，他组织看不到本组织数据 / cross-org isolation 186ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法预测参数 {"period":"2026-1"} → 400 / invalid forecast query 142ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法预测参数 {"period":"2026-Q5"} → 400 / invalid forecast query 128ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法预测参数 {"period":"2026/11"} → 400 / invalid forecast query 126ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法预测参数 {"period":""} → 400 / invalid forecast query 122ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法预测参数 {"currency":"GBP"} → 400 / invalid forecast query 122ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法预测参数 {"ownerId":"x"} → 400 / invalid forecast query 130ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法目标参数 {"month":"2026-13"} → 400 / invalid target input 125ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法目标参数 {"month":"2026-11-01"} → 400 / invalid target input 127ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法目标参数 {"amount":"-1"} → 400 / invalid target input 122ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法目标参数 {"amount":"1.234"} → 400 / invalid target input 122ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法目标参数 {"amount":"abc"} → 400 / invalid target input 118ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法目标参数 {} → 400 / invalid target input 130ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法目标参数 {"currency":"GBP"} → 400 / invalid target input 123ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法目标参数 {"userId":"x"} → 400 / invalid target input 126ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 非法目标参数 {"organizationId":"00000000-0000-4000-8000-000000000000"} → 400 / invalid target input 122ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 数据库约束：月份须为 1 日、金额非负、币种格式、唯一、不能跨组织 / DB constraints 221ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 并发设定同一目标：最终只有一行 / concurrent sets keep one row 176ms
+ ✓ tests/forecasts/forecasts.r2-integration.test.ts > forecasts R2 isolation & input > 未登录 401 / unauthenticated 124ms
+(node:1843384) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 permissions > 销售代表：可批量改自己线索的状态；他人线索返回 NOT_FOUND 且不变 / sales: own succeed, others not found 708ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 permissions > 销售代表：批量删除与指派给他人整批 403 / sales: bulk delete and assigning to others are rejected 145ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 permissions > 只读用户：批量修改返回逐条 FORBIDDEN，批量删除整批 403 / read-only: forbidden per record, delete 403 143ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 permissions > 经理：可批量改派他人记录 / managers can reassign anyone 221ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 business rules & partial success > 已转化线索不能改状态（CONFLICT），其他照常处理 / converted leads conflict, others proceed 211ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 business rules & partial success > 有商机的客户不能删除（CONFLICT），无商机的被删除 / accounts with deals are kept 263ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 business rules & partial success > 不存在与已删除的 ID 返回 NOT_FOUND；重复删除幂等 / missing ids are NOT_FOUND 135ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 business rules & partial success > 失败的记录不写审计，成功的逐条写 / only successful records are audited 131ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 其他组织的记录一律 NOT_FOUND 且不受影响 / other organizations are untouched 162ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 不能把记录指派给其他组织或停用的用户（整批 400）/ owner must be an active user of the organization 155ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 空 ids / empty ids → 400 113ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 非 UUID / bad uuid → 400 101ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 未知动作 / unknown action → 400 99ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 状态设为已转化 / CONVERTED status → 400 104ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 缺少负责人字段 / missing ownerId → 400 96ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 多余字段 / extra field → 400 98ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 线索不支持改阶段 / stage on leads → 400 97ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 上限 200 条：201 条整批 400，200 条可处理 / limit is 200 records 418ms
+ ✓ tests/bulk/bulk.r2-integration.test.ts > bulk R2 isolation & input > 未登录 401；跟进与商机接口同样校验 / unauthenticated 401 on every bulk endpoint 98ms
+(node:1843497) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 permissions > 销售代表可给自己的记录加备注；他人记录不可见（404）/ sales: own records only 636ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 permissions > 只读用户可查看，不能新增（403）/ read-only users read but cannot add 149ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 permissions > 只有作者能修改，管理员也不行 / only the author edits, not even admins 139ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 permissions > 删除：作者或有删除权限的角色；销售代表不能删他人在自己记录上的备注 / delete rules 184ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 permissions > 记录被改派后，原负责人看不到其备注 / reassignment hides notes from the former owner 222ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 permissions > 线索转化后备注保留在线索上 / notes stay on the lead after conversion 195ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 其他组织不可见、不可写、不可改删 / other organizations are isolated 177ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法新增：空内容 / empty → 400 147ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法新增：空白 / blank → 400 129ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法新增：超长 / too long → 400 127ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法新增：未指定所属记录 / no parent → 400 123ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法新增：指定两个所属记录 / two parents → 400 122ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法新增：非 UUID / bad uuid → 400 126ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法新增：注入作者 / authorId injection → 400 143ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 5000 字边界可保存 / exactly 5000 characters are accepted 122ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法列表查询 {} → 400 / bad list query 115ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法列表查询 {"leadId":"x"} → 400 / bad list query 114ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 非法列表查询 {"leadId":"00000000-0000-4000-8000-000000000000","dealId":"00000000-0000-4000-8000-000000000001"} → 400 / bad list query 113ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 未登录 401 / unauthenticated 113ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 含 HTML/脚本的内容按原文保存（显示时按纯文本）/ HTML is stored verbatim (rendered as text) 114ms
+ ✓ tests/notes/notes.r2-integration.test.ts > notes R2 isolation & input > 数据库约束：恰好一个所属记录、内容非空、复合外键防跨组织 / DB constraints 192ms
+(node:1843596) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/notifications/notifications.r1-functional.test.ts > notifications R1 assignment > 新建时分配给他人会通知负责人，分配给自己不通知 / create assigned to someone else notifies 684ms
+ ✓ tests/notifications/notifications.r1-functional.test.ts > notifications R1 assignment > 修改负责人才通知；负责人不变或改回自己不通知 / only an owner change notifies 245ms
+ ✓ tests/notifications/notifications.r1-functional.test.ts > notifications R1 assignment > 客户、商机、跟进分配都会通知并关联对应记录 / accounts, deals and activities notify too 189ms
+ ✓ tests/notifications/notifications.r1-functional.test.ts > notifications R1 assignment > 批量分配每条记录各通知一次 / bulk assignment notifies per record 168ms
+ ✓ tests/notifications/notifications.r1-functional.test.ts > notifications R1 reminders > 到期前 30 分钟内、逾期 24 小时内生成提醒，重复读取不重复生成 / reminder window and idempotency 204ms
+ ✓ tests/notifications/notifications.r1-functional.test.ts > notifications R1 reminders > 改期撤销未读旧提醒，新时间在窗口内会重新提醒；完成后撤销 / reschedule and completion withdraw 171ms
+ ✓ tests/notifications/notifications.r1-functional.test.ts > notifications R1 reminders > 已读的提醒不随改期删除 / read reminders survive rescheduling 156ms
+ ✓ tests/notifications/notifications.r1-functional.test.ts > notifications R1 inbox > 列表最新在前、未读筛选、分页 / newest first, unread filter, paging 173ms
+ ✓ tests/notifications/notifications.r1-functional.test.ts > notifications R1 inbox > 全部已读、删除单条、清除已读 / mark all read, delete, clear read 168ms
+ ✓ tests/notifications/notifications.r1-functional.test.ts > notifications R1 inbox > 记录删除后通知随之删除；超过 90 天的通知被清理 / removed with the record; pruned after 90 days 163ms
+stdout | tests/notifications/notifications.r1-functional.test.ts > notifications R1 demo > 演示数据：通知属于接收人负责的记录，未读/已读与定义一致 / demo notifications
+演示数据已重建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/notifications/notifications.r1-functional.test.ts > notifications R1 demo > 演示数据：通知属于接收人负责的记录，未读/已读与定义一致 / demo notifications 1108ms
+(node:1843699) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/products/products.r1-functional.test.ts > products R1 catalog > 新增产品：SKU 转大写，默认单位/币种/启用 / create normalises SKU and applies defaults 768ms
+ ✓ tests/products/products.r1-functional.test.ts > products R1 catalog > 搜索（SKU/名称/分类）与启用筛选 / search and active filter 195ms
+ ✓ tests/products/products.r1-functional.test.ts > products R1 catalog > 修改、停用、删除未使用的产品 / update, deactivate and delete an unused product 174ms
+ ✓ tests/products/products.r1-functional.test.ts > products R1 deal line items > 小计计算精确（十进制，四舍五入到分）/ exact decimal line totals 112ms
+ ✓ tests/products/products.r1-functional.test.ts > products R1 deal line items > 添加明细：默认取产品单价，保存产品名称与 SKU，商机金额 = 明细合计 / add uses the product price and sets the deal amount 143ms
+ ✓ tests/products/products.r1-functional.test.ts > products R1 deal line items > 多条明细合计、修改与删除后金额随之更新 / totals follow add, update and remove 209ms
+ ✓ tests/products/products.r1-functional.test.ts > products R1 deal line items > 自定义单价；产品改名改价不影响已有明细 / custom price; later product changes do not affect items 133ms
+ ✓ tests/products/products.r1-functional.test.ts > products R1 deal line items > 明细操作写审计（含金额变化）/ item changes are audited with the amount change 152ms
+ ✓ tests/products/products.r1-functional.test.ts > products R1 deal line items > 删除商机时明细一并删除，之后产品可删除 / items are removed with the deal; the product can then be deleted 179ms
+stdout | tests/products/products.r1-functional.test.ts > products R1 deal line items > 演示数据：产品目录与明细，商机金额 = 明细合计 / demo catalog and items with consistent amounts
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/products/products.r1-functional.test.ts > products R1 deal line items > 演示数据：产品目录与明细，商机金额 = 明细合计 / demo catalog and items with consistent amounts 1175ms
+(node:1843811) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 visibility & permissions > 销售代表看板只含自己负责的商机，合计也只算自己的 / sales reps see and sum only their own deals 919ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 visibility & permissions > ownerId 筛选无法绕过可见范围 / an ownerId filter cannot bypass visibility 259ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 visibility & permissions > 改阶段权限：只读 403、销售改他人 404、销售改自己 200、经理改任意 200 / stage change permissions 204ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 visibility & permissions > 非法阶段 → 400 且数据不变 / an invalid stage is rejected and nothing changes 135ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 visibility & permissions > 未登录 401 / unauthenticated → 401 94ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > 其他组织商机不出现在看板上 / other organizations never appear 235ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > 非法参数 {"limit":"0"} → 400 101ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > 非法参数 {"limit":"201"} → 400 96ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > 非法参数 {"limit":"abc"} → 400 101ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > 非法参数 {"accountId":"x"} → 400 100ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > 非法参数 {"ownerId":"1"} → 400 100ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > 非法参数 {"q":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 94ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > limit 边界 1 与 200 可用 / limit boundaries 1 and 200 work 255ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > 搜索中的通配符按字面处理 / search wildcards are literal 186ms
+ ✓ tests/deals/deal-board.r2-integration.test.ts > deal board R2 isolation & input > 按客户筛选 / filter by account 207ms
+(node:1843898) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/notifications/notifications.r2-integration.test.ts > notifications R2 isolation & validation > 其他用户（同组织或跨组织）看不到、改不了、删不掉我的通知 / other users cannot touch my notifications 750ms
+ ✓ tests/notifications/notifications.r2-integration.test.ts > notifications R2 isolation & validation > 跨组织不能把记录分配给别的组织的用户，因而不会产生通知 / no cross-tenant assignment 143ms
+ ✓ tests/notifications/notifications.r2-integration.test.ts > notifications R2 isolation & validation > 参数校验 / validation 162ms
+ ✓ tests/notifications/notifications.r2-integration.test.ts > notifications R2 isolation & validation > 未登录 401；只读角色也能查看自己的通知 / 401 without a session; read-only users have an inbox too 141ms
+ ✓ tests/notifications/notifications.r2-integration.test.ts > notifications R2 reminders > 并发读取未读数只生成一条提醒 / concurrent syncs create one reminder 254ms
+ ✓ tests/notifications/notifications.r2-integration.test.ts > notifications R2 reminders > 只提醒自己负责的跟进 / only my own activities remind me 169ms
+ ✓ tests/notifications/notifications.r2-integration.test.ts > notifications R2 reminders > 跟进改负责人：撤销原负责人的未读提醒，新负责人收到分配通知和提醒 / reassignment moves the reminder 202ms
+ ✓ tests/notifications/notifications.r2-integration.test.ts > notifications R2 reminders > 批量完成撤销提醒；删除跟进时提醒随之删除 / bulk completion withdraws; deletion cascades 225ms
+ ✓ tests/notifications/notifications.r2-integration.test.ts > notifications R2 interplay > 删除进回收站后通知删除，恢复记录不恢复通知 / recycle removes, restore does not bring back 210ms
+ ✓ tests/notifications/notifications.r2-integration.test.ts > notifications R2 interplay > 查重合并：被合并记录的通知删除；选用另一位负责人时通知新负责人 / merge 343ms
+ ✓ tests/notifications/notifications.r2-integration.test.ts > notifications R2 interplay > 线索转化与导入不发通知 / conversion and import do not notify 246ms
+ ✓ tests/notifications/notifications.r2-integration.test.ts > notifications R2 interplay > 已读、删除等收件箱操作不写审计 / inbox actions are not audited 153ms
+ ✓ tests/notifications/notifications.r2-integration.test.ts > notifications R2 cors > 跨域预检允许 GET/POST/DELETE / preflight allows the methods used 120ms
+(node:1843982) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 upload & types > 上传：元数据、磁盘文件与 SHA-256、审计只记名称与大小 / upload stores file and metadata 689ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 upload & types > 允许的类型按文件头识别；扩展名大小写不敏感 / allowed types by magic bytes 199ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 upload & types > 不允许的类型、内容与扩展名不符、空文件被拒绝 / disallowed, mismatched and empty files 145ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 upload & types > 文件名清理：去掉路径与控制字符，超长保留扩展名 / file names are sanitised 114ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 list, download, delete & limits > 列表按记录、最新在前；下载返回原内容与安全响应头 / list and download 229ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 list, download, delete & limits > 删除：记录与磁盘文件都删除，写审计 / delete removes row and file 150ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 list, download, delete & limits > 大小上限 10 MB（恰好 10 MB 可以）与每条记录 50 个 / size and count limits 266ms
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 recycle bin & demo > 删除商机：附件进入回收站且文件保留；恢复后可下载；再次删除并彻底删除后文件移除 / recycle bin keeps files until purge 299ms
+stdout | tests/attachments/attachments.r1-functional.test.ts > attachments R1 recycle bin & demo > 演示数据：附件记录与磁盘文件一致（SHA-256）/ demo attachments match their files
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/attachments/attachments.r1-functional.test.ts > attachments R1 recycle bin & demo > 演示数据：附件记录与磁盘文件一致（SHA-256）/ demo attachments match their files 1156ms
+ ✓ tests/tags/tags.r1-functional.test.ts > tags R1 definitions > 新建：去空格、默认蓝色；名称不区分大小写唯一（409）/ create and uniqueness 598ms
+ ✓ tests/tags/tags.r1-functional.test.ts > tags R1 definitions > 改名改色：审计记录变化；改名与他人重复 409；改大小写允许 / rename and recolour 184ms
+(node:1844077) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/tags/tags.r1-functional.test.ts > tags R1 definitions > 列表按名称排序，含使用次数 / list with usage counts 199ms
+ ✓ tests/tags/tags.r1-functional.test.ts > tags R1 records > 设置记录标签：返回排序后的标签，审计新增/移除的名称，不变不写审计 / set record tags 184ms
+ ✓ tests/tags/tags.r1-functional.test.ts > tags R1 records > 列表返回标签并可按标签筛选（线索/客户/商机）/ lists include tags and filter by tag 273ms
+ ✓ tests/tags/tags.r1-functional.test.ts > tags R1 records > 批量加减标签：已有的不重复，逐条审计 / bulk add and remove 201ms
+ ✓ tests/tags/tags.r1-functional.test.ts > tags R1 records > 删除标签：移除全部关联并审计数量；删除记录时关联随之删除 / delete tag and cascade 238ms
+stdout | tests/tags/tags.r1-functional.test.ts > tags R1 records > 演示数据：6 个标签，分配与推导一致 / demo tags
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/tags/tags.r1-functional.test.ts > tags R1 records > 演示数据：6 个标签，分配与推导一致 / demo tags 990ms
+(node:1844167) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 permissions > 查重遵循可见范围：销售代表看不到与他人记录组成的重复组 / detection follows visibility 676ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 permissions > 合并需删除权限：销售与只读 403，经理可以 / merging needs delete permission 216ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 safety > 跨组织或类型不符的记录：404，整体不变 / foreign or mismatched records roll back 298ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 safety > 已转化线索不能合并（409），数据不变 / converted leads are refused 196ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 safety > 合并后标签超过 20 个：400，数据不变 / tag limit 212ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 safety > 并发：同一条重复记录同时合并到两个主记录，只成功一次 / concurrent merges 206ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 input > 非法合并参数 #0 → 400 / invalid merge input 131ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 input > 非法合并参数 #1 → 400 / invalid merge input 127ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 input > 非法合并参数 #2 → 400 / invalid merge input 131ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 input > 非法合并参数 #3 → 400 / invalid merge input 124ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 input > 非法合并参数 #4 → 400 / invalid merge input 122ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 input > 非法合并参数 #5 → 400 / invalid merge input 121ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 input > 非法合并参数 #6 → 400 / invalid merge input 120ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 input > 非法合并参数 #7 → 400 / invalid merge input 120ms
+ ✓ tests/duplicates/duplicates.r2-integration.test.ts > duplicates R2 input > 非法查重参数与未登录 / invalid query and authentication 101ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 permissions > 私有视图人人可建；共享仅管理员与经理 / private for all, sharing for admins and managers 678ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 permissions > 只有创建者能修改；他人私有视图不可见（404）/ only the creator edits 160ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 permissions > 删除：创建者可以；共享视图也可由管理员/经理删除；销售不能删他人共享视图 / delete rules 173ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 permissions > 默认视图只能设为自己可见的视图 / defaults must be visible 159ms
+(node:1844261) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/views/views.r2-integration.test.ts > views R2 permissions > 共享视图不扩大可见范围：销售套用含他人负责人的视图仍看不到 / sharing never widens visibility 185ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 跨组织：看不到、改不了、删不了、不能设为默认 / cross-org isolation 173ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 每人每个列表最多 50 个 / limit per user and list 171ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":""} → 400 / invalid view input 100ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":"   "} → 400 / invalid view input 106ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 / invalid view input 96ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":"ok","entity":"quotes"} → 400 / invalid view input 98ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":"ok","filters":[]} → 400 / invalid view input 97ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":"ok","filters":"status=NEW"} → 400 / invalid view input 97ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":"ok","filters":{"status":"NEW","page":"2"}} → 400 / invalid view input 97ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":"ok","shared":"yes"} → 400 / invalid view input 96ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":"ok","ownerId":"00000000-0000-4000-8000-000000000000"} → 400 / invalid view input 96ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法视图 {"name":"ok","organizationId":"00000000-0000-4000-8000-000000000000"} → 400 / invalid view input 98ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 非法查询、默认与修改参数 → 400；未登录 401 / invalid queries and auth 123ms
+ ✓ tests/views/views.r2-integration.test.ts > views R2 isolation, limits & input > 数据库约束：筛选必须是对象、名称非空、默认视图不能跨组织 / DB constraints 212ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: me > /api/auth/me 返回角色与权限 / returns role and permissions 586ms
+(node:1844363) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: sales representative > 只看到自己负责的记录（列表、详情、工作台、搜索）/ sees own records only 401ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: sales representative > 新建记录负责人为自己，不能指派给他人 / owns new records, cannot assign others 138ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: sales representative > 可编辑自己的记录，不能删除 / edits own records but cannot delete 151ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: sales representative > 可转化自己的线索，并只能关联自己可见的客户 / converts own leads into visible accounts 226ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: sales representative > 跟进只能关联自己可见的记录 / activities can only link visible records 157ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: sales representative > 不能查看审计日志和管理用户 / no audit or user management 110ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: manager > 可查看、编辑、删除、指派全部业务记录 / full business access 191ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: manager > 不能查看审计日志和管理用户 / no audit or user management 117ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: read-only > 可查看全部，不能新建、编辑、删除、转化 / reads everything, writes nothing 143ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: admin user management > 新建用户（可用新密码登录）、改角色立即生效、停用、重置密码 / create, change role, deactivate, reset 331ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: admin user management > 管理员可查看审计日志 / admins read audit logs 105ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: demo one-click login > 开启时列出演示账号并可一键登录，记录审计 / lists demo accounts and logs in when enabled 126ms
+ ✓ tests/rbac/rbac.r1-functional.test.ts > RBAC R1: demo one-click login > 默认关闭：两个接口均 404 / disabled by default: both endpoints 404 98ms
+(node:1844460) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/notes/notes.r1-functional.test.ts > notes R1 > 线索、客户、商机都可新增备注，返回作者 / notes can be added to leads, accounts and deals 693ms
+ ✓ tests/notes/notes.r1-functional.test.ts > notes R1 > 列表只返回该记录的备注，最新在前 / list returns the record’s notes, newest first 188ms
+ ✓ tests/notes/notes.r1-functional.test.ts > notes R1 > 作者可修改，内容保留换行 / the author edits and line breaks are kept 184ms
+ ✓ tests/notes/notes.r1-functional.test.ts > notes R1 > 删除备注 / delete a note 140ms
+ ✓ tests/notes/notes.r1-functional.test.ts > notes R1 > 新增/修改/删除都写审计，正文脱敏 / create, update and delete are audited with redacted content 144ms
+ ✓ tests/notes/notes.r1-functional.test.ts > notes R1 > 未修改内容的保存不写审计 / saving unchanged content writes no audit entry 140ms
+ ✓ tests/notes/notes.r1-functional.test.ts > notes R1 > 删除所属客户时其备注一并删除 / notes are removed with their account 173ms
+stdout | tests/notes/notes.r1-functional.test.ts > notes R1 > 演示数据包含备注，作者为记录负责人 / demo data includes notes authored by record owners
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/notes/notes.r1-functional.test.ts > notes R1 > 演示数据包含备注，作者为记录负责人 / demo data includes notes authored by record owners 1151ms
+ ✓ tests/duplicates/duplicates.r1-functional.test.ts > duplicates R1 keys & grouping > 匹配键：电话只比数字（兼容 +86）、域名去协议/www/路径、名称忽略标点与空白 / normalised keys 465ms
+ ✓ tests/duplicates/duplicates.r1-functional.test.ts > duplicates R1 keys & grouping > 分组可传递：A~B（邮箱）、B~C（电话）归为一组并列出两种依据 / groups are transitive 96ms
+(node:1844549) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/duplicates/duplicates.r1-functional.test.ts > duplicates R1 keys & grouping > 线索分组：邮箱、电话与手机交叉、姓名+公司；按创建时间排序 / lead groups 297ms
+ ✓ tests/duplicates/duplicates.r1-functional.test.ts > duplicates R1 keys & grouping > 客户分组：名称、网站域名、电话 / account groups 217ms
+ ✓ tests/duplicates/duplicates.r1-functional.test.ts > duplicates R1 merge > 合并线索：备注、跟进、附件、标签转到主记录，字段按选择保留，被合并的进入回收站并审计 / merge leads 357ms
+ ✓ tests/duplicates/duplicates.r1-functional.test.ts > duplicates R1 merge > 合并客户：联系人（保留主客户的主要联系人）、商机、转化来源线索、负责人字段 / merge accounts 297ms
+ ✓ tests/duplicates/duplicates.r1-functional.test.ts > duplicates R1 merge > 从回收站恢复被合并的记录：只找回记录本身，相关数据仍在主记录 / restoring a merged record 166ms
+stdout | tests/duplicates/duplicates.r1-functional.test.ts > duplicates R1 merge > 演示数据：重复线索与重复客户能被找到 / demo duplicates are detected
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/duplicates/duplicates.r1-functional.test.ts > duplicates R1 merge > 演示数据：重复线索与重复客户能被找到 / demo duplicates are detected 1042ms
+(node:1844635) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 permissions > 上传：本人记录 201、他人记录 404、只读 403、经理 201 / upload rights 712ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 permissions > 查看与下载遵循记录可见范围 / viewing and downloading follow visibility 221ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 permissions > 删除：上传人可以；不能删他人上传的；只读 403；经理可删任意 / delete rules 230ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 permissions > 记录改派后：原负责人看不到也删不了自己上传的附件 / reassignment moves access 221ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 isolation & input > 跨组织：看不到、下载不了、删不了、不能上传到他组织记录；文件按组织目录隔离 / cross-org isolation 217ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 isolation & input > 非法所属记录 {}（no parent）→ 400 / invalid parents 120ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 isolation & input > 非法所属记录 {"leadId":"x"}（bad uuid）→ 400 / invalid parents 121ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 isolation & input > 非法所属记录 {"organizationId":"00000000-0000-4000-8000-000000000000"}（client organization id）→ 400 / invalid parents 121ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 isolation & input > 同时指定两个所属记录、缺少文件、非 multipart、Content-Length 过大 / malformed requests 166ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 isolation & input > 未登录 401 / unauthenticated 153ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 isolation & input > 数据库约束：恰好一个所属记录、大小范围、SHA 格式、跨组织所属记录 / DB constraints 193ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 storage safety > 生产环境未配置附件目录时直接报错；存储键必须是 UUID / production requires ATTACHMENTS_DIR; keys must be UUIDs 130ms
+ ✓ tests/attachments/attachments.r2-integration.test.ts > attachments R2 storage safety > 文件被篡改时下载 500，文件丢失时 404 / tampered files fail, missing files 404 175ms
+(node:1844720) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/recycle/recycle.r1-functional.test.ts > recycle R1 leads > 删除线索进入回收站：快照摘要，原记录与附属数据不在系统中 / delete moves to the bin 879ms
+ ✓ tests/recycle/recycle.r1-functional.test.ts > recycle R1 leads > 恢复线索：原 ID 与时间、备注、跟进、标签、共享跟进重新关联，条目移除并审计 / restore everything 275ms
+ ✓ tests/recycle/recycle.r1-functional.test.ts > recycle R1 leads > 恢复时已不存在的标签与转化商机被跳过并说明 / vanished links are skipped and reported 286ms
+ ✓ tests/recycle/recycle.r1-functional.test.ts > recycle R1 accounts & deals > 恢复客户：联系人与转化来源线索重新关联 / account restore relinks contacts and conversions 196ms
+ ✓ tests/recycle/recycle.r1-functional.test.ts > recycle R1 accounts & deals > 恢复商机：产品明细、报价单（含明细与原编号）、金额；回收期间报价单号不被复用 / deal restore with items and quotes 377ms
+ ✓ tests/recycle/recycle.r1-functional.test.ts > recycle R1 accounts & deals > 依赖缺失时拒绝恢复且条目保留：客户已删 / 产品已删 / missing parents block the restore 237ms
+ ✓ tests/recycle/recycle.r1-functional.test.ts > recycle R1 accounts & deals > 批量删除进入回收站；按类型与名称筛选 / bulk delete and filters 188ms
+ ✓ tests/recycle/recycle.r1-functional.test.ts > recycle R1 purge & expiry > 彻底删除单条与清空，均写审计 / purge and empty 215ms
+ ✓ tests/recycle/recycle.r1-functional.test.ts > recycle R1 purge & expiry > 过期条目：访问时清除并审计，不能再恢复 / expired entries are removed 140ms
+(node:1844809) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 isolation > 统计、金额、待办、最近跟进只含本组织 / every figure is organization scoped 806ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 isolation > 全局搜索不返回其他组织数据 / global search never returns other orgs 210ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 isolation > 未登录 401 / unauthenticated → 401 116ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 consistency & boundaries > 工作台金额与商机列表合计一致 / dashboard totals equal the deals list totals 252ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 consistency & boundaries > 删除客户后数量与最近跟进同步更新 / deleting an account updates counts and recent activities 216ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 consistency & boundaries > 待办最多返回 10 条，但总数准确 / to-do list capped at 10 with accurate total 264ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 consistency & boundaries > 非法搜索参数 {} → 400 123ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 consistency & boundaries > 非法搜索参数 {"q":""} → 400 118ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 consistency & boundaries > 非法搜索参数 {"q":"   "} → 400 112ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 consistency & boundaries > 非法搜索参数 {"q":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} → 400 114ms
+ ✓ tests/dashboard/dashboard.r2-integration.test.ts > dashboard R2 consistency & boundaries > 搜索通配符按字面处理，每类最多 10 条 / wildcards literal, at most 10 per type 265ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 visibility > 销售代表只看到自己的；指定他人为负责人为空 / sales reps see their own only 641ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 visibility > 只读与管理员看到全部，可按负责人筛选 / read-only and admins see everything 141ms
+(node:1844896) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 visibility > 改期权限：本人可以；他人 404；只读 403；经理可以 / reschedule rights 236ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 visibility > 跨组织：看不到，改不了 / cross-org isolation 161ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"from":""} → 400 / invalid query 101ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"from":"2026-11-01"} → 400 / invalid query 102ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"from":"2026-11-01T00:00:00"} → 400 / invalid query 112ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"to":"2026-11-01T00:00:00Z"} → 400 / invalid query 104ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"to":"2026-10-01T00:00:00Z"} → 400 / invalid query 111ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"to":"2026-12-14T00:00:01Z"} → 400 / invalid query 117ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"type":"EMAIL"} → 400 / invalid query 105ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"completed":"yes"} → 400 / invalid query 100ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"ownerId":"nobody"} → 400 / invalid query 102ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"organizationId":"00000000-0000-4000-8000-000000000000"} → 400 / invalid query 94ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 非法参数 {"page":"2"} → 400 / invalid query 96ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 43 天以内（含夏令时余量）可查询；缺少参数 400；未登录 401 / limits, missing params, auth 107ms
+ ✓ tests/calendar/calendar.r2-integration.test.ts > calendar R2 input > 改期输入：非法时间 400，不能借改期修改负责人越权 / reschedule input 113ms
+(node:1844974) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 新增 CALL（电话记录）/ create each type 647ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 新增 MEETING（会议记录）/ create each type 173ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 新增 VISIT（客户拜访记录）/ create each type 155ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 新增 TASK（任务）/ create each type 157ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 同时关联客户、线索和商机，并返回关联名称 / link account, lead and deal together 180ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 任务带截止时间（UTC 保存）/ task with due time stored as UTC 119ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 完成状态：标记完成记录时间，重新打开清空时间 / complete sets completedAt, reopen clears it 216ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 新建即完成（电话记录）/ create already completed 137ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 编辑：只改主题不影响截止时间与关联；可清除关联 / partial update keeps other fields; relations can be cleared 191ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 详情与删除 / detail and delete 164ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 按类型、完成状态筛选，按主题/内容搜索 / filter by type and status, search subject/content 207ms
+ ✓ tests/activities/activities.r1-functional.test.ts > activities R1 functional > 按截止时间排序：最早在前，无截止时间排最后 / sort by due date, nulls last 164ms
+ ✓ tests/calendar/calendar.r1-functional.test.ts > calendar R1 range > 按截止时间 [from, to) 返回，含开始、不含结束，排除无截止时间，升序 / half-open range, ascending 600ms
+ ✓ tests/calendar/calendar.r1-functional.test.ts > calendar R1 range > 筛选：类型、完成状态、负责人 / filters 182ms
+ ✓ tests/calendar/calendar.r1-functional.test.ts > calendar R1 range > 超过 1000 条：只返回前 1000 条并标记 truncated / limit 634ms
+(node:1845053) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/calendar/calendar.r1-functional.test.ts > calendar R1 reschedule & view maths > 拖动改期：PATCH dueAt 保留时间点，写审计 / reschedule keeps the time of day 167ms
+ ✓ tests/calendar/calendar.r1-functional.test.ts > calendar R1 reschedule & view maths > 周一起始；月视图 42 天覆盖整月；周视图 7 天 / Monday-based views 108ms
+stdout | tests/calendar/calendar.r1-functional.test.ts > calendar R1 reschedule & view maths > 演示数据：当前月视图范围内有跟进 / demo data has activities in the current month view
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/calendar/calendar.r1-functional.test.ts > calendar R1 reschedule & view maths > 演示数据：当前月视图范围内有跟进 / demo data has activities in the current month view 1006ms
+(node:1845210) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/bulk/bulk.r1-functional.test.ts > bulk R1 leads > 批量指派负责人 / assign owner 751ms
+ ✓ tests/bulk/bulk.r1-functional.test.ts > bulk R1 leads > 批量取消分配（ownerId 为 null）/ unassign with null 177ms
+ ✓ tests/bulk/bulk.r1-functional.test.ts > bulk R1 leads > 批量修改状态 / change status 202ms
+ ✓ tests/bulk/bulk.r1-functional.test.ts > bulk R1 leads > 批量删除 / delete 177ms
+ ✓ tests/bulk/bulk.r1-functional.test.ts > bulk R1 leads > 重复 ID 自动去重 / duplicate ids are processed once 110ms
+ ✓ tests/bulk/bulk.r1-functional.test.ts > bulk R1 leads > 每条记录写一条审计 / one audit entry per record 160ms
+ ✓ tests/bulk/bulk.r1-functional.test.ts > bulk R1 accounts, deals, activities > 客户：批量指派与删除 / accounts assign and delete 230ms
+ ✓ tests/bulk/bulk.r1-functional.test.ts > bulk R1 accounts, deals, activities > 商机：批量改阶段、指派、删除 / deals stage, assign, delete 271ms
+ ✓ tests/bulk/bulk.r1-functional.test.ts > bulk R1 accounts, deals, activities > 跟进：批量完成、重新打开、删除 / activities complete, reopen, delete 191ms
+ ✓ tests/forecasts/forecasts.r1-functional.test.ts > forecasts R1 period > 期间：月、季度、缺省为当前月；非法期间抛错 / period parsing 370ms
+ ✓ tests/forecasts/forecasts.r1-functional.test.ts > forecasts R1 numbers > 每行指标：目标、赢单、完成率、差额、在手、加权、预测、最好情况；按币种与期间过滤 / per-row metrics 357ms
+ ✓ tests/forecasts/forecasts.r1-functional.test.ts > forecasts R1 numbers > 季度：目标为三月之和，季度不可编辑；合计行；超额时差额为负 / quarter view and totals 182ms
+ ✓ tests/forecasts/forecasts.r1-functional.test.ts > forecasts R1 numbers > 参与统计的用户：未停用的非只读用户（即使无数据）、有商机的已停用用户、未分配商机；无目标时合计目标为空 / who is listed 122ms
+ ✓ tests/forecasts/forecasts.r1-functional.test.ts > forecasts R1 targets > 设定、修改、清除目标；按月 1 日存储；审计记录前后值，未变化不写审计 / set, change and clear 138ms
+stdout | tests/forecasts/forecasts.r1-functional.test.ts > forecasts R1 targets > 演示数据：本月经理人民币目标与销售美元目标 / demo targets
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/forecasts/forecasts.r1-functional.test.ts > forecasts R1 targets > 演示数据：本月经理人民币目标与销售美元目标 / demo targets 1164ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > CSV read/write > 解析引号、转义引号、字段内换行、CRLF、BOM 与空行 / parses quotes, escapes, newlines, CRLF, BOM 378ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > CSV read/write > 未闭合引号报错 / unterminated quotes throw 102ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > CSV read/write > 生成：BOM + CRLF，需要时加引号，往返一致 / writes BOM + CRLF and round-trips 89ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > CSV read/write > 防公式注入 / neutralises formula injection 80ms
+(node:1845376) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/import-export/import-export.r1-functional.test.ts > export > 导出线索：中文表头、枚举翻译、负责人邮箱、北京时间 / leads export 206ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > export > 导出遵循列表筛选与搜索 / export follows list filters and search 157ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > export > 导出客户、商机、跟进 / accounts, deals and activities export 291ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > export > 导出写审计（记录数量与筛选，不记搜索词）/ exports are audited without the search text 112ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > import > 预检不写入，返回可导入数量 / dry run writes nothing 96ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > import > 导入线索：中文标签与代码都可识别，负责人默认自己，逐条审计 / imports leads 109ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > import > 英文字段名表头也可导入，未知列被忽略并提示 / English headers work, unknown columns are reported 96ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > import > 查重：与已有记录或文件内重复的默认跳过，可选择仍然创建 / duplicates skipped by default, optionally created 141ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > import > 导入客户并创建主要联系人 / imports accounts with a primary contact 106ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > import > 导入后再导出，数据一致（往返）/ import then export round-trips 103ms
+ ✓ tests/import-export/import-export.r1-functional.test.ts > import > 模板：表头可被导入识别（含示例行）/ templates are importable 90ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 deals > 漏斗：进行中商机按阶段（补零、只算所选币种、不受时间段影响）/ funnel 750ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 deals > 期间赢单/输单与赢单率（按预计成交日期，含边界日，排除无日期）/ won and lost in the period 128ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 deals > 按月：时间段内每月一行（补零），赢单金额与输单数 / monthly rows 140ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 deals > 币种：USD 单独统计；返回可选币种列表 / currencies are separate 137ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 owners, leads, quotes > 负责人排行：按赢单金额排序，含在手、输单、赢单率与期间跟进数；未分配单列 / owner ranking 135ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 owners, leads, quotes > 负责人筛选：只统计该负责人 / owner filter 156ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 owners, leads, quotes > 线索来源：期间内创建（UTC 边界），转化数与转化率，按数量排序 / lead sources 121ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 owners, leads, quotes > 报价单：期间内、所选币种的状态数量与金额，接受率 / quotes 145ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 period & helpers > 默认时间段：最近 12 个月（含本月），结束为今天 / default period 90ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 period & helpers > 跨年与 24 个月上限 / year boundaries and the 24-month limit 82ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 period & helpers > 比率：1 位小数，分母为 0 时为 null / rates 84ms
+ ✓ tests/reports/reports.r1-functional.test.ts > reports R1 period & helpers > 空组织：全部为零，比率为 null / empty organization 94ms
+(node:1845534) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/recycle/recycle.r2-integration.test.ts > recycle R2 permissions > 销售代表与只读：不能查看、恢复、彻底删除、清空（403）/ sales and read-only are refused 670ms
+ ✓ tests/recycle/recycle.r2-integration.test.ts > recycle R2 permissions > 经理：可查看与恢复，不能彻底删除与清空 / managers restore but cannot purge 183ms
+ ✓ tests/recycle/recycle.r2-integration.test.ts > recycle R2 permissions > 恢复后保持原负责人：销售代表重新看到自己的线索 / the owner sees the restored lead again 206ms
+ ✓ tests/recycle/recycle.r2-integration.test.ts > recycle R2 isolation & robustness > 跨组织：看不到、不能恢复或彻底删除他组织的条目 / cross-org isolation 212ms
+ ✓ tests/recycle/recycle.r2-integration.test.ts > recycle R2 isolation & robustness > 快照中的组织 ID 不可信：恢复时一律写入当前组织 / the snapshot organization id is never trusted 213ms
+ ✓ tests/recycle/recycle.r2-integration.test.ts > recycle R2 isolation & robustness > 并发恢复同一条目：只成功一次 / concurrent restores succeed once 154ms
+ ✓ tests/recycle/recycle.r2-integration.test.ts > recycle R2 isolation & robustness > 恢复后再次删除：重新进入回收站 / delete again after a restore 162ms
+ ✓ tests/recycle/recycle.r2-integration.test.ts > recycle R2 isolation & robustness > 删除审计标记已放入回收站；恢复后审计记录名称 / audit details 154ms
+ ✓ tests/recycle/recycle.r2-integration.test.ts > recycle R2 isolation & robustness > 非法参数与未登录 / invalid input and authentication 154ms
+(node:1845595) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/audit/audit.r1-functional.test.ts > audit R1: business writes are recorded > 线索新建/修改/删除：操作人、对象、IP、UA 与变更内容 / lead create/update/delete 720ms
+ ✓ tests/audit/audit.r1-functional.test.ts > audit R1: business writes are recorded > 无实际变化的更新不写日志 / no-op updates are not logged 184ms
+ ✓ tests/audit/audit.r1-functional.test.ts > audit R1: business writes are recorded > 客户、联系人、商机、跟进的增删改都被记录 / accounts, contacts, deals, activities 374ms
+ ✓ tests/audit/audit.r1-functional.test.ts > audit R1: business writes are recorded > 线索转化：转化事件及其创建的客户/联系人/商机均有记录 / conversion and created records 146ms
+ ✓ tests/audit/audit.r1-functional.test.ts > audit R1: auth events > 登录成功、失败（密码错误）与退出均被记录，失败原因不含密码 / login, failed login and logout 173ms
+ ✓ tests/audit/audit.r1-functional.test.ts > audit R1: auth events > 停用账号登录失败原因为 inactive / inactive account reason 123ms
+ ✓ tests/audit/audit.r1-functional.test.ts > audit R1: query API > 按对象、对象 ID、操作、操作人、时间筛选并分页，最新在前 / filters and paging 191ms
+(node:1845660) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 新增线索并持久化全部字段，负责人默认当前用户 / create persists all fields, owner defaults to me 537ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 只填姓名即可创建，默认状态为新线索 / name only is enough, default status NEW 130ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 查看详情 / get detail 143ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 编辑线索：部分更新、清空字段、修改状态 / partial update, clearing fields, status change 126ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 可将负责人改为本组织其他用户或取消分配 / reassign owner within org or unassign 152ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 删除线索 / delete 185ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 搜索：姓名、公司、邮箱、手机，不区分大小写 / search name, company, email, mobile case-insensitively 185ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 按状态和来源筛选 / filter by status and source 147ms
+ ✓ tests/leads/leads.r1-functional.test.ts > leads R1 functional > 分页：总数、页码、最新优先 / paging: totals, pages, newest first 383ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 新增客户保存全部基本资料 / create saves the full profile 579ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 客户详情包含联系人 / detail includes contacts 144ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 编辑客户 / update account 123ms
+(node:1845731) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 删除客户（无商机）并级联删除联系人与跟进 / delete account without deals cascades contacts & activities 215ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 客户搜索：名称、电话、地址、联系人姓名 / search name, phone, address, contact name 211ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 按行业筛选与分页 / filter by industry and paginate 242ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 联系人新增、编辑、删除 / contact create, update, delete 135ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 主要联系人唯一，且排在最前 / only one primary contact, listed first 125ms
+ ✓ tests/accounts/accounts.r1-functional.test.ts > accounts R1 functional > 客户跟进记录：新增并按客户查询 / account follow-ups: create and list by account 141ms
+(node:1845810) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 新增商机：金额、阶段、预计成交日期、关联客户 / create with amount, stage, close date, account 630ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 默认值：金额 0、阶段资格确认、币种 CNY / defaults 132ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 金额可用数字提交，精确保存两位小数 / numeric amounts keep exact cents 112ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 查看详情 / get detail 141ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 编辑商机：推进阶段、改金额、改日期、改关联客户 / update stage, amount, date, account 179ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 删除商机 / delete 184ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 搜索商机名称与客户名称、按阶段与客户筛选 / search name & account name, filter stage & account 214ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 列表返回筛选范围内按币种的金额合计（十进制精确）/ list returns exact per-currency totals 200ms
+ ✓ tests/deals/deals.r1-functional.test.ts > deals R1 functional > 分页 / pagination 204ms
+(node:1845886) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/dashboard/dashboard.r1-functional.test.ts > dashboard R1 functional > 空组织：全部为 0 / empty organization shows zeros 1151ms
+ ✓ tests/dashboard/dashboard.r1-functional.test.ts > dashboard R1 functional > 客户、线索、商机数量随增删实时变化 / counts follow creates and deletes 376ms
+ ✓ tests/dashboard/dashboard.r1-functional.test.ts > dashboard R1 functional > 商机金额汇总：全部 / 进行中 / 赢单，按币种精确合计 / exact amount totals per currency 195ms
+ ✓ tests/dashboard/dashboard.r1-functional.test.ts > dashboard R1 functional > 最近跟进记录：最新 10 条，最新在前，含关联名称 / recent activities: latest 10, newest first 234ms
+ ✓ tests/dashboard/dashboard.r1-functional.test.ts > dashboard R1 functional > 我的待办：只含本人未完成事项，按截止时间排序，统计逾期 / my to-dos: mine, pending, sorted, overdue counted 260ms
+ ✓ tests/dashboard/dashboard.r1-functional.test.ts > global search R1 functional > 跨线索、客户（含联系人）、商机搜索 / search across leads, accounts (incl. contacts) and deals 198ms
+(node:1845967) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/deals/deal-board.r1-functional.test.ts > deal board R1 > 固定 6 列，顺序与销售阶段一致；空列数量为 0 / six columns in stage order 711ms
+ ✓ tests/deals/deal-board.r1-functional.test.ts > deal board R1 > 商机进入对应阶段列，数量与按币种合计精确 / deals land in their columns with exact per-currency totals 250ms
+ ✓ tests/deals/deal-board.r1-functional.test.ts > deal board R1 > 卡片按预计成交日期升序，无日期排最后 / cards ordered by expected close date, dateless last 175ms
+ ✓ tests/deals/deal-board.r1-functional.test.ts > deal board R1 > 卡片包含客户、负责人、金额等展示字段 / cards carry account, owner and amount 139ms
+ ✓ tests/deals/deal-board.r1-functional.test.ts > deal board R1 > 搜索按商机名或客户名过滤看板 / search filters the board by deal or account name 221ms
+ ✓ tests/deals/deal-board.r1-functional.test.ts > deal board R1 > 改阶段（拖动）后卡片移到新列，合计随之变化，并写审计 / moving a card updates columns, totals and audit 154ms
+ ✓ tests/deals/deal-board.r1-functional.test.ts > deal board R1 > 每列最多返回 limit 张卡片，数量仍为真实总数并标记 hasMore / per-column limit with true counts 241ms
+(node:1846030) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/leads/lead-conversion.r1-functional.test.ts > lead conversion R1 functional > 转化为新客户 + 联系人（不建商机），字段正确映射 / new account + contact, fields mapped 702ms
+ ✓ tests/leads/lead-conversion.r1-functional.test.ts > lead conversion R1 functional > 自定义新客户名称；无公司名时默认用姓名 / custom account name; falls back to lead name 208ms
+ ✓ tests/leads/lead-conversion.r1-functional.test.ts > lead conversion R1 functional > 同时创建商机：金额、阶段、日期、关联客户 / creates a deal with amount, stage, date 170ms
+ ✓ tests/leads/lead-conversion.r1-functional.test.ts > lead conversion R1 functional > 关联已有客户：已有主要联系人时新联系人不设为主要 / existing account keeps its primary contact 195ms
+ ✓ tests/leads/lead-conversion.r1-functional.test.ts > lead conversion R1 functional > 已有客户没有主要联系人时，新联系人成为主要联系人 / becomes primary when the account has none 139ms
+ ✓ tests/leads/lead-conversion.r1-functional.test.ts > lead conversion R1 functional > 线索的跟进记录关联到新客户与商机，且线索关联保留 / activities move to account and deal, lead link kept 199ms
+ ✓ tests/leads/lead-conversion.r1-functional.test.ts > lead conversion R1 functional > 线索详情返回转化结果；仍可编辑非状态字段 / detail shows result; non-status fields remain editable 150ms
+ ✓ tests/leads/lead-conversion.r1-functional.test.ts > lead conversion R1 functional > 列表可按“已转化”筛选 / list filter by CONVERTED 150ms
+ ✓ tests/views/views.r1-functional.test.ts > views R1 basics > 新建：名称去空格、去掉空筛选值、默认私有 / create normalises 523ms
+ ✓ tests/views/views.r1-functional.test.ts > views R1 basics > 各列表白名单：允许的字段与取值；不属于该列表的字段或非法取值 400 / per-list whitelist 158ms
+ ✓ tests/views/views.r1-functional.test.ts > views R1 basics > 列表：自己的与共享的，私有在前、按名称排序；同名 409 / list and uniqueness 174ms
+ ✓ tests/views/views.r1-functional.test.ts > views R1 basics > 更新筛选、重命名（重名 409）、删除 / update, rename, delete 165ms
+ ✓ tests/views/views.r1-functional.test.ts > views R1 basics > 默认视图：设置、替换、取消；删除视图时默认随之清除 / default views 177ms
+ ✓ tests/views/views.r1-functional.test.ts > views R1 sharing & applying > 共享：他人可见可设为默认；取消共享后移除他人的默认；共享视图的增改删写审计 / sharing 187ms
+(node:1846097) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/views/views.r1-functional.test.ts > views R1 sharing & applying > 套用视图的筛选条件与直接查询列表结果一致 / applying a view equals querying with its filters 181ms
+ ✓ tests/auth/auth.test.ts > auth > 登录成功返回令牌，数据库只存哈希 / login returns a token and only its hash is stored 605ms
+ ✓ tests/auth/auth.test.ts > auth > 错误密码与不存在用户返回相同错误 / wrong password and unknown user look identical 150ms
+ ✓ tests/auth/auth.test.ts > auth > 连续失败触发限流 / repeated failures are rate limited 444ms
+ ✓ tests/auth/auth.test.ts > auth > 停用用户无法登录且现有会话失效 / inactive users cannot sign in and sessions stop working 145ms
+ ✓ tests/auth/auth.test.ts > auth > 过期会话与注销后的会话被拒绝 / expired and logged-out sessions are rejected 149ms
+ ✓ tests/auth/auth.test.ts > auth > 未携带或伪造令牌返回 401 / missing or forged tokens yield 401 42ms
+ ✓ tests/auth/auth.test.ts > auth > 用户列表只返回本组织用户 / user list is organization scoped 126ms
+stdout | tests/demo/demo-data.r1-functional.test.ts
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+ ✓ tests/demo/demo-data.r1-functional.test.ts > demo data R1 > 写入数量与数据集一致，且数据量充足 / counts match the dataset and are substantial 15ms
+ ✓ tests/demo/demo-data.r1-functional.test.ts > demo data R1 > 5 个演示账号角色正确且均标记为演示账号 / five demo users with correct roles 6ms
+ ✓ tests/demo/demo-data.r1-functional.test.ts > demo data R1 > 所有客户、联系人、线索、商机、跟进名称都带【演示】/ every name is labelled 【演示】 17ms
+ ✓ tests/demo/demo-data.r1-functional.test.ts > demo data R1 > 商机覆盖 6 个阶段、3 种币种、3 位负责人 / deals cover all stages, currencies and owners 13ms
+ ✓ tests/demo/demo-data.r1-functional.test.ts > demo data R1 > 日期合理：进行中商机预计成交在未来，已结束的在过去 / open deals close in the future, closed ones in the past 3ms
+ ✓ tests/demo/demo-data.r1-functional.test.ts > demo data R1 > 每个客户恰有 1 位主要联系人 / each account has exactly one primary contact 11ms
+ ✓ tests/demo/demo-data.r1-functional.test.ts > demo data R1 > 跟进含已完成、待办与已逾期，并关联到商机/客户/线索 / activities include done, pending and overdue items 8ms
+ ✓ tests/demo/demo-data.r1-functional.test.ts > demo data R1 > 线索覆盖多种来源与状态（以展会为主）/ leads cover sources and statuses, mostly trade shows 4ms
+ ✓ tests/demo/demo-data.r1-functional.test.ts > demo data R1 > 数据集生成是确定的 / the dataset is deterministic 2ms
+(node:1846270) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/rbac/account-deal-count.r2-integration.test.ts > account deal count R2 > 经理改派商机后，销售代表的计数随之增减 / count follows reassignment 703ms
+ ✓ tests/rbac/account-deal-count.r2-integration.test.ts > account deal count R2 > 删除判断使用真实总数：他人负责的商机同样阻止删除，并返回真实数量 / delete guard uses the true total 188ms
+ ✓ tests/rbac/account-deal-count.r2-integration.test.ts > account deal count R2 > 联系人数不受影响（联系人随客户可见）/ contact count is unaffected 158ms
+ ✓ tests/rbac/account-deal-count.r2-integration.test.ts > account deal count R2 > 列表中每个客户的计数都与可见商机一致（多客户）/ every account in the list matches visible deals 265ms
+ ✓ tests/rbac/account-deal-count.r2-integration.test.ts > account deal count R2 > 其他组织的商机不计入 / deals of other organizations are never counted 183ms
+(node:1846343) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/rbac/account-deal-count.r1-functional.test.ts > account deal count R1 > 销售代表在列表与详情中只统计自己负责的商机 / sales rep counts own deals in list and detail 766ms
+ ✓ tests/rbac/account-deal-count.r1-functional.test.ts > account deal count R1 > 管理员、经理、只读用户统计全部商机 / read-all roles count every deal 272ms
+ ✓ tests/rbac/account-deal-count.r1-functional.test.ts > account deal count R1 > 计数与该客户的商机列表条数一致 / count matches the account deal list 259ms
+ ✓ tests/maintenance/cleanup.r2-integration.test.ts > cleanup R2 > 删除本组织标签不改动其他组织的视图（即使筛选值相同）/ other organizations are untouched 622ms
+ ✓ tests/maintenance/cleanup.r2-integration.test.ts > cleanup R2 > 无权限删除失败时视图不变 / a refused delete changes nothing 126ms
+ ✓ tests/maintenance/cleanup.r2-integration.test.ts > cleanup R2 > 视图仍存在，默认视图设置保留 / views and defaults survive 169ms
+ ✓ tests/maintenance/cleanup.r2-integration.test.ts > cleanup R2 > 演示标签固定 ID：合法 UUID、可重复计算、按组织与标签区分 / stable ids are valid and distinct 98ms
+ ✓ tests/i18n/i18n.r2-integration.test.ts > i18n R2 source guard > 界面源码（src/app、src/components、src/lib）不含硬编码中文或全角标点 / no hardcoded CJK in UI code 30ms
+ ✓ tests/i18n/i18n.r2-integration.test.ts > i18n R2 source guard > 扫描器本身能发现问题（自检）/ the scanner itself detects violations 1ms
+ ✓ tests/i18n/i18n.r2-integration.test.ts > i18n R2 browser locale > 读取浏览器保存的英文；非法值或存储不可用时回退中文 / stored locale and fallbacks 5ms
+ ✓ tests/i18n/i18n.r2-integration.test.ts > i18n R2 server parameters > 非法语言参数：导出、模板、导入均 400 / invalid locale parameters 529ms
+(node:1846436) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/i18n/i18n.r2-integration.test.ts > i18n R2 server parameters > 四类导出的英文表头不含中文；用户录入的中文数据原样保留 / English headers, user data untouched 316ms
+ ✓ tests/i18n/i18n.r2-integration.test.ts > i18n R2 server parameters > 语言参数不影响筛选，也不写入导出审计的筛选条件 / the locale is not a filter 120ms
+ ✓ tests/i18n/i18n.r1-functional.test.ts > i18n R1 dictionaries > 英文覆盖全部 key，且没有多余 key、没有空值 / English covers every key 24ms
+ ✓ tests/i18n/i18n.r1-functional.test.ts > i18n R1 dictionaries > 每个 key 的占位符在中英文中一致 / placeholders match per key 21ms
+ ✓ tests/i18n/i18n.r1-functional.test.ts > i18n R1 dictionaries > 英文文案不含中文与全角标点（语言名“中文”除外）/ no CJK in English except the language name 4ms
+ ✓ tests/i18n/i18n.r1-functional.test.ts > i18n R1 dictionaries > 翻译函数：服务端默认中文、按语言翻译、枚举、全部语言与枚举代码 / translation helpers 1ms
+(node:1846466) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/i18n/i18n.r1-functional.test.ts > i18n R1 CSV > 导出：英文表头、英文枚举与时间列后缀；默认仍为中文 / English export headers and enums 581ms
+ ✓ tests/i18n/i18n.r1-functional.test.ts > i18n R1 CSV > 模板：英文表头与英文示例行；英文模板可直接预检导入 / English template imports as-is 137ms
+ ✓ tests/i18n/i18n.r1-functional.test.ts > i18n R1 CSV > 导入：中英文列名与字段名、中英文枚举标签与代码混用均可识别 / mixed headers and enum labels 116ms
+ ✓ tests/i18n/i18n.r1-functional.test.ts > i18n R1 CSV > 缺少必填列时按请求语言提示列名 / the missing column is reported in the request locale 84ms
+ ✓ tests/import-export/roundtrip-fix.r2-integration.test.ts > round-trip fix R2 > 用户自带的单引号（后面不是公式字符）原样保留 / user quotes not followed by formula chars are kept 522ms
+ ✓ tests/import-export/roundtrip-fix.r2-integration.test.ts > round-trip fix R2 > CSV 中未转义的公式样内容按普通文本保存，导出时再次加单引号 / raw formula-like text is stored as text and escaped again on export 139ms
+ ✓ tests/import-export/roundtrip-fix.r2-integration.test.ts > round-trip fix R2 > 客户导出 → 导入同样一致 / accounts round-trip too 131ms
+ ✓ tests/import-export/roundtrip-fix.r2-integration.test.ts > round-trip fix R2 > 预检阶段同样按还原后的值校验与查重 / dry runs validate and dedupe on the unescaped value 98ms
+ ✓ tests/import-export/roundtrip-fix.r1-functional.test.ts > round-trip fix R1 > uncsvCell 还原 csvCell 加的单引号 / uncsvCell undoes csvCell 461ms
+ ✓ tests/import-export/roundtrip-fix.r1-functional.test.ts > round-trip fix R1 > 含 + 号国际电话与公式样内容：导出 → 导入后与原值完全一致 / export → import round-trips exactly 296ms
+ ✓ tests/import-export/roundtrip-fix.r1-functional.test.ts > round-trip fix R1 > 解析结果中的值未被改动，只有导入时还原 / parsing itself is unchanged; only import unescapes 83ms
+
+ Test Files  61 passed (61)
+      Tests  786 passed (786)
+   Start at  10:06:50
+   Duration  224.21s (tests 91%, import 8%, transform 1%)
+
+===== [unit-integration] exit=0 duration=225s =====
+
+===== [build-pages] env BUILD_TARGET=pages NEXT_PUBLIC_STATIC_PREVIEW=1 npx next build =====
+▲ Next.js 16.4.6 (Turbopack)
+- Environments: .env
+✓ Running next.config.ts took 35ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 30.8s
+  Running TypeScript ...
+  Finished TypeScript in 22.0s ...
+  Collecting page data using 1 worker ...
+  Generating static pages using 1 worker (0/21) ...
+  Generating static pages using 1 worker (5/21) 
+  Generating static pages using 1 worker (10/21) 
+  Generating static pages using 1 worker (15/21) 
+✓ Generating static pages using 1 worker (21/21) in 1338ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /accounts
+├ ○ /activities
+├ ○ /audit-logs
+├ ○ /deals
+├ ○ /duplicates
+├ ○ /forecasts
+├ ○ /leads
+├ ○ /login
+├ ○ /notifications
+├ ○ /print/quote
+├ ○ /print/sales-order
+├ ○ /products
+├ ○ /quotes
+├ ○ /recycle-bin
+├ ○ /reports
+├ ○ /sales-orders
+├ ○ /search
+└ ○ /users
+
+
+○  (Static)  prerendered as static content
+
+===== [build-pages] exit=0 duration=57s =====
+
+===== [build] npm run build =====
+
+> yonlink-crm@0.1.0 build
+> next build
+
+▲ Next.js 16.4.6 (Turbopack)
+- Environments: .env
+✓ Running next.config.ts took 47ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 31.9s
+  Running TypeScript ...
+  Finished TypeScript in 21.0s ...
+  Collecting page data using 1 worker ...
+  Generating static pages using 1 worker (0/67) ...
+  Generating static pages using 1 worker (16/67) 
+  Generating static pages using 1 worker (33/67) 
+  Generating static pages using 1 worker (50/67) 
+✓ Generating static pages using 1 worker (67/67) in 1185ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /accounts
+├ ○ /activities
+├ ƒ /api/accounts
+├ ƒ /api/accounts/[id]
+├ ƒ /api/accounts/[id]/contacts
+├ ƒ /api/accounts/[id]/tags
+├ ƒ /api/accounts/bulk
+├ ƒ /api/accounts/export
+├ ƒ /api/accounts/import
+├ ƒ /api/accounts/import/template
+├ ƒ /api/activities
+├ ƒ /api/activities/[id]
+├ ƒ /api/activities/bulk
+├ ƒ /api/activities/calendar
+├ ƒ /api/activities/export
+├ ƒ /api/admin/users
+├ ƒ /api/admin/users/[id]
+├ ƒ /api/admin/users/[id]/password
+├ ƒ /api/attachments
+├ ƒ /api/attachments/[id]
+├ ƒ /api/attachments/[id]/download
+├ ƒ /api/audit-logs
+├ ƒ /api/auth/demo-accounts
+├ ƒ /api/auth/demo-login
+├ ƒ /api/auth/login
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/me
+├ ƒ /api/contacts/[id]
+├ ƒ /api/dashboard
+├ ƒ /api/deal-items/[id]
+├ ƒ /api/deals
+├ ƒ /api/deals/[id]
+├ ƒ /api/deals/[id]/items
+├ ƒ /api/deals/[id]/tags
+├ ƒ /api/deals/board
+├ ƒ /api/deals/bulk
+├ ƒ /api/deals/export
+├ ƒ /api/duplicates
+├ ƒ /api/duplicates/merge
+├ ƒ /api/forecasts
+├ ƒ /api/forecasts/targets
+├ ƒ /api/leads
+├ ƒ /api/leads/[id]
+├ ƒ /api/leads/[id]/convert
+├ ƒ /api/leads/[id]/tags
+├ ƒ /api/leads/bulk
+├ ƒ /api/leads/export
+├ ƒ /api/leads/import
+├ ƒ /api/leads/import/template
+├ ƒ /api/notes
+├ ƒ /api/notes/[id]
+├ ƒ /api/notifications
+├ ƒ /api/notifications/[id]
+├ ƒ /api/notifications/clear-read
+├ ƒ /api/notifications/read
+├ ƒ /api/notifications/unread-count
+├ ƒ /api/products
+├ ƒ /api/products/[id]
+├ ƒ /api/quotes
+├ ƒ /api/quotes/[id]
+├ ƒ /api/quotes/[id]/status
+├ ƒ /api/quotes/[id]/sync
+├ ƒ /api/recycle-bin
+├ ƒ /api/recycle-bin/[id]
+├ ƒ /api/recycle-bin/[id]/restore
+├ ƒ /api/reports/sales
+├ ƒ /api/sales-orders
+├ ƒ /api/sales-orders/[id]
+├ ƒ /api/sales-orders/[id]/status
+├ ƒ /api/search
+├ ƒ /api/tags
+├ ƒ /api/tags/[id]
+├ ƒ /api/users
+├ ƒ /api/views
+├ ƒ /api/views/[id]
+├ ƒ /api/views/default
+├ ○ /audit-logs
+├ ○ /deals
+├ ○ /duplicates
+├ ○ /forecasts
+├ ○ /leads
+├ ○ /login
+├ ○ /notifications
+├ ○ /print/quote
+├ ○ /print/sales-order
+├ ○ /products
+├ ○ /quotes
+├ ○ /recycle-bin
+├ ○ /reports
+├ ○ /sales-orders
+├ ○ /search
+└ ○ /users
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+===== [build] exit=0 duration=56s =====
+
+===== [e2e] npx playwright test =====
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+17 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+已创建组织与管理员 / created organization and admin: E2E 测试组织 / e2e-admin@yonlink.test
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+
+Running 44 tests using 1 worker
+
+[WebServer] (node:1849322) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+[WebServer] (Use `node --trace-deprecation ...` to show where the warning was created)
+  ✓   1 e2e/accounts.spec.ts:10:1 › 客户完整业务流程 / full accounts flow (20.1s)
+  ✓   2 e2e/activities.spec.ts:10:1 › 跟进管理完整业务流程 / full activities flow (22.3s)
+  ✓   3 e2e/attachments.spec.ts:20:1 › 商机附件：上传、类型限制、下载、删除 / deal attachments (18.0s)
+  ✓   4 e2e/attachments.spec.ts:77:1 › 只读用户：可下载演示附件，不能上传或删除 / read-only users only download (5.8s)
+  ✓   5 e2e/audit.spec.ts:10:1 › 审计日志完整流程 / full audit flow (13.9s)
+  ✓   6 e2e/bulk.spec.ts:29:1 › 批量操作：线索、客户、跟进 / bulk actions on leads, accounts and activities (15.3s)
+  ✓   7 e2e/bulk.spec.ts:88:1 › 只读用户没有勾选框与批量操作栏 / read-only users cannot select rows (3.8s)
+  ✓   8 e2e/calendar.spec.ts:24:1 › 日历查看、完成、拖动改期、在某天新建 / calendar view, complete, drag, create on a day (9.5s)
+  ✓   9 e2e/calendar.spec.ts:89:1 › 只读用户：可查看日历，不能拖动或新建 / read-only user cannot drag or create (4.8s)
+  ✓  10 e2e/dashboard.spec.ts:16:1 › 工作台统计与全局搜索 / dashboard figures and global search (18.8s)
+  ✓  11 e2e/deal-board.spec.ts:20:1 › 商机看板拖动与移动 / deal board drag and move (11.0s)
+  ✓  12 e2e/deal-board.spec.ts:68:1 › 只读用户看板不可拖动、无“移动到” / read-only users cannot move cards (5.3s)
+  ✓  13 e2e/deals.spec.ts:10:1 › 商机完整业务流程 / full deals flow (26.8s)
+  ✓  14 e2e/duplicates.spec.ts:16:1 › 查找并合并重复线索 / find and merge duplicate leads (9.4s)
+  ✓  15 e2e/duplicates.spec.ts:57:1 › 销售代表只能查看重复记录，不能合并 / sales reps can only view (4.4s)
+  ✓  16 e2e/forecasts.spec.ts:20:1 › 设定目标、指标一致、季度只读、清除 / set targets, matching figures, read-only quarter, clear (6.4s)
+  ✓  17 e2e/forecasts.spec.ts:72:1 › 销售代表只看到自己，不能设定目标 / sales reps see only themselves (4.7s)
+  ✓  18 e2e/i18n.spec.ts:8:1 › 切换英文界面并切回中文 / switch to English and back (12.1s)
+  ✓  19 e2e/import-export.spec.ts:9:1 › 导入客户并导出 / import accounts then export (6.8s)
+  ✓  20 e2e/import-export.spec.ts:49:1 › 销售代表可导入但没有导出按钮 / sales reps can import but not export (4.4s)
+  ✓  21 e2e/lead-conversion.spec.ts:10:1 › 线索转化完整流程 / full lead conversion flow (18.1s)
+  ✓  22 e2e/leads.spec.ts:8:1 › 线索完整业务流程 / full leads flow (22.2s)
+  ✓  23 e2e/leads.spec.ts:73:1 › 未登录访问业务页跳转登录 / unauthenticated access redirects to login (2.2s)
+  ✓  24 e2e/notes.spec.ts:17:1 › 商机备注：新增、纯文本显示、编辑、删除 / deal notes: add, plain text, edit, delete (12.4s)
+  ✓  25 e2e/notes.spec.ts:66:1 › 只读用户可查看演示备注但不能添加 / read-only users see demo notes but cannot add (5.2s)
+  ✘  26 e2e/notifications.spec.ts:39:1 › 分配通知：铃铛提醒并在当前页打开记录 / assignment notice opens the record (30.8s)
+  ✓  27 e2e/notifications.spec.ts:73:1 › 跟进到期提醒：跳转到跟进详情 / due reminder opens the activity (6.2s)
+  ✓  28 e2e/products.spec.ts:30:1 › 产品目录与商机明细 / product catalog and deal line items (21.8s)
+  ✓  29 e2e/products.spec.ts:124:1 › 只读用户只能查看产品目录 / read-only user only views the catalog (3.6s)
+  ✓  30 e2e/quotes.spec.ts:21:1 › 商机生成报价单、发送、接受、打印 / quote lifecycle (17.4s)
+  ✓  31 e2e/quotes.spec.ts:105:1 › 只读用户可查看报价单但不能操作 / read-only user views quotes only (4.6s)
+  ✓  32 e2e/rbac.spec.ts:55:1 › 演示账号列表与各角色权限 / demo accounts and per-role permissions (23.5s)
+  ✓  33 e2e/rbac.spec.ts:148:1 › 系统管理员管理用户 / admin manages users (7.9s)
+  ✓  34 e2e/recycle.spec.ts:26:1 › 删除、恢复、依赖提示、彻底删除与清空 / delete, restore, dependency hint, purge and empty (14.5s)
+  ✓  35 e2e/recycle.spec.ts:89:1 › 经理可恢复但不能彻底删除 / managers cannot purge (3.7s)
+  ✓  36 e2e/recycle.spec.ts:97:1 › 销售代表没有回收站入口 / sales reps have no recycle bin (3.8s)
+  ✓  37 e2e/reports.spec.ts:19:1 › 报表数字与接口一致，可切换币种与负责人 / figures match the API; currency and owner filters (5.4s)
+  ✓  38 e2e/reports.spec.ts:55:1 › 销售代表只统计自己负责的数据，没有负责人筛选 / sales reps see only their own data (4.1s)
+  ✓  39 e2e/sales-orders.spec.ts:22:1 › 报价单生成销售订单并完成发货与取消 / order lifecycle from a quote (14.0s)
+  ✓  40 e2e/sales-orders.spec.ts:94:1 › 演示数据：销售订单列表与只读用户 / demo orders for a read-only user (4.1s)
+  ✓  41 e2e/tags.spec.ts:19:1 › 标签：添加、筛选、移除、批量、管理 / tags: add, filter, remove, bulk, manage (14.7s)
+  ✓  42 e2e/tags.spec.ts:94:1 › 只读用户：可看到演示标签，不能添加或管理 / read-only users only view tags (5.3s)
+  ✓  43 e2e/views.spec.ts:31:1 › 视图：保存、默认自动套用、切换、更新、共享、删除 / views end to end (17.7s)
+  ✓  44 e2e/views.spec.ts:87:1 › 只读用户可保存私有视图，不能共享 / read-only users save private views only (8.4s)
+
+
+  1) e2e/notifications.spec.ts:39:1 › 分配通知：铃铛提醒并在当前页打开记录 / assignment notice opens the record ──────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByTestId('notification-popover').getByRole('link', { name: '郑经理 把线索“E2E 通知线索”分配给了你' })
+
+
+      53 |   await nav(page, '线索');
+      54 |   await bell.click();
+    > 55 |   await page.getByTestId('notification-popover').getByRole('link', { name: '郑经理 把线索“E2E 通知线索”分配给了你' }).click();
+         |                                                                                                        ^
+      56 |   const drawer = page.getByRole('dialog', { name: /线索详情/ });
+      57 |   await expect(drawer).toContainText('E2E 通知公司');
+      58 |   await expect.poll(() => badge(page)).toBe(before - 1);
+        at /home/ai/Desktop/CRM/Yonlink-CRM/e2e/notifications.spec.ts:55:104
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/notifications-分配通知：铃铛提醒并在当-9d1b4-ent-notice-opens-the-record/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/notifications-分配通知：铃铛提醒并在当-9d1b4-ent-notice-opens-the-record/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/notifications-分配通知：铃铛提醒并在当-9d1b4-ent-notice-opens-the-record/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/notifications-分配通知：铃铛提醒并在当-9d1b4-ent-notice-opens-the-record/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    e2e/notifications.spec.ts:39:1 › 分配通知：铃铛提醒并在当前页打开记录 / assignment notice opens the record ───────
+  43 passed (8.5m)
+===== [e2e] exit=1 duration=510s =====
+
+RESULT: FAIL

@@ -1,0 +1,20 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+17 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:1808089) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
+   Start at  09:46:57
+   Duration  6.79s (tests 92%, import 5%, transform 3%)
+

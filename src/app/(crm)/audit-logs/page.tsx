@@ -12,7 +12,7 @@ import { t, tEnum } from '@/i18n';
 import { fmtDateTime } from '@/lib/format';
 import { useOwners, usePagedList } from '@/lib/hooks';
 
-const ENTITIES = ['lead', 'account', 'contact', 'deal', 'activity', 'note', 'product', 'quote', 'tag', 'view', 'attachment', 'target', 'user', 'auth'];
+const ENTITIES = ['lead', 'account', 'contact', 'deal', 'activity', 'note', 'product', 'quote', 'order', 'tag', 'view', 'attachment', 'target', 'user', 'auth'];
 const ACTIONS: Record<string, string[]> = {
   lead: ['create', 'update', 'delete', 'restore', 'purge', 'expire', 'merge', 'convert', 'tags', 'import', 'export'],
   account: ['create', 'update', 'delete', 'restore', 'purge', 'expire', 'merge', 'tags', 'import', 'export'],
@@ -22,6 +22,7 @@ const ACTIONS: Record<string, string[]> = {
   note: ['create', 'update', 'delete'],
   product: ['create', 'update', 'delete'],
   quote: ['create', 'update', 'sync_items', 'status', 'delete'],
+  order: ['create', 'update', 'status'],
   tag: ['create', 'update', 'delete'],
   view: ['create', 'update', 'delete'],
   attachment: ['create', 'delete'],

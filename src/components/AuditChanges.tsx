@@ -60,6 +60,11 @@ const FIELD_LABELS: Record<string, MessageKey> = {
   total: 'quotes.total',
   terms: 'quotes.terms',
   notes: 'quotes.notes',
+  orderNumber: 'orders.number',
+  quoteId: 'orders.quote',
+  expectedDelivery: 'orders.expectedDelivery',
+  shippingAddress: 'orders.shippingAddress',
+  cancelReason: 'orders.cancelReason',
 };
 
 // 枚举字段 → 翻译前缀 / enum field → translation prefix
@@ -101,6 +106,9 @@ const fieldLabel = (field: string, entityType: string): string => {
   if (entityType === 'tag' && field === 'color') return t('tags.color');
   if (entityType === 'quote' && field === 'subject') return t('quotes.subject');
   if (entityType === 'quote' && field === 'status') return t('quotes.status');
+  if (entityType === 'order' && field === 'subject') return t('orders.subject');
+  if (entityType === 'order' && field === 'status') return t('orders.status');
+  if (entityType === 'order' && field === 'notes') return t('orders.notes');
   const key = FIELD_LABELS[field];
   return key ? t(key) : field;
 };
@@ -116,8 +124,9 @@ function value(field: string, v: unknown, users: Map<string, string>, entityType
   if (field === 'ownerId') return users.get(String(v)) ?? String(v).slice(0, 8);
   if (field.endsWith('Id')) return String(v).slice(0, 8);
   if (entityType === 'quote' && field === 'status') return tEnum('quoteStatus', String(v));
+  if (entityType === 'order' && field === 'status') return tEnum('orderStatus', String(v));
   if (ENUM_PREFIX[field]) return tEnum(ENUM_PREFIX[field]!, String(v));
-  if (field === 'expectedCloseDate' || field === 'validUntil') return String(v).slice(0, 10);
+  if (field === 'expectedCloseDate' || field === 'validUntil' || field === 'expectedDelivery') return String(v).slice(0, 10);
   if (field === 'dueAt') return String(v).replace('T', ' ').slice(0, 16);
   return String(v);
 }

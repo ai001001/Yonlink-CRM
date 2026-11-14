@@ -82,6 +82,7 @@ const detailInclude = {
   createdBy: { select: { id: true, name: true } },
   organization: { select: { name: true } },
   lines: { orderBy: { position: 'asc' } },
+  salesOrders: { select: { id: true, orderNumber: true, status: true }, orderBy: { createdAt: 'asc' } },
 } satisfies Prisma.QuoteInclude;
 
 /**

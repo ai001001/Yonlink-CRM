@@ -14,7 +14,7 @@ export async function signIn(page: Page): Promise<void> {
 }
 
 /** 点击左侧导航 / Click a side-navigation entry */
-export async function nav(page: Page, name: '工作台' | '线索' | '客户' | '商机' | '跟进' | '报价单' | '报表' | '销售预测' | '产品' | '查重合并' | '回收站' | '审计日志' | '用户管理'): Promise<void> {
+export async function nav(page: Page, name: '工作台' | '线索' | '客户' | '商机' | '跟进' | '报价单' | '销售订单' | '报表' | '销售预测' | '产品' | '查重合并' | '回收站' | '审计日志' | '用户管理'): Promise<void> {
   await page.getByRole('menu').getByRole('link', { name, exact: true }).click();
 }
 
@@ -49,4 +49,16 @@ export async function searchList(page: Page, placeholder: string, text: string):
   const box = page.getByPlaceholder(placeholder);
   await box.fill(text);
   await box.press('Enter');
+}
+
+/**
+ * 关闭抽屉。先等顶部提示条全部消失：提示条可能盖住抽屉的关闭按钮，而鼠标悬停在提示条上会暂停它自动消失，
+ * 直接点击会一直被挡住。
+ * Close a drawer. Waits for the top toasts to disappear first: they can cover the drawer's close button, and
+ * hovering a toast pauses its auto-dismiss, so a direct click could stay blocked.
+ * @param drawer 抽屉 / the drawer
+ */
+export async function closeDrawer(page: Page, drawer: Locator): Promise<void> {
+  await expect(page.locator('.ant-message-notice')).toHaveCount(0, { timeout: 15000 });
+  await drawer.getByRole('button', { name: '关闭' }).first().click();
 }

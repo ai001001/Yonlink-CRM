@@ -60,12 +60,6 @@ export function NotificationBell() {
     };
   }, [refreshCount]);
 
-  // 页面跳转后收起弹层 / close the popover after navigation
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOpen(false);
-  }, [pathname]);
-
   const onOpenChange = (next: boolean) => {
     setOpen(next);
     if (next) {

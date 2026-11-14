@@ -22,6 +22,7 @@ import {
   AppstoreOutlined,
   AuditOutlined,
   ScheduleOutlined,
+  ShoppingCartOutlined,
   TeamOutlined,
   UserAddOutlined,
 } from '@ant-design/icons';
@@ -38,6 +39,7 @@ const NAV: { key: string; icon: React.ReactNode; label: string; permission?: str
   { key: '/deals', icon: <FundOutlined />, label: t('nav.deals') },
   { key: '/activities', icon: <ScheduleOutlined />, label: t('nav.activities') },
   { key: '/quotes', icon: <FileTextOutlined />, label: t('nav.quotes') },
+  { key: '/sales-orders', icon: <ShoppingCartOutlined />, label: t('nav.salesOrders') },
   { key: '/reports', icon: <BarChartOutlined />, label: t('nav.reports') },
   { key: '/forecasts', icon: <AimOutlined />, label: t('nav.forecasts') },
   { key: '/products', icon: <AppstoreOutlined />, label: t('nav.products') },

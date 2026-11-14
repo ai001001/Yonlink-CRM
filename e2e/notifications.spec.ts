@@ -51,6 +51,9 @@ test('分配通知：铃铛提醒并在当前页打开记录 / assignment notice
 
   // 已在线索页：点击通知直接打开详情 / already on the lead page: the click opens the detail
   await nav(page, '线索');
+  // 等跳转完成再打开铃铛 / open the bell only after the navigation has finished
+  await expect(page).toHaveURL(/\/leads/);
+  await expect(page.getByText('线索管理')).toBeVisible();
   await bell.click();
   await page.getByTestId('notification-popover').getByRole('link', { name: '郑经理 把线索“E2E 通知线索”分配给了你' }).click();
   const drawer = page.getByRole('dialog', { name: /线索详情/ });

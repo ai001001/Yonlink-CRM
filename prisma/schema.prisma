@@ -14,32 +14,34 @@ datasource db {
 }
 
 model Organization {
-  id            String            @id @default(uuid()) @db.Uuid
-  name          String            @db.VarChar(200)
-  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
-  users         User[]
-  accounts      Account[]
-  contacts      Contact[]
-  leads         Lead[]
-  deals         Deal[]
-  activities    Activity[]
-  auditLogs     AuditLog[]
-  notes         Note[]
-  products      Product[]
-  dealItems     DealLineItem[]
-  quotes        Quote[]
-  quoteItems    QuoteLineItem[]
-  tags          Tag[]
-  leadTags      LeadTag[]
-  accountTags   AccountTag[]
-  dealTags      DealTag[]
-  recycleBin    RecycleBinItem[]
-  savedViews    SavedView[]
-  viewDefaults  UserViewDefault[]
-  attachments   Attachment[]
-  salesTargets  SalesTarget[]
-  notifications Notification[]
+  id              String               @id @default(uuid()) @db.Uuid
+  name            String               @db.VarChar(200)
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  users           User[]
+  accounts        Account[]
+  contacts        Contact[]
+  leads           Lead[]
+  deals           Deal[]
+  activities      Activity[]
+  auditLogs       AuditLog[]
+  notes           Note[]
+  products        Product[]
+  dealItems       DealLineItem[]
+  quotes          Quote[]
+  quoteItems      QuoteLineItem[]
+  tags            Tag[]
+  leadTags        LeadTag[]
+  accountTags     AccountTag[]
+  dealTags        DealTag[]
+  recycleBin      RecycleBinItem[]
+  savedViews      SavedView[]
+  viewDefaults    UserViewDefault[]
+  attachments     Attachment[]
+  salesTargets    SalesTarget[]
+  notifications   Notification[]
+  salesOrders     SalesOrder[]
+  salesOrderItems SalesOrderLineItem[]
 
   @@map("organizations")
 }
@@ -52,6 +54,7 @@ model User {
   passwordHash      String            @map("password_hash")
   notifications     Notification[]    @relation("NotificationRecipient")
   notificationsSent Notification[]    @relation("NotificationActor")
+  createdOrders     SalesOrder[]      @relation("OrderCreator")
   /// 角色（服务端每个请求从数据库读取）/ role (read from the DB on every request)
   role              UserRole          @default(SALES)
   isActive          Boolean           @default(true) @map("is_active")
@@ -231,6 +234,7 @@ model Deal {
   organization      Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner             User?          @relation("DealOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
   notifications     Notification[]
+  salesOrders       SalesOrder[]
   // 有商机的客户不能删除 / accounts with deals cannot be deleted
   account           Account        @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Restrict)
   activities        Activity[]
@@ -407,6 +411,7 @@ model Quote {
   id             String          @id @default(uuid()) @db.Uuid
   organizationId String          @map("organization_id") @db.Uuid
   dealId         String          @map("deal_id") @db.Uuid
+  salesOrders    SalesOrder[]
   /// 组织内唯一的报价单号，如 QT-2026-0001 / per-organization unique number
   quoteNumber    String          @map("quote_number") @db.VarChar(30)
   subject        String          @db.VarChar(200)
@@ -702,4 +707,79 @@ model Notification {
   @@index([organizationId, accountId])
   @@index([organizationId, dealId])
   @@map("notifications")
+}
+
+/// 销售订单状态 / sales order status
+enum SalesOrderStatus {
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+
+  @@map("sales_order_status")
+}
+
+/// 销售订单：由已接受的报价单生成，明细与金额为报价单的快照，生成后不再变化；订单不能删除，只能取消。
+/// 同一报价单同时只能有一张未取消的订单（部分唯一索引）。
+/// Sales order generated from an accepted quote; lines and amounts snapshot the quote and never change; orders are
+/// cancelled rather than deleted. One non-cancelled order per quote (partial unique index).
+model SalesOrder {
+  id               String               @id @default(uuid()) @db.Uuid
+  organizationId   String               @map("organization_id") @db.Uuid
+  quoteId          String               @map("quote_id") @db.Uuid
+  dealId           String               @map("deal_id") @db.Uuid
+  /// 组织内唯一的订单号，如 SO-2026-0001 / per-organization unique number
+  orderNumber      String               @map("order_number") @db.VarChar(30)
+  subject          String               @db.VarChar(200)
+  status           SalesOrderStatus     @default(CONFIRMED)
+  currency         String               @db.Char(3)
+  taxPercent       Decimal              @map("tax_percent") @db.Decimal(5, 2)
+  subtotal         Decimal              @db.Decimal(18, 2)
+  taxAmount        Decimal              @map("tax_amount") @db.Decimal(18, 2)
+  total            Decimal              @db.Decimal(18, 2)
+  expectedDelivery DateTime?            @map("expected_delivery") @db.Date
+  shippingAddress  String?              @map("shipping_address") @db.VarChar(500)
+  notes            String?              @db.Text
+  cancelReason     String?              @map("cancel_reason") @db.VarChar(500)
+  createdById      String?              @map("created_by_id") @db.Uuid
+  shippedAt        DateTime?            @map("shipped_at") @db.Timestamptz(6)
+  deliveredAt      DateTime?            @map("delivered_at") @db.Timestamptz(6)
+  cancelledAt      DateTime?            @map("cancelled_at") @db.Timestamptz(6)
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization     Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // 有订单的报价单、商机不能删除 / quotes and deals with orders cannot be deleted
+  quote            Quote                @relation(fields: [organizationId, quoteId], references: [organizationId, id], onDelete: Restrict)
+  deal             Deal                 @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Restrict)
+  createdBy        User?                @relation("OrderCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  lines            SalesOrderLineItem[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, orderNumber])
+  @@index([organizationId, dealId])
+  @@index([organizationId, quoteId])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, status])
+  @@map("sales_orders")
+}
+
+/// 销售订单明细（报价单明细的快照）/ Sales order line item (snapshot of the quote line)
+model SalesOrderLineItem {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  salesOrderId    String       @map("sales_order_id") @db.Uuid
+  position        Int
+  productSku      String       @map("product_sku") @db.VarChar(50)
+  productName     String       @map("product_name") @db.VarChar(200)
+  unit            String       @db.VarChar(20)
+  quantity        Decimal      @db.Decimal(18, 2)
+  unitPrice       Decimal      @map("unit_price") @db.Decimal(18, 2)
+  discountPercent Decimal      @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  lineTotal       Decimal      @map("line_total") @db.Decimal(18, 2)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  salesOrder      SalesOrder   @relation(fields: [organizationId, salesOrderId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([salesOrderId, position])
+  @@index([organizationId, salesOrderId])
+  @@map("sales_order_line_items")
 }

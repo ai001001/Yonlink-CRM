@@ -14,7 +14,7 @@ import { hashPassword } from '../src/server/auth';
 import { createHash, randomUUID } from 'node:crypto';
 import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
-import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, demoNotifications, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -77,6 +77,8 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
       if (options.reset) {
         // 仅清空演示组织的业务数据 / wipe business data of the demo organization only
         await tx.notification.deleteMany({ where: { organizationId: o } });
+        // 订单引用报价单与商机（RESTRICT），须先删除 / orders reference quotes and deals (RESTRICT) and go first
+        await tx.salesOrder.deleteMany({ where: { organizationId: o } });
         await tx.note.deleteMany({ where: { organizationId: o } });
         await tx.activity.deleteMany({ where: { organizationId: o } });
         await tx.lead.updateMany({ where: { organizationId: o }, data: { convertedAccountId: null, convertedContactId: null, convertedDealId: null } });
@@ -202,6 +204,56 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
               discountPercent: it.discountPercent,
               lineTotal: it.lineTotal,
             })),
+        });
+      }
+
+      // 销售订单：由已接受的报价单生成，明细与金额复制自报价单 / sales orders from accepted quotes, copying lines and amounts
+      const acceptedQuotes = new Map(
+        (await tx.quote.findMany({ where: { organizationId: o, status: 'ACCEPTED' }, include: { lines: true, deal: { select: { account: { select: { address: true } } } } } })).map(
+          (q) => [q.dealId, q],
+        ),
+      );
+      for (const [n, so] of demoOrders(data).entries()) {
+        const q = acceptedQuotes.get(dealIds[so.deal]!)!;
+        const created = new Date(Date.now() - so.daysAgo * DAY);
+        const at = (fraction: number) => new Date(created.getTime() + so.daysAgo * fraction * DAY);
+        const order = await tx.salesOrder.create({
+          data: {
+            organizationId: o,
+            quoteId: q.id,
+            dealId: q.dealId,
+            orderNumber: `SO-${year}-${String(n + 1).padStart(4, '0')}`,
+            subject: q.subject,
+            status: so.status,
+            currency: q.currency,
+            taxPercent: q.taxPercent,
+            subtotal: q.subtotal,
+            taxAmount: q.taxAmount,
+            total: q.total,
+            expectedDelivery: dayOffset(so.expectedInDays),
+            shippingAddress: q.deal.account.address,
+            notes: '【演示】请随货附带产品合格证与装箱单。',
+            cancelReason: so.cancelReason ?? null,
+            createdById: q.createdById,
+            shippedAt: so.status === 'SHIPPED' || so.status === 'DELIVERED' ? at(0.3) : null,
+            deliveredAt: so.status === 'DELIVERED' ? at(0.7) : null,
+            cancelledAt: so.status === 'CANCELLED' ? at(0.5) : null,
+            createdAt: created,
+          },
+        });
+        await tx.salesOrderLineItem.createMany({
+          data: q.lines.map((l) => ({
+            organizationId: o,
+            salesOrderId: order.id,
+            position: l.position,
+            productSku: l.productSku,
+            productName: l.productName,
+            unit: l.unit,
+            quantity: l.quantity,
+            unitPrice: l.unitPrice,
+            discountPercent: l.discountPercent,
+            lineTotal: l.lineTotal,
+          })),
         });
       }
 
@@ -380,7 +432,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length + 1} 客户（含 1 条重复）、${data.accounts.reduce((n, a) => n + a.contacts.length, 0) + 2} 联系人、` +
-      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
+      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
   );
 }
 

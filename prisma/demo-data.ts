@@ -697,6 +697,42 @@ export function demoDuplicates(data: ReturnType<typeof buildDemoData>) {
   };
 }
 
+/** 演示销售订单 / Demo sales order */
+export interface DemoOrder {
+  /** 来源报价单所属商机（每个商机至多一张已接受报价单）/ deal of the source quote (at most one accepted quote per deal) */
+  deal: string;
+  status: 'CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  /** 创建于几天前 / created N days ago */
+  daysAgo: number;
+  /** 预计交付日期相对今天（天）/ expected delivery offset from today (days) */
+  expectedInDays: number;
+  cancelReason?: string;
+}
+
+/**
+ * 演示销售订单：每张已接受的报价单在接受次日生成订单；最新一张已确认、次新一张已发货、其余已交付，
+ * 每 7 张中有 1 张已取消（取消后报价单可再次生成订单）。
+ * Demo sales orders: one per accepted quote, created the day after acceptance; the newest is confirmed, the next
+ * shipped and the rest delivered; one in seven is cancelled (the quote can then be ordered again).
+ */
+export function demoOrders(data: ReturnType<typeof buildDemoData>): DemoOrder[] {
+  const accepted = data.quotes.filter((q) => q.status === 'ACCEPTED').sort((a, b) => b.daysAgo - a.daysAgo);
+  return accepted.map((q, k) => {
+    // 报价单在创建 5 天后被接受，订单在接受次日生成 / quotes are accepted 5 days after creation; orders follow a day later
+    const daysAgo = Math.max(0, q.daysAgo - 6);
+    const fromNewest = accepted.length - 1 - k;
+    let status: DemoOrder['status'] = fromNewest === 0 ? 'CONFIRMED' : fromNewest === 1 ? 'SHIPPED' : 'DELIVERED';
+    if (k % 7 === 3) status = 'CANCELLED';
+    return {
+      deal: q.deal,
+      status,
+      daysAgo,
+      expectedInDays: 15 - daysAgo,
+      cancelReason: status === 'CANCELLED' ? '客户调整采购计划，改为下季度重新下单。' : undefined,
+    };
+  });
+}
+
 /** 演示通知 / Demo notification */
 export interface DemoNotification {
   to: OwnerKey;

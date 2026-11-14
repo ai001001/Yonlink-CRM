@@ -41,6 +41,7 @@
 | 销售目标与预测 | ✅ | ✅ | ✅ | [forecasts.md](forecasts.md) |
 | 重复记录检测与合并 | ✅ | ✅ | ✅ | [duplicates.md](duplicates.md) |
 | 站内通知与提醒 | ✅ | ✅ | ✅ | [notifications.md](notifications.md) |
+| 销售订单 | ✅ | ✅ | ✅ | [sales-orders.md](sales-orders.md) |
 
 ## 整体回归（全部模块完成后）
 命令：`scripts/regression.sh final-mvp` → **PASS**（lint、typecheck、11 文件 181/181、静态导出、生产构建、E2E 6/6）。原始输出：[results/final-mvp-r3-regression.txt](results/final-mvp-r3-regression.txt)

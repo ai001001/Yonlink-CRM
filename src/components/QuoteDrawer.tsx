@@ -15,6 +15,7 @@ import { api, ClientApiError } from '@/lib/api';
 import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
 import type { Quote, QuoteLine, QuoteStatus } from '@/lib/types';
 import { usePermissions } from './AuthProvider';
+import { CreateOrderModal, OrderStatusTag } from './SalesOrderDrawer';
 
 /** 状态颜色 / Status colours */
 export const QUOTE_STATUS_COLOR: Record<QuoteStatus, string> = { DRAFT: 'default', SENT: 'blue', ACCEPTED: 'green', REJECTED: 'red' };
@@ -62,11 +63,14 @@ interface EditForm {
   notes?: string | null;
 }
 
+/** 带明细与合计的单据（报价单、销售订单）/ a document with lines and totals (quote or sales order) */
+export type LinesDocument = Pick<Quote, 'currency' | 'taxPercent' | 'subtotal' | 'taxAmount' | 'total' | 'lines'>;
+
 /**
- * 报价单明细表格（详情与打印共用）。
- * Quote lines table (shared by the drawer and the print page).
+ * 明细与合计表格（报价单、销售订单的详情与打印共用）。
+ * Lines and totals table (shared by quote and sales order details and print pages).
  */
-export function QuoteLinesTable({ quote, size = 'small' }: { quote: Quote; size?: 'small' | 'middle' }) {
+export function QuoteLinesTable({ quote, size = 'small' }: { quote: LinesDocument; size?: 'small' | 'middle' }) {
   return (
     <Table<QuoteLine>
       rowKey="id"
@@ -122,6 +126,7 @@ export function QuoteDrawer({ quoteId, onClose, onChanged }: Props) {
   const perm = usePermissions();
   const [quote, setQuote] = useState<Quote | null>(null);
   const [editing, setEditing] = useState(false);
+  const [ordering, setOrdering] = useState(false);
   const [form] = Form.useForm<EditForm>();
 
   const load = useCallback(async () => {
@@ -158,6 +163,8 @@ export function QuoteDrawer({ quoteId, onClose, onChanged }: Props) {
 
   const editable = !!quote && perm.canEdit(quote.deal);
   const draft = quote?.status === 'DRAFT';
+  // 已接受且没有未取消的订单时可生成订单 / an accepted quote without an active order can become an order
+  const canOrder = editable && quote?.status === 'ACCEPTED' && !quote.salesOrders?.some((o) => o.status !== 'CANCELLED');
 
   const openEdit = () => {
     if (!quote) return;
@@ -225,6 +232,25 @@ export function QuoteDrawer({ quoteId, onClose, onChanged }: Props) {
               </Popconfirm>
             )}
           </Space>
+          {canOrder && (
+            <Button type="primary" style={{ marginBottom: 12 }} onClick={() => setOrdering(true)}>
+              {t('orders.create')}
+            </Button>
+          )}
+          {!!quote.salesOrders?.length && (
+            <Descriptions column={1} bordered size="small" style={{ marginBottom: 12 }} data-testid="quote-orders">
+              <Descriptions.Item label={t('orders.title')}>
+                <Space wrap>
+                  {quote.salesOrders.map((o) => (
+                    <Space key={o.id} size={4}>
+                      <Link href={`/sales-orders?id=${o.id}`}>{o.orderNumber}</Link>
+                      <OrderStatusTag status={o.status} />
+                    </Space>
+                  ))}
+                </Space>
+              </Descriptions.Item>
+            </Descriptions>
+          )}
           {editable && !draft && <Alert type="info" showIcon title={t('quotes.draftOnly')} style={{ marginBottom: 12 }} />}
           <Descriptions column={2} bordered size="small" style={{ marginBottom: 16 }}>
             <Descriptions.Item label={t('quotes.number')}>{quote.quoteNumber}</Descriptions.Item>
@@ -252,6 +278,15 @@ export function QuoteDrawer({ quoteId, onClose, onChanged }: Props) {
           <QuoteLinesTable quote={quote} />
         </div>
       )}
+      <CreateOrderModal
+        quote={ordering ? quote : null}
+        onClose={() => setOrdering(false)}
+        onCreated={() => {
+          setOrdering(false);
+          void load();
+          onChanged();
+        }}
+      />
       <Modal title={t('quotes.edit')} open={editing} onOk={saveEdit} onCancel={() => setEditing(false)} okText={t('common.save')} forceRender zIndex={1200}>
         <Form form={form} name="quote-edit" layout="vertical">
           <Form.Item name="subject" label={t('quotes.subject')} rules={[{ required: true, whitespace: true, message: t('common.required', { field: t('quotes.subject') }) }]}>

@@ -124,7 +124,7 @@ export default function DealsPage() {
       if (detail?.id === deal.id) setDetail(null);
       refresh();
     } catch (err) {
-      message.error((err as Error).message);
+      message.error(err instanceof ClientApiError && err.details?.salesOrders ? t('deals.hasOrders') : (err as Error).message);
     }
   };
 

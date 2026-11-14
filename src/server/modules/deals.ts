@@ -189,6 +189,10 @@ export async function deleteDeal(ctx: AuthContext, id: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const deal = await tx.deal.findFirst({ where: { id, ...visible(ctx) } });
     if (!deal) throw notFound();
+    // 订单不能删除，有订单的商机也不能删除（并发新建时 RESTRICT 外键仍会拒绝）
+    // orders are never deleted, so deals with orders cannot be (the RESTRICT FK still blocks a concurrent order)
+    const orders = await tx.salesOrder.count({ where: { organizationId: ctx.organizationId, dealId: id } });
+    if (orders > 0) throw new ApiError(409, 'CONFLICT', 'Deal has sales orders', { salesOrders: [String(orders)] });
     // 先放入回收站（快照，含产品明细与报价单），再删除 / snapshot (items and quotes) into the recycle bin, then delete
     await recycle(tx, ctx, 'deal', id, deal.name);
     await detachSharedActivities(tx, ctx.organizationId, 'dealId', id);

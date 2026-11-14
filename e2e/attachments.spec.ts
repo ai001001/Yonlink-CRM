@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { buildDemoData } from '../prisma/demo-data';
-import { nav, searchList, signIn } from './helpers';
+import { closeDrawer, nav, searchList, signIn } from './helpers';
 
 /** 用当前登录令牌调用 API / call the API with the current session */
 async function apiPost(page: Page, path: string, data: object) {
@@ -54,7 +54,7 @@ test('商机附件：上传、类型限制、下载、删除 / deal attachments'
   await expect(page.locator('.ant-popover:visible')).toContainText('删除附件“E2E 报价.pdf”？');
   await page.locator('.ant-popover:visible').getByRole('button', { name: /确\s*定|OK/ }).click();
   await expect(panel).toContainText('暂无附件');
-  await drawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, drawer);
   await expect(drawer).toBeHidden();
 
   // 线索详情也有附件区块 / leads have an attachments section too
@@ -66,7 +66,7 @@ test('商机附件：上传、类型限制、下载、删除 / deal attachments'
   const leadPanel = leadDrawer.getByTestId('attachments-panel');
   await leadPanel.locator('input[type=file]').setInputFiles({ name: '名片.txt', mimeType: 'text/plain', buffer: Buffer.from('E2E 名片') });
   await expect(leadPanel.getByTestId('attachment-item')).toContainText('名片.txt');
-  await leadDrawer.getByRole('button', { name: '关闭' }).first().click();
+  await closeDrawer(page, leadDrawer);
   await expect(leadDrawer).toBeHidden();
 
   // 审计 / audit
