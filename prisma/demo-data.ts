@@ -863,3 +863,39 @@ export function demoSamples() {
     sales2Deal: firstDeal('sales2'),
   };
 }
+
+/** 演示竞争对手（虚构公司）/ demo competitors (fictional companies) */
+export const DEMO_COMPETITORS = [
+  { name: '【演示】华东增压科技', threatLevel: 'HIGH', strengths: '本地化服务快，价格低 8%–12%', weaknesses: '高温工况寿命短，质保仅 6 个月' },
+  { name: '【演示】远航动力部件', threatLevel: 'MEDIUM', strengths: '与主机厂有长期配套关系', weaknesses: '交期长（8–10 周），小批量不接单' },
+  { name: '【演示】北欧涡轮（进口）', threatLevel: 'MEDIUM', strengths: '品牌认知度高，技术文档完整', weaknesses: '价格高 30% 以上，备件依赖进口' },
+  { name: '【演示】鑫诚再制造', threatLevel: 'LOW', strengths: '再制造件价格极低', weaknesses: '一致性差，无整机质保' },
+] as const;
+
+/**
+ * 演示商机竞争对手：按商机序号轮流分配，每 3 个商机中有 2 个带竞争对手（第 2 个带两家）。
+ * Demo deal competitors: assigned round-robin by deal index; two of every three deals have competitors (the second has two).
+ */
+export function demoDealCompetitors(data: ReturnType<typeof buildDemoData>): { deal: string; competitor: (typeof DEMO_COMPETITORS)[number] }[] {
+  const out: { deal: string; competitor: (typeof DEMO_COMPETITORS)[number] }[] = [];
+  data.deals.forEach((d, i) => {
+    if (i % 3 === 2) return;
+    out.push({ deal: d.key, competitor: DEMO_COMPETITORS[i % DEMO_COMPETITORS.length]! });
+    if (i % 3 === 1) out.push({ deal: d.key, competitor: DEMO_COMPETITORS[(i + 1) % DEMO_COMPETITORS.length]! });
+  });
+  return out;
+}
+
+/** 演示联系人角色（按客户联系人顺序）/ demo contact roles by the account's contact order */
+const DEMO_ROLE_PLAN = ['DECISION_MAKER', 'EVALUATOR', 'TECHNICAL_BUYER'] as const;
+
+/**
+ * 演示商机联系人角色：客户第一位联系人为决策人（主要联系人），其后依次为评估人、技术采购。
+ * Demo deal contact roles: the account's first contact is the (primary) decision maker, then evaluator and technical buyer.
+ */
+export function demoContactRoles(data: ReturnType<typeof buildDemoData>): { deal: string; contactIndex: number; role: (typeof DEMO_ROLE_PLAN)[number]; isPrimary: boolean }[] {
+  return data.deals.flatMap((d) => {
+    const acc = data.accounts.find((a) => a.key === d.account)!;
+    return acc.contacts.slice(0, DEMO_ROLE_PLAN.length).map((_, i) => ({ deal: d.key, contactIndex: i, role: DEMO_ROLE_PLAN[i]!, isPrimary: i === 0 }));
+  });
+}

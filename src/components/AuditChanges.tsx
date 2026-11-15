@@ -77,6 +77,11 @@ const FIELD_LABELS: Record<string, MessageKey> = {
   dueDate: 'invoices.dueDate',
   billingAddress: 'invoices.billingAddress',
   voidReason: 'invoices.voidReason',
+  contactRole: 'contactRoles.role',
+  competitorName: 'competitors.name',
+  threatLevel: 'competitors.threatLevel',
+  strengths: 'competitors.strengths',
+  weaknesses: 'competitors.weaknesses',
 };
 
 // 枚举字段 → 翻译前缀 / enum field → translation prefix
@@ -87,6 +92,8 @@ const ENUM_PREFIX: Record<string, string> = {
   stage: 'dealStage',
   type: 'activityType',
   role: 'role',
+  contactRole: 'dealContactRole',
+  threatLevel: 'competitorThreat',
 };
 
 /**
@@ -168,6 +175,16 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
   if (entry.entityType === 'invoice' && typeof c.amount === 'string') {
     // 收款或撤销收款：金额与方式 / payment or reversal: amount and method
     lines.push(t('invoices.auditPayment', { amount: c.amount, method: tEnum('paymentMethod', String(c.method ?? '')) }));
+  }
+  if (typeof c.contact === 'string') {
+    // 商机联系人角色：联系人 · 角色 / deal contact role: contact · role
+    const role = typeof c.contactRole === 'string' ? ` · ${tEnum('dealContactRole', c.contactRole)}` : '';
+    lines.push(`${t('contactRoles.audit', { name: c.contact })}${role}${c.isPrimary === true ? ` · ${t('contactRoles.primary')}` : ''}`);
+  }
+  if (typeof c.competitor === 'string') {
+    // 商机竞争对手：名称 · 威胁程度 / deal competitor: name · threat
+    const threat = typeof c.threatLevel === 'string' ? ` · ${t('competitors.threatLevel')}${t('common.colon')}${tEnum('competitorThreat', c.threatLevel)}` : '';
+    lines.push(`${t('competitors.audit', { name: c.competitor })}${threat}`);
   }
   if (fields) {
     for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, b, users, entry.entityType)} → ${value(f, a, users, entry.entityType)}`);

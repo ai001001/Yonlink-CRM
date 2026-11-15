@@ -1,0 +1,45 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+21 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:52676) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/deal-competitors/deal-competitors.r2-integration.test.ts (8 tests | 1 failed) 2890ms
+   ❯ deal competitors & roles R2 permissions (3)
+     × 只读可查看不可修改；经理可管理 / readonly views, manager manages 329ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/deal-competitors/deal-competitors.r2-integration.test.ts > deal competitors & roles R2 permissions > 只读可查看不可修改；经理可管理 / readonly views, manager manages
+AssertionError: expected undefined to be '1d3e2025-ce20-4e1c-8ca9-029803129ac5' // Object.is equality
+
+- Expected:
+"1d3e2025-ce20-4e1c-8ca9-029803129ac5"
+
++ Received:
+undefined
+
+ ❯ tests/deal-competitors/deal-competitors.r2-integration.test.ts:82:110
+     80|     expect((await call(competitorItem.DELETE, { token: manager.token, …
+     81|     // 审计记录操作人 / audit records the actor
+     82|     expect((await prisma.auditLog.findFirstOrThrow({ where: { action: …
+       |                                                                                                              ^
+     83|   });
+     84|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  13:06:08
+   Duration  5.02s (tests 88%, import 7%, transform 5%)
+

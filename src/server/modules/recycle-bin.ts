@@ -50,6 +50,9 @@ interface Payload {
   contacts?: Record<string, unknown>[];
   lineItems?: Record<string, unknown>[];
   quotes?: (Record<string, unknown> & { lines: Record<string, unknown>[] })[];
+  /** 商机联系人角色与竞争对手 / deal contact roles and competitors */
+  contactRoles?: Record<string, unknown>[];
+  competitors?: Record<string, unknown>[];
   /** 指向本记录（或其联系人）的转化来源线索 / leads whose conversion points at this record (or its contacts) */
   conversions: { leadId: string; field: 'convertedAccountId' | 'convertedContactId' | 'convertedDealId'; value: string }[];
 }
@@ -122,6 +125,8 @@ export async function recycle(tx: Prisma.TransactionClient, ctx: AuthContext, en
   if (entity === 'deal') {
     payload.lineItems = await tx.dealLineItem.findMany({ where: { organizationId: org, dealId: id } });
     payload.quotes = await tx.quote.findMany({ where: { organizationId: org, dealId: id }, include: { lines: true } });
+    payload.contactRoles = await tx.dealContactRole.findMany({ where: { organizationId: org, dealId: id } });
+    payload.competitors = await tx.dealCompetitor.findMany({ where: { organizationId: org, dealId: id } });
     reservedNumbers = payload.quotes.map((q) => q.quoteNumber as string);
     const leads = await tx.lead.findMany({ where: { organizationId: org, convertedDealId: id }, select: { id: true } });
     payload.conversions = leads.map((l) => ({ leadId: l.id, field: 'convertedDealId' as const, value: id }));
@@ -134,6 +139,8 @@ export async function recycle(tx: Prisma.TransactionClient, ctx: AuthContext, en
     contacts: payload.contacts?.length ?? 0,
     lineItems: payload.lineItems?.length ?? 0,
     quotes: payload.quotes?.length ?? 0,
+    contactRoles: payload.contactRoles?.length ?? 0,
+    competitors: payload.competitors?.length ?? 0,
   };
   const now = new Date();
   // 同一记录不会重复进入回收站（恢复时会移除条目）；以防万一先清理旧条目
@@ -284,6 +291,15 @@ export async function restoreItem(ctx: AuthContext, itemId: string) {
         await tx.quote.create({ data: revive<Prisma.QuoteUncheckedCreateInput>(quote, org) });
         await tx.quoteLineItem.createMany({ data: lines.map((l) => revive<Prisma.QuoteLineItemCreateManyInput>(l, org)) });
       }
+      await tx.dealCompetitor.createMany({ data: (p.competitors ?? []).map((c) => revive<Prisma.DealCompetitorCreateManyInput>(c, org)) });
+      // 联系人角色：联系人仍存在且仍属于商机客户时恢复 / restore roles whose contact still exists in the deal's account
+      const roles = p.contactRoles ?? [];
+      const contactIds = new Set(
+        (await tx.contact.findMany({ where: { organizationId: org, accountId: rec.accountId, id: { in: roles.map((r) => r.contactId as string) } }, select: { id: true } })).map((c) => c.id),
+      );
+      const kept = roles.filter((r) => contactIds.has(r.contactId as string));
+      if (kept.length < roles.length) skipped.push('contactRoles');
+      await tx.dealContactRole.createMany({ data: kept.map((r) => revive<Prisma.DealContactRoleCreateManyInput>(r, org)) });
     }
 
     await tx.note.createMany({ data: p.notes.map((n) => revive<Prisma.NoteCreateManyInput>(n, org)) });

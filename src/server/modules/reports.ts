@@ -123,6 +123,26 @@ export async function salesReport(ctx: AuthContext, query: z.infer<typeof report
     prisma.deal.groupBy({ by: ['currency'], where: { organizationId: org, ...owner }, _count: { _all: true }, orderBy: { currency: 'asc' } }),
   ]);
 
+  // 竞争对手胜负（名称不区分大小写合并，显示最早录入的写法；在手不限时间，赢单/输单按预计成交日期落在时间段内）
+  // competitor win/loss (names merged case-insensitively, shown as first recorded; open regardless of period, won/lost by close date in period)
+  const competitorRows = await prisma.$queryRaw<{ name: string; open: number; won: number; lost: number; lost_amount: string }[]>`
+    SELECT (array_agg(c.name ORDER BY c.created_at, c.id))[1] AS name,
+      count(*) FILTER (WHERE d.stage NOT IN ('CLOSED_WON', 'CLOSED_LOST'))::int AS open,
+      count(*) FILTER (WHERE d.stage = 'CLOSED_WON' AND d.expected_close_date BETWEEN ${period.from}::date AND ${period.to}::date)::int AS won,
+      count(*) FILTER (WHERE d.stage = 'CLOSED_LOST' AND d.expected_close_date BETWEEN ${period.from}::date AND ${period.to}::date)::int AS lost,
+      coalesce(sum(d.amount) FILTER (WHERE d.stage = 'CLOSED_LOST' AND d.expected_close_date BETWEEN ${period.from}::date AND ${period.to}::date), 0)::text AS lost_amount
+    FROM deal_competitors c
+    JOIN deals d ON d.organization_id = c.organization_id AND d.id = c.deal_id
+    WHERE c.organization_id = ${org}::uuid AND d.currency = ${query.currency}
+      AND (${forced}::uuid IS NULL OR d.owner_id = ${forced}::uuid)
+      AND (${wanted}::uuid IS NULL OR d.owner_id = ${wanted}::uuid)
+    GROUP BY lower(c.name)`;
+  const competitors = competitorRows
+    .map((r) => ({ name: r.name, openCount: r.open, wonCount: r.won, lostCount: r.lost, lostAmount: money(new Prisma.Decimal(r.lost_amount)), winRate: rate(r.won, r.won + r.lost) }))
+    .filter((r) => r.openCount + r.wonCount + r.lostCount > 0)
+    .sort((x, y) => y.lostCount - x.lostCount || y.openCount + y.wonCount - (x.openCount + x.wonCount) || x.name.localeCompare(y.name))
+    .slice(0, 20);
+
   // 全部币种折合本币（按今天的汇率）/ all currencies in the base currency (today's rates)
   const [openByCurrency, wonByCurrency, rates] = await Promise.all([
     prisma.deal.groupBy({ by: ['currency'], where: { organizationId: org, ...owner, stage: { in: [...OPEN_STAGES] } }, _sum: { amount: true }, orderBy: { currency: 'asc' } }),
@@ -229,5 +249,6 @@ export async function salesReport(ctx: AuthContext, query: z.infer<typeof report
     owners,
     leadSources: bySource,
     quotes: quoteRows,
+    competitors,
   };
 }

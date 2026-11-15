@@ -1,0 +1,55 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+21 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:51977) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/deal-competitors/deal-competitors.r1-functional.test.ts (8 tests | 1 failed) 3425ms
+   ❯ deal competitors & roles R1 recycle, report, demo (3)
+     × 报表：竞争对手胜负（名称合并、币种筛选）与导出 / report win/loss and export 288ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/deal-competitors/deal-competitors.r1-functional.test.ts > deal competitors & roles R1 recycle, report, demo > 报表：竞争对手胜负（名称合并、币种筛选）与导出 / report win/loss and export
+AssertionError: expected [ { name: 'acme', …(5) }, …(1) ] to deeply equal [ { name: 'ACME', …(5) }, …(1) ]
+
+- Expected
++ Received
+
+@@ -1,10 +1,10 @@
+  [
+    {
+      "lostAmount": "250.50",
+      "lostCount": 1,
+-     "name": "ACME",
++     "name": "acme",
+      "openCount": 1,
+      "winRate": 50,
+      "wonCount": 1,
+    },
+    {
+
+ ❯ tests/deal-competitors/deal-competitors.r1-functional.test.ts:196:29
+    194|     await addCompetitor({ name: '小对手' }, open.id);
+    195|     const rep = (await call(sales.GET, { token: a.token, query: { curr…
+    196|     expect(rep.competitors).toEqual([
+       |                             ^
+    197|       { name: 'ACME', openCount: 1, wonCount: 1, lostCount: 1, lostAmo…
+    198|       { name: '小对手', openCount: 1, wonCount: 0, lostCount: 0, lostAmou…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  13:04:55
+   Duration  6.11s (tests 80%, transform 11%, import 8%)
+

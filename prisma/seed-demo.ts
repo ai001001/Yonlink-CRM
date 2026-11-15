@@ -16,7 +16,7 @@ import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
 import { toBase } from '../src/server/modules/exchange-rates';
 import { Prisma } from '../src/generated/prisma/client';
-import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -178,6 +178,23 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         });
         dealIds[d.key] = created.id;
       }
+
+      // 商机竞争对手与联系人角色 / deal competitors and contact roles
+      const competitors = demoDealCompetitors(data);
+      await tx.dealCompetitor.createMany({
+        data: competitors.map((c) => ({ organizationId: o, dealId: dealIds[c.deal]!, name: c.competitor.name, threatLevel: c.competitor.threatLevel, strengths: c.competitor.strengths, weaknesses: c.competitor.weaknesses })),
+      });
+      const contactIds = new Map(
+        (await tx.contact.findMany({ where: { organizationId: o }, select: { id: true, name: true, accountId: true } })).map((c) => [`${c.accountId}|${c.name}`, c.id]),
+      );
+      const roles = demoContactRoles(data);
+      await tx.dealContactRole.createMany({
+        data: roles.map((r) => {
+          const deal = data.deals.find((d) => d.key === r.deal)!;
+          const contact = data.accounts.find((a) => a.key === deal.account)!.contacts[r.contactIndex]!;
+          return { organizationId: o, dealId: dealIds[r.deal]!, contactId: contactIds.get(`${accountIds[deal.account]}|【演示】${contact.name}`)!, role: r.role, isPrimary: r.isPrimary };
+        }),
+      });
 
       const catalog = new Map(data.products.map((p) => [p.sku, p]));
       await tx.dealLineItem.createMany({
@@ -542,7 +559,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length + 1} 客户（含 1 条重复）、${data.accounts.reduce((n, a) => n + a.contacts.length, 0) + 2} 联系人、` +
-      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
+      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
   );
 }
 

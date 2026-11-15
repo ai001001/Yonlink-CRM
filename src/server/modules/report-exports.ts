@@ -93,6 +93,10 @@ export async function exportSalesReport(ctx: AuthContext, input: Record<string, 
     [t('reports.quotes')],
     [t('reportExport.status'), t('reports.col.count'), t('reports.col.amount')],
     ...r.quotes.map((q) => [tEnum('quoteStatus', q.status), q.count, q.amount]),
+    [],
+    [t('reports.competitors')],
+    [t('competitors.name'), t('reports.col.openCount'), t('reports.col.wonCount'), t('reports.col.lostCount'), t('reportExport.lostAmount'), percent('reports.col.winRate')],
+    ...r.competitors.map((c) => [c.name, c.openCount, c.wonCount, c.lostCount, c.lostAmount, pct(c.winRate)]),
   ];
   const csv = toCsv([t('reports.title')], rows);
   await auditReport(ctx, 'sales', { currency: r.currency, from: r.from, to: r.to, ownerId: query.ownerId }, rows.length);

@@ -14,39 +14,41 @@ datasource db {
 }
 
 model Organization {
-  id              String               @id @default(uuid()) @db.Uuid
-  name            String               @db.VarChar(200)
-  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
-  users           User[]
-  accounts        Account[]
-  contacts        Contact[]
-  leads           Lead[]
-  deals           Deal[]
-  activities      Activity[]
-  auditLogs       AuditLog[]
-  notes           Note[]
-  products        Product[]
-  dealItems       DealLineItem[]
-  quotes          Quote[]
-  quoteItems      QuoteLineItem[]
-  tags            Tag[]
-  leadTags        LeadTag[]
-  accountTags     AccountTag[]
-  dealTags        DealTag[]
-  recycleBin      RecycleBinItem[]
-  savedViews      SavedView[]
-  viewDefaults    UserViewDefault[]
-  attachments     Attachment[]
-  salesTargets    SalesTarget[]
-  notifications   Notification[]
-  salesOrders     SalesOrder[]
-  salesOrderItems SalesOrderLineItem[]
-  invoices        Invoice[]
-  invoiceItems    InvoiceLineItem[]
-  invoicePayments InvoicePayment[]
-  exchangeRates   ExchangeRate[]
-  campaigns       Campaign[]
+  id               String               @id @default(uuid()) @db.Uuid
+  name             String               @db.VarChar(200)
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  users            User[]
+  accounts         Account[]
+  contacts         Contact[]
+  leads            Lead[]
+  deals            Deal[]
+  activities       Activity[]
+  auditLogs        AuditLog[]
+  notes            Note[]
+  products         Product[]
+  dealItems        DealLineItem[]
+  quotes           Quote[]
+  quoteItems       QuoteLineItem[]
+  tags             Tag[]
+  leadTags         LeadTag[]
+  accountTags      AccountTag[]
+  dealTags         DealTag[]
+  recycleBin       RecycleBinItem[]
+  savedViews       SavedView[]
+  viewDefaults     UserViewDefault[]
+  attachments      Attachment[]
+  salesTargets     SalesTarget[]
+  notifications    Notification[]
+  salesOrders      SalesOrder[]
+  salesOrderItems  SalesOrderLineItem[]
+  invoices         Invoice[]
+  invoiceItems     InvoiceLineItem[]
+  invoicePayments  InvoicePayment[]
+  exchangeRates    ExchangeRate[]
+  campaigns        Campaign[]
+  dealContactRoles DealContactRole[]
+  dealCompetitors  DealCompetitor[]
 
   @@map("organizations")
 }
@@ -203,21 +205,23 @@ model Account {
 }
 
 model Contact {
-  id             String       @id @default(uuid()) @db.Uuid
-  organizationId String       @map("organization_id") @db.Uuid
-  accountId      String       @map("account_id") @db.Uuid
-  name           String       @db.VarChar(100)
-  title          String?      @db.VarChar(100)
-  phone          String?      @db.VarChar(50)
-  email          String?      @db.VarChar(254)
-  isPrimary      Boolean      @default(false) @map("is_primary")
-  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  accountId      String            @map("account_id") @db.Uuid
+  name           String            @db.VarChar(100)
+  title          String?           @db.VarChar(100)
+  phone          String?           @db.VarChar(50)
+  email          String?           @db.VarChar(254)
+  isPrimary      Boolean           @default(false) @map("is_primary")
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   // 删除客户时级联删除其联系人 / contacts are deleted with their account
-  account        Account      @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Cascade)
-  convertedLeads Lead[]       @relation("LeadConvertedContact")
+  account        Account           @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Cascade)
+  convertedLeads Lead[]            @relation("LeadConvertedContact")
+  dealRoles      DealContactRole[]
 
+  @@unique([organizationId, id])
   @@index([organizationId, accountId])
   @@map("contacts")
 }
@@ -234,34 +238,36 @@ enum DealStage {
 }
 
 model Deal {
-  id                String         @id @default(uuid()) @db.Uuid
-  organizationId    String         @map("organization_id") @db.Uuid
-  ownerId           String?        @map("owner_id") @db.Uuid
+  id                String            @id @default(uuid()) @db.Uuid
+  organizationId    String            @map("organization_id") @db.Uuid
+  ownerId           String?           @map("owner_id") @db.Uuid
   /// 来源市场活动 / source campaign
-  campaignId        String?        @map("campaign_id") @db.Uuid
-  accountId         String         @map("account_id") @db.Uuid
-  name              String         @db.VarChar(200)
-  amount            Decimal        @default(0) @db.Decimal(18, 2)
-  currency          String         @default("CNY") @db.Char(3)
-  stage             DealStage      @default(QUALIFICATION)
-  expectedCloseDate DateTime?      @map("expected_close_date") @db.Date
-  description       String?        @db.Text
-  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization      Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner             User?          @relation("DealOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  campaignId        String?           @map("campaign_id") @db.Uuid
+  accountId         String            @map("account_id") @db.Uuid
+  name              String            @db.VarChar(200)
+  amount            Decimal           @default(0) @db.Decimal(18, 2)
+  currency          String            @default("CNY") @db.Char(3)
+  stage             DealStage         @default(QUALIFICATION)
+  expectedCloseDate DateTime?         @map("expected_close_date") @db.Date
+  description       String?           @db.Text
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner             User?             @relation("DealOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
   notifications     Notification[]
   salesOrders       SalesOrder[]
   invoices          Invoice[]
   // 有商机的客户不能删除 / accounts with deals cannot be deleted
-  account           Account        @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Restrict)
+  account           Account           @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Restrict)
   activities        Activity[]
   notes             Note[]
   lineItems         DealLineItem[]
   quotes            Quote[]
-  convertedLeads    Lead[]         @relation("LeadConvertedDeal")
+  convertedLeads    Lead[]            @relation("LeadConvertedDeal")
   tags              DealTag[]
   attachments       Attachment[]
+  contactRoles      DealContactRole[]
+  competitors       DealCompetitor[]
 
   // 来源市场活动；有关联记录的活动不能删除 / source campaign; campaigns with linked records cannot be deleted
   campaign Campaign? @relation(fields: [organizationId, campaignId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
@@ -989,4 +995,68 @@ model Campaign {
   @@unique([organizationId, name])
   @@index([organizationId, status])
   @@map("campaigns")
+}
+
+/// 商机联系人角色（对标 Zoho Contact Roles）/ deal contact role (cf. Zoho contact roles)
+enum DealContactRoleType {
+  DECISION_MAKER
+  EVALUATOR
+  INFLUENCER
+  TECHNICAL_BUYER
+  PURCHASING
+  END_USER
+  OTHER
+
+  @@map("deal_contact_role_type")
+}
+
+/// 竞争对手威胁程度 / competitor threat level
+enum CompetitorThreat {
+  LOW
+  MEDIUM
+  HIGH
+
+  @@map("competitor_threat")
+}
+
+/// 商机联系人角色：联系人必须属于商机的客户；同一商机中一个联系人只出现一次。
+/// 删除联系人或商机时一并删除（商机删除前已快照到回收站）。
+/// Deal contact role: the contact belongs to the deal's account and appears once per deal; removed with the
+/// contact or the deal (deals are snapshotted into the recycle bin first).
+model DealContactRole {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  dealId         String              @map("deal_id") @db.Uuid
+  contactId      String              @map("contact_id") @db.Uuid
+  role           DealContactRoleType
+  /// 主要联系人（每个商机最多一个）/ primary contact (at most one per deal)
+  isPrimary      Boolean             @default(false) @map("is_primary")
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deal           Deal                @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Cascade)
+  contact        Contact             @relation(fields: [organizationId, contactId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([organizationId, dealId, contactId])
+  @@index([organizationId, contactId])
+  @@map("deal_contact_roles")
+}
+
+/// 商机竞争对手：名称在同一商机内唯一（不区分大小写）；优势、劣势为长文本，审计只记“已修改”。
+/// Deal competitor: name unique per deal (case-insensitive); strengths and weaknesses are long text (audited as changed only).
+model DealCompetitor {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  dealId         String           @map("deal_id") @db.Uuid
+  name           String           @db.VarChar(100)
+  threatLevel    CompetitorThreat @default(MEDIUM) @map("threat_level")
+  strengths      String?          @db.Text
+  weaknesses     String?          @db.Text
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deal           Deal             @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Cascade)
+
+  @@index([organizationId, dealId])
+  @@map("deal_competitors")
 }

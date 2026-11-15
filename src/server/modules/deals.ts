@@ -12,6 +12,7 @@ import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermiss
 import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
 import { assertCampaign } from './campaign-links';
+import { removeStaleRoles } from './deal-contact-roles';
 import { notifyAssigned } from './notifications';
 import { recycle } from './recycle-bin';
 import { tagFilter, tagsInclude } from './tags';
@@ -183,6 +184,8 @@ export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<ty
     if (Object.keys(fields).length) {
       await audit(tx, { ...by(ctx), action: 'deal.update', entityType: 'deal', entityId: deal.id, changes: { fields } });
     }
+    // 换客户：移除不属于新客户的联系人角色 / account changed: drop roles of contacts outside the new account
+    if (deal.accountId !== current.accountId) await removeStaleRoles(tx, ctx, deal.id, deal.accountId);
     return deal;
   });
 }

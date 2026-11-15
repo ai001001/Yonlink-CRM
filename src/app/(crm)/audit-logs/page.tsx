@@ -17,7 +17,7 @@ const ACTIONS: Record<string, string[]> = {
   lead: ['create', 'update', 'delete', 'restore', 'purge', 'expire', 'merge', 'convert', 'tags', 'import', 'export'],
   account: ['create', 'update', 'delete', 'restore', 'purge', 'expire', 'merge', 'tags', 'import', 'export'],
   contact: ['create', 'update', 'delete', 'export'],
-  deal: ['create', 'update', 'delete', 'restore', 'purge', 'expire', 'tags', 'export', 'add_item', 'update_item', 'remove_item'],
+  deal: ['create', 'update', 'delete', 'restore', 'purge', 'expire', 'tags', 'export', 'add_item', 'update_item', 'remove_item', 'add_contact_role', 'update_contact_role', 'remove_contact_role', 'add_competitor', 'update_competitor', 'remove_competitor'],
   activity: ['create', 'update', 'delete', 'export'],
   note: ['create', 'update', 'delete'],
   product: ['create', 'update', 'delete'],

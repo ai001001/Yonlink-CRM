@@ -13,6 +13,8 @@ import { AuditTrail } from '@/components/AuditTrail';
 import { DealBoard } from '@/components/DealBoard';
 import { DealItemsPanel } from '@/components/DealItemsPanel';
 import { DealQuotesPanel } from '@/components/DealQuotesPanel';
+import { DealContactRolesPanel } from '@/components/DealContactRolesPanel';
+import { DealCompetitorsPanel } from '@/components/DealCompetitorsPanel';
 import { NotesPanel } from '@/components/NotesPanel';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { usePermissions } from '@/components/AuthProvider';
@@ -298,7 +300,8 @@ export default function DealsPage() {
 
       <Drawer
         title={detail ? `${t('deals.detail')} · ${detail.name}` : t('deals.detail')}
-        size={720}
+        // 9 个页签需一行放下：页签折叠到“…”菜单后点击不稳定 / 9 tabs must fit on one line: tab clicks are unreliable once tabs collapse into the “…” menu
+        size={900}
         open={detail !== null}
         onClose={() => setDetail(null)}
         extra={detail && perm.canEdit(detail) && <Button onClick={() => openForm(detail)}>{t('common.edit')}</Button>}
@@ -361,6 +364,16 @@ export default function DealsPage() {
                 key: 'quotes',
                 label: t('quotes.tab'),
                 children: <DealQuotesPanel key={`quotes-${detail.id}`} deal={detail} />,
+              },
+              {
+                key: 'contact-roles',
+                label: t('contactRoles.tab'),
+                children: <DealContactRolesPanel key={`roles-${detail.id}-${detail.accountId}`} deal={detail} />,
+              },
+              {
+                key: 'competitors',
+                label: t('competitors.tab'),
+                children: <DealCompetitorsPanel key={`competitors-${detail.id}`} deal={detail} />,
               },
               {
                 key: 'notes',

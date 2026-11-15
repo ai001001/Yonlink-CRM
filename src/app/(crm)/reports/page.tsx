@@ -44,6 +44,7 @@ interface Report {
   owners: { ownerId: string | null; name: string | null; openCount: number; openAmount: string; wonCount: number; wonAmount: string; lostCount: number; winRate: number | null; activities: number }[];
   leadSources: { source: string | null; total: number; converted: number; conversionRate: number | null }[];
   quotes: { status: string; count: number; amount: string }[];
+  competitors: { name: string; openCount: number; wonCount: number; lostCount: number; lostAmount: string; winRate: number | null }[];
 }
 
 /** 百分比显示 / percentage display */
@@ -238,6 +239,25 @@ export default function ReportsPage() {
                 </Card>
               </Col>
             </Row>
+            <Card size="small" title={t('reports.competitors')} extra={<Typography.Text type="secondary">{t('reports.competitorsHint')}</Typography.Text>} style={{ marginTop: 16 }}>
+              <Table
+                data-testid="table-competitors"
+                rowKey="name"
+                size="small"
+                pagination={false}
+                scroll={{ x: 'max-content' }}
+                dataSource={data.competitors}
+                locale={{ emptyText: t('common.empty') }}
+                columns={[
+                  { title: t('competitors.name'), dataIndex: 'name' },
+                  { title: t('reports.col.openCount'), dataIndex: 'openCount', align: 'right' },
+                  { title: t('reports.col.wonCount'), dataIndex: 'wonCount', align: 'right' },
+                  { title: t('reports.col.lostCount'), dataIndex: 'lostCount', align: 'right' },
+                  { title: t('reportExport.lostAmount'), align: 'right', render: (_, r) => m(r.lostAmount) },
+                  { title: t('reports.col.winRate'), align: 'right', render: (_, r) => pct(r.winRate) },
+                ]}
+              />
+            </Card>
           </div>
         )}
       </Spin>
