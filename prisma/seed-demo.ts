@@ -99,6 +99,8 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.exchangeRate.deleteMany({ where: { organizationId: o } });
         // 线索、商机已删除，活动可删 / leads and deals are gone, so campaigns can go
         await tx.campaign.deleteMany({ where: { organizationId: o } });
+        // 演示账号的工作台布局恢复默认 / demo users' dashboard layouts back to default
+        await tx.userDashboardLayout.deleteMany({ where: { organizationId: o } });
       }
 
       // 市场活动（线索与商机引用，先写入）/ campaigns first (leads and deals reference them)

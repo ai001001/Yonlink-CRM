@@ -8,6 +8,7 @@ import { prisma } from '../db';
 import { visible } from '../permissions';
 import { containsText } from '../validation';
 import { activityInclude } from './activities';
+import { getLayout, type DashboardWidget } from './dashboard-layout';
 
 const CLOSED = ['CLOSED_WON', 'CLOSED_LOST'] as const;
 
@@ -25,68 +26,70 @@ function toSums(rows: { currency: string; _sum: { amount: { toString(): string }
   return rows.map((r) => ({ currency: r.currency, amount: (r._sum?.amount ?? 0).toString() }));
 }
 
+/** 即将成交的天数窗口 / closing-soon window in days */
+export const CLOSING_SOON_DAYS = 30;
+
 /**
- * 工作台数据：客户/线索/商机数量，商机金额（全部、进行中、赢单，按币种），阶段分布，最近跟进，我的待办。
- * Dashboard data: counts, deal amounts (all / open / won per currency), stage breakdown,
- * recent activities and my pending items.
+ * 工作台数据：只计算当前用户布局中显示的卡片（隐藏的卡片对应字段为 null）。
+ * 卡片：数量、商机金额（全部、进行中、赢单，按币种）、我的待办、最近跟进、即将成交（30 天内预计成交、含已逾期的进行中商机）、阶段分布。
+ * Dashboard data: only the cards in the user's layout are computed (hidden cards come back as null).
+ * Cards: counts, deal amounts (all / open / won per currency), my to-dos, recent activities, closing soon
+ * (open deals expected to close within 30 days, overdue included) and the stage breakdown.
  */
 export async function getDashboard(ctx: AuthContext) {
   // 统计与搜索遵循可见范围（销售代表只统计自己负责的）/ figures and search follow visibility
   const scope = visible(ctx);
   const now = new Date();
-  const [accounts, leads, deals, all, open, won, byStage, recentActivities, myTodos, myTodoCount, myOverdueCount] = await prisma.$transaction([
-    prisma.account.count({ where: scope }),
-    prisma.lead.count({ where: scope }),
-    prisma.deal.count({ where: scope }),
-    prisma.deal.groupBy({ by: ['currency'], where: scope, _sum: { amount: true }, orderBy: { currency: 'asc' } }),
-    prisma.deal.groupBy({
-      by: ['currency'],
-      where: { ...scope, stage: { notIn: [...CLOSED] } },
-      _sum: { amount: true },
-      orderBy: { currency: 'asc' },
-    }),
-    prisma.deal.groupBy({
-      by: ['currency'],
-      where: { ...scope, stage: 'CLOSED_WON' },
-      _sum: { amount: true },
-      orderBy: { currency: 'asc' },
-    }),
-    prisma.deal.groupBy({
-      by: ['stage', 'currency'],
-      where: scope,
-      _count: { _all: true },
-      _sum: { amount: true },
-      orderBy: [{ stage: 'asc' }, { currency: 'asc' }],
-    }),
-    prisma.activity.findMany({
-      where: scope,
-      include: activityInclude,
-      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
-      take: 10,
-    }),
-    prisma.activity.findMany({
-      where: { ...scope, ownerId: ctx.userId, completed: false },
-      include: activityInclude,
-      orderBy: [{ dueAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }],
-      take: 10,
-    }),
-    prisma.activity.count({ where: { ...scope, ownerId: ctx.userId, completed: false } }),
-    prisma.activity.count({ where: { ...scope, ownerId: ctx.userId, completed: false, dueAt: { lt: now } } }),
+  const layout = await getLayout(ctx);
+  const on = (w: DashboardWidget) => layout.widgets.includes(w);
+  const todoWhere = { ...scope, ownerId: ctx.userId, completed: false };
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const soonWhere = { ...scope, stage: { notIn: [...CLOSED] }, expectedCloseDate: { lte: new Date(today.getTime() + CLOSING_SOON_DAYS * 86_400_000) } };
+  const sumBy = (where: object) => prisma.deal.groupBy({ by: ['currency'], where, _sum: { amount: true }, orderBy: { currency: 'asc' } });
+
+  const [counts, dealAmounts, todos, recentActivities, closingSoon, byStage] = await Promise.all([
+    on('counts') ? Promise.all([prisma.account.count({ where: scope }), prisma.lead.count({ where: scope }), prisma.deal.count({ where: scope })]) : null,
+    on('dealAmounts') ? Promise.all([sumBy(scope), sumBy({ ...scope, stage: { notIn: [...CLOSED] } }), sumBy({ ...scope, stage: 'CLOSED_WON' })]) : null,
+    on('myTodos')
+      ? Promise.all([
+          prisma.activity.findMany({ where: todoWhere, include: activityInclude, orderBy: [{ dueAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }], take: 10 }),
+          prisma.activity.count({ where: todoWhere }),
+          prisma.activity.count({ where: { ...todoWhere, dueAt: { lt: now } } }),
+        ])
+      : null,
+    on('recentActivities') ? prisma.activity.findMany({ where: scope, include: activityInclude, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }], take: 10 }) : null,
+    on('closingSoon')
+      ? Promise.all([
+          prisma.deal.findMany({
+            where: soonWhere,
+            select: { id: true, name: true, amount: true, currency: true, stage: true, expectedCloseDate: true, account: { select: { id: true, name: true } }, owner: { select: { id: true, name: true } } },
+            orderBy: [{ expectedCloseDate: 'asc' }, { id: 'asc' }],
+            take: 10,
+          }),
+          prisma.deal.count({ where: soonWhere }),
+        ])
+      : null,
+    on('stages')
+      ? prisma.deal.groupBy({ by: ['stage', 'currency'], where: scope, _count: { _all: true }, _sum: { amount: true }, orderBy: [{ stage: 'asc' }, { currency: 'asc' }] })
+      : null,
   ]);
 
   return {
-    counts: { accounts, leads, deals },
-    dealAmounts: { all: toSums(all), open: toSums(open), won: toSums(won) },
-    stages: byStage.map((s) => ({
-      stage: s.stage,
-      currency: s.currency,
-      count: (s._count as { _all: number } | undefined)?._all ?? 0,
-      amount: (s._sum?.amount ?? 0).toString(),
-    })),
+    layout: layout.widgets,
+    counts: counts && { accounts: counts[0], leads: counts[1], deals: counts[2] },
+    dealAmounts: dealAmounts && { all: toSums(dealAmounts[0]), open: toSums(dealAmounts[1]), won: toSums(dealAmounts[2]) },
+    stages:
+      byStage?.map((s) => ({
+        stage: s.stage,
+        currency: s.currency,
+        count: (s._count as { _all: number } | undefined)?._all ?? 0,
+        amount: (s._sum?.amount ?? 0).toString(),
+      })) ?? null,
     recentActivities,
-    myTodos,
-    myTodoCount,
-    myOverdueCount,
+    myTodos: todos?.[0] ?? null,
+    myTodoCount: todos?.[1] ?? null,
+    myOverdueCount: todos?.[2] ?? null,
+    closingSoon: closingSoon && { items: closingSoon[0], total: closingSoon[1], days: CLOSING_SOON_DAYS },
   };
 }
 

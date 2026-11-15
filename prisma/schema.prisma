@@ -14,10 +14,10 @@ datasource db {
 }
 
 model Organization {
-  id               String               @id @default(uuid()) @db.Uuid
-  name             String               @db.VarChar(200)
-  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id               String                @id @default(uuid()) @db.Uuid
+  name             String                @db.VarChar(200)
+  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
   users            User[]
   accounts         Account[]
   contacts         Contact[]
@@ -37,6 +37,7 @@ model Organization {
   recycleBin       RecycleBinItem[]
   savedViews       SavedView[]
   viewDefaults     UserViewDefault[]
+  dashboardLayouts UserDashboardLayout[]
   attachments      Attachment[]
   salesTargets     SalesTarget[]
   notifications    Notification[]
@@ -54,40 +55,41 @@ model Organization {
 }
 
 model User {
-  id                String            @id @default(uuid()) @db.Uuid
-  organizationId    String            @map("organization_id") @db.Uuid
-  email             String            @db.VarChar(254)
-  name              String            @db.VarChar(100)
-  passwordHash      String            @map("password_hash")
-  notifications     Notification[]    @relation("NotificationRecipient")
-  notificationsSent Notification[]    @relation("NotificationActor")
-  createdOrders     SalesOrder[]      @relation("OrderCreator")
-  createdInvoices   Invoice[]         @relation("InvoiceCreator")
-  recordedPayments  InvoicePayment[]  @relation("PaymentRecorder")
-  ratesCreated      ExchangeRate[]    @relation("RateCreator")
-  ownedCampaigns    Campaign[]        @relation("CampaignOwner")
+  id                String               @id @default(uuid()) @db.Uuid
+  organizationId    String               @map("organization_id") @db.Uuid
+  email             String               @db.VarChar(254)
+  name              String               @db.VarChar(100)
+  passwordHash      String               @map("password_hash")
+  notifications     Notification[]       @relation("NotificationRecipient")
+  notificationsSent Notification[]       @relation("NotificationActor")
+  createdOrders     SalesOrder[]         @relation("OrderCreator")
+  createdInvoices   Invoice[]            @relation("InvoiceCreator")
+  recordedPayments  InvoicePayment[]     @relation("PaymentRecorder")
+  ratesCreated      ExchangeRate[]       @relation("RateCreator")
+  ownedCampaigns    Campaign[]           @relation("CampaignOwner")
   /// 角色（服务端每个请求从数据库读取）/ role (read from the DB on every request)
-  role              UserRole          @default(SALES)
-  isActive          Boolean           @default(true) @map("is_active")
+  role              UserRole             @default(SALES)
+  isActive          Boolean              @default(true) @map("is_active")
   /// 演示账号：仅在 DEMO_LOGIN_ENABLED=1 时可免密一键登录 / demo account: password-less login only when DEMO_LOGIN_ENABLED=1
-  isDemo            Boolean           @default(false) @map("is_demo")
-  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  isDemo            Boolean              @default(false) @map("is_demo")
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   sessions          Session[]
-  ownedLeads        Lead[]            @relation("LeadOwner")
-  ownedAccounts     Account[]         @relation("AccountOwner")
-  ownedDeals        Deal[]            @relation("DealOwner")
-  ownedActivities   Activity[]        @relation("ActivityOwner")
-  auditLogs         AuditLog[]        @relation("AuditActor")
-  notes             Note[]            @relation("NoteAuthor")
-  createdQuotes     Quote[]           @relation("QuoteCreator")
-  deletedItems      RecycleBinItem[]  @relation("RecycleDeleter")
+  ownedLeads        Lead[]               @relation("LeadOwner")
+  ownedAccounts     Account[]            @relation("AccountOwner")
+  ownedDeals        Deal[]               @relation("DealOwner")
+  ownedActivities   Activity[]           @relation("ActivityOwner")
+  auditLogs         AuditLog[]           @relation("AuditActor")
+  notes             Note[]               @relation("NoteAuthor")
+  createdQuotes     Quote[]              @relation("QuoteCreator")
+  deletedItems      RecycleBinItem[]     @relation("RecycleDeleter")
   savedViews        SavedView[]
   viewDefaults      UserViewDefault[]
-  uploads           Attachment[]      @relation("AttachmentUploader")
-  salesTargets      SalesTarget[]     @relation("TargetOwner")
-  targetsUpdated    SalesTarget[]     @relation("TargetUpdater")
+  dashboardLayout   UserDashboardLayout?
+  uploads           Attachment[]         @relation("AttachmentUploader")
+  salesTargets      SalesTarget[]        @relation("TargetOwner")
+  targetsUpdated    SalesTarget[]        @relation("TargetUpdater")
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -1059,4 +1061,18 @@ model DealCompetitor {
 
   @@index([organizationId, dealId])
   @@map("deal_competitors")
+}
+
+/// 个人工作台布局：按顺序保存要显示的卡片键（未列出的即隐藏）；没有记录时使用默认布局。
+/// Personal dashboard layout: the keys of the visible cards in order (unlisted cards are hidden); no row means the default layout.
+model UserDashboardLayout {
+  userId         String       @id @map("user_id") @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  widgets        Json
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [organizationId, userId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("user_dashboard_layouts")
 }

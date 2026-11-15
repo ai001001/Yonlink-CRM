@@ -1012,6 +1012,21 @@ export const zhCN = {
   'recycle.summary.contactRoles': '联系人角色 {n}',
   'recycle.summary.competitors': '竞争对手 {n}',
   'recycle.skipped.contactRoles': '部分联系人角色（联系人已删除）',
+  'dashboard.customize': '自定义工作台',
+  'dashboard.customizeHint': '勾选要显示的卡片，用箭头调整顺序。布局只对你自己生效，换设备登录也保持一致。',
+  'dashboard.resetLayout': '恢复默认',
+  'dashboard.confirmReset': '恢复默认布局？（显示全部卡片）',
+  'dashboard.layoutReset': '已恢复默认布局',
+  'dashboard.moveUp': '上移',
+  'dashboard.moveDown': '下移',
+  'dashboard.atLeastOne': '至少保留一张卡片',
+  'dashboard.closingSoon': '即将成交（{days} 天内）',
+  'dashboard.widget.counts': '客户、线索、商机数量',
+  'dashboard.widget.dealAmounts': '商机金额汇总',
+  'dashboard.widget.myTodos': '我的待办',
+  'dashboard.widget.recentActivities': '最近跟进记录',
+  'dashboard.widget.closingSoon': '即将成交的商机',
+  'dashboard.widget.stages': '销售阶段分布',
 } as const;
 
 export type MessageKey = keyof typeof zhCN;
