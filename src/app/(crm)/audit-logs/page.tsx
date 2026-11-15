@@ -29,8 +29,8 @@ const ACTIONS: Record<string, string[]> = {
   view: ['create', 'update', 'delete'],
   attachment: ['create', 'delete'],
   target: ['update'],
-  user: ['create', 'update', 'reset_password'],
-  auth: ['login', 'demo_login', 'login_failed', 'logout'],
+  user: ['create', 'update', 'reset_password', 'change_password', 'change_password_failed'],
+  auth: ['login', 'demo_login', 'login_failed', 'logout', 'logout_others'],
 };
 
 export default function AuditLogsPage() {

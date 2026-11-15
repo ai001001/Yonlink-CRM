@@ -1,0 +1,18 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+18 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  03:51:54
+   Duration  5.07s (tests 91%, import 6%, transform 2%)
+

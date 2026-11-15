@@ -24,6 +24,8 @@ export interface AuthContext {
   role: UserRole;
   /** 请求来源（用于审计）/ request origin (for auditing) */
   meta?: RequestMeta;
+  /** 当前会话 ID（修改密码、退出其他设备时保留当前会话）/ current session id (kept when changing the password or signing out elsewhere) */
+  sessionId?: string;
 }
 
 /**
@@ -134,7 +136,7 @@ export async function authenticate(req: Request): Promise<AuthContext> {
   if (!session || session.expiresAt.getTime() <= Date.now() || !session.user.isActive) {
     throw new ApiError(401, 'UNAUTHORIZED', 'Session expired');
   }
-  return { userId: session.user.id, organizationId: session.user.organizationId, role: session.user.role, meta: requestMeta(req) };
+  return { userId: session.user.id, organizationId: session.user.organizationId, role: session.user.role, meta: requestMeta(req), sessionId: session.id };
 }
 
 /**

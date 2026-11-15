@@ -25,6 +25,8 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   signInDemo: (userId: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** 重新读取当前用户（如修改显示名称后）/ reload the current user (e.g. after renaming) */
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -81,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setMe(null);
   }, []);
 
-  return <AuthContext.Provider value={{ me, loading, signIn, signInDemo, signOut }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ me, loading, signIn, signInDemo, signOut, refresh }}>{children}</AuthContext.Provider>;
 }
 
 /**

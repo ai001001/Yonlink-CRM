@@ -6,12 +6,14 @@ import { randomBytes } from 'node:crypto';
 import type { UserRole } from '@/generated/prisma/enums';
 import { hashPassword, hashToken, resetLoginLimiter } from '@/server/auth';
 import { prisma } from '@/server/db';
+import { resetPasswordChangeLimiter } from '@/server/modules/profile';
 
 type Handler = (req: Request, route: { params: Promise<Record<string, string>> }) => Promise<Response>;
 
 /** 清空全部业务数据 / Truncate all data */
 export async function resetDb(): Promise<void> {
   resetLoginLimiter();
+  resetPasswordChangeLimiter();
   await prisma.$executeRawUnsafe(
     'TRUNCATE audit_logs, notifications, invoice_payments, invoice_line_items, invoices, sales_order_line_items, sales_orders, sales_targets, attachments, user_view_defaults, saved_views, recycle_bin_items, lead_tags, account_tags, deal_tags, tags, quote_line_items, quotes, deal_line_items, products, notes, activities, deals, contacts, accounts, leads, sessions, users, organizations RESTART IDENTITY CASCADE',
   );

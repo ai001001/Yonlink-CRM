@@ -12,7 +12,9 @@ import { ApiError, notFound } from '../errors';
 import { requirePermission } from '../permissions';
 import { requiredText } from '../validation';
 
-const password = z.string().min(10).max(200);
+/** 密码规则（新建用户、重置与修改密码共用）/ password rule shared by create, reset and change */
+export const passwordRule = z.string().min(10).max(200);
+const password = passwordRule;
 
 /** 新建用户 / Create user */
 export const userCreateSchema = z.strictObject({

@@ -27,6 +27,7 @@ import {
   ShoppingCartOutlined,
   TeamOutlined,
   UserAddOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import { t, tEnum } from '@/i18n';
 import { useAuth } from './AuthProvider';
@@ -60,7 +61,9 @@ const NAV: { key: string; icon: React.ReactNode; label: string; permission?: str
  */
 function selectedKey(pathname: string): string {
   const path = pathname.replace(/\/$/, '') || '/';
-  return NAV.find((n) => n.key !== '/' && path.startsWith(n.key))?.key ?? '/';
+  if (path === '/') return '/';
+  // 不在导航中的页面（如个人设置）不高亮任何项 / pages outside the navigation (e.g. the profile) highlight nothing
+  return NAV.find((n) => n.key !== '/' && path.startsWith(n.key))?.key ?? '';
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -113,8 +116,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Tag>
           <Dropdown
             menu={{
-              items: [{ key: 'logout', icon: <LogoutOutlined />, label: t('nav.logout') }],
-              onClick: async () => {
+              items: [
+                { key: 'profile', icon: <UserOutlined />, label: t('nav.profile') },
+                { key: 'logout', icon: <LogoutOutlined />, label: t('nav.logout') },
+              ],
+              onClick: async ({ key }) => {
+                if (key === 'profile') {
+                  router.push('/profile');
+                  return;
+                }
                 await signOut();
                 router.replace('/login');
               },
