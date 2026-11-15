@@ -82,6 +82,12 @@ const FIELD_LABELS: Record<string, MessageKey> = {
   threatLevel: 'competitors.threatLevel',
   strengths: 'competitors.strengths',
   weaknesses: 'competitors.weaknesses',
+  ticketNumber: 'tickets.number',
+  contactId: 'tickets.contact',
+  priority: 'tickets.priority',
+  channel: 'tickets.channel',
+  resolution: 'tickets.resolution',
+  resolvedAt: 'tickets.resolvedAt',
 };
 
 // 枚举字段 → 翻译前缀 / enum field → translation prefix
@@ -130,6 +136,10 @@ const fieldLabel = (field: string, entityType: string): string => {
   if (entityType === 'order' && field === 'notes') return t('orders.notes');
   if (entityType === 'invoice' && field === 'subject') return t('invoices.subject');
   if (entityType === 'campaign' && field === 'name') return t('campaigns.name');
+  if (entityType === 'ticket' && field === 'subject') return t('tickets.subject');
+  if (entityType === 'ticket' && field === 'status') return t('tickets.status');
+  if (entityType === 'ticket' && field === 'type') return t('tickets.type');
+  if (entityType === 'ticket' && field === 'dueAt') return t('tickets.dueAt');
   if (entityType === 'campaign' && field === 'status') return t('campaigns.status');
   if (entityType === 'campaign' && field === 'type') return t('campaigns.type');
   if (entityType === 'invoice' && field === 'status') return t('invoices.status');
@@ -152,6 +162,11 @@ function value(field: string, v: unknown, users: Map<string, string>, entityType
   if (entityType === 'order' && field === 'status') return tEnum('orderStatus', String(v));
   if (entityType === 'invoice' && field === 'status') return tEnum('invoiceStatus', String(v));
   if (entityType === 'campaign' && field === 'status') return tEnum('campaignStatus', String(v));
+  if (entityType === 'ticket' && field === 'status') return tEnum('ticketStatus', String(v));
+  if (entityType === 'ticket' && field === 'type') return tEnum('ticketType', String(v));
+  if (entityType === 'ticket' && field === 'priority') return tEnum('ticketPriority', String(v));
+  if (entityType === 'ticket' && field === 'channel') return tEnum('ticketChannel', String(v));
+  if (field === 'resolvedAt') return String(v).replace('T', ' ').slice(0, 16);
   if (entityType === 'campaign' && field === 'type') return tEnum('campaignType', String(v));
   if (ENUM_PREFIX[field]) return tEnum(ENUM_PREFIX[field]!, String(v));
   if (field === 'expectedCloseDate' || field === 'validUntil' || field === 'expectedDelivery' || field === 'invoiceDate' || field === 'dueDate' || field === 'startDate' || field === 'endDate') return String(v).slice(0, 10);

@@ -899,3 +899,50 @@ export function demoContactRoles(data: ReturnType<typeof buildDemoData>): { deal
     return acc.contacts.slice(0, DEMO_ROLE_PLAN.length).map((_, i) => ({ deal: d.key, contactIndex: i, role: DEMO_ROLE_PLAN[i]!, isPrimary: i === 0 }));
   });
 }
+
+/** 演示工单（虚构问题，主题带“【演示】”）/ demo tickets (fictional issues, subjects prefixed with 【演示】) */
+const DEMO_TICKET_PLAN = [
+  { subject: '涡轮增压器异响，怠速时明显', type: 'PROBLEM', priority: 'HIGH', status: 'IN_PROGRESS', channel: 'PHONE', dueInHours: 20, ageDays: 2 },
+  { subject: '询问 4.0L 机型适配的增压器型号', type: 'QUESTION', priority: 'LOW', status: 'RESOLVED', channel: 'EMAIL', dueInHours: -48, ageDays: 9 },
+  { subject: '批次到货外包装破损，需补发 2 件', type: 'PROBLEM', priority: 'URGENT', status: 'OPEN', channel: 'PHONE', dueInHours: -6, ageDays: 1 },
+  { subject: '希望提供中英文双语安装手册', type: 'FEATURE_REQUEST', priority: 'MEDIUM', status: 'WAITING_CUSTOMER', channel: 'WEB', dueInHours: 72, ageDays: 5 },
+  { subject: '质保期内漏油，申请上门检测', type: 'PROBLEM', priority: 'HIGH', status: 'OPEN', channel: 'ONSITE', dueInHours: 30, ageDays: 0 },
+  { subject: '发票抬头信息更正', type: 'QUESTION', priority: 'MEDIUM', status: 'CLOSED', channel: 'EMAIL', dueInHours: -200, ageDays: 20 },
+  { subject: '增压压力偏低，排查执行器', type: 'PROBLEM', priority: 'MEDIUM', status: 'IN_PROGRESS', channel: 'PHONE', dueInHours: -20, ageDays: 4 },
+  { subject: '咨询年度框架协议的阶梯价格', type: 'QUESTION', priority: 'LOW', status: 'OPEN', channel: 'WEB', dueInHours: 96, ageDays: 1 },
+  { subject: '再制造件与新品的质保差异说明', type: 'QUESTION', priority: 'MEDIUM', status: 'RESOLVED', channel: 'PHONE', dueInHours: -30, ageDays: 7 },
+  { subject: '建议增加旧件回收服务', type: 'FEATURE_REQUEST', priority: 'LOW', status: 'CLOSED', channel: 'OTHER', dueInHours: -300, ageDays: 30 },
+] as const;
+
+/** 演示解决方案 / demo resolutions */
+const DEMO_RESOLUTIONS: Record<string, string> = {
+  QUESTION: '已电话说明并发送资料，客户确认无其他疑问。',
+  PROBLEM: '现场检查后更换密封件，试车 30 分钟无异常。',
+  FEATURE_REQUEST: '已记录为产品改进建议，转交产品部门评估。',
+};
+
+/** 演示工单 / Demo ticket */
+export interface DemoTicket {
+  subject: string;
+  account: string;
+  owner: OwnerKey;
+  type: (typeof DEMO_TICKET_PLAN)[number]['type'];
+  priority: (typeof DEMO_TICKET_PLAN)[number]['priority'];
+  status: (typeof DEMO_TICKET_PLAN)[number]['status'];
+  channel: (typeof DEMO_TICKET_PLAN)[number]['channel'];
+  dueInHours: number;
+  ageDays: number;
+  resolution: string | null;
+}
+
+/**
+ * 演示工单：依次分配给前 10 个客户（负责人同客户负责人），联系人取客户第一位联系人。
+ * Demo tickets assigned to the first 10 accounts in turn (owner = account owner; contact = its first contact).
+ */
+export function demoTickets(data: ReturnType<typeof buildDemoData>): DemoTicket[] {
+  return DEMO_TICKET_PLAN.map((p, i) => {
+    const acc = data.accounts[i % data.accounts.length]!;
+    const done = p.status === 'RESOLVED' || p.status === 'CLOSED';
+    return { ...p, subject: `【演示】${p.subject}`, account: acc.key, owner: acc.owner, resolution: done ? DEMO_RESOLUTIONS[p.type]! : null };
+  });
+}

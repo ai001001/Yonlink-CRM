@@ -182,6 +182,11 @@ export async function deleteAccount(ctx: AuthContext, id: string): Promise<void>
   if (dealTotal > 0) {
     throw new ApiError(409, 'CONFLICT', 'Account has deals', { deals: [String(dealTotal)] });
   }
+  // 有服务工单的客户同样不能删除（工单不进回收站）/ accounts with service tickets cannot be deleted either (tickets are not recycled)
+  const ticketTotal = await prisma.ticket.count({ where: { organizationId: ctx.organizationId, accountId: account.id } });
+  if (ticketTotal > 0) {
+    throw new ApiError(409, 'CONFLICT', 'Account has tickets', { tickets: [String(ticketTotal)] });
+  }
   // 若并发新建了商机，数据库 RESTRICT 外键仍会拒绝（P2003 → 409）
   // a concurrently created deal is still blocked by the RESTRICT FK (P2003 → 409)
   await prisma.$transaction(async (tx) => {
@@ -323,7 +328,15 @@ export async function deleteContact(ctx: AuthContext, id: string): Promise<void>
   const { account, ...contact } = await requireContact(ctx, id);
   assertCanUpdate(ctx, account);
   await prisma.$transaction(async (tx) => {
+    // 工单的联系人置空（工单保留）/ clear the contact on tickets (tickets are kept)
+    const tickets = await tx.ticket.updateMany({ where: { organizationId: ctx.organizationId, contactId: id }, data: { contactId: null } });
     await tx.contact.delete({ where: { id } });
-    await audit(tx, { ...by(ctx), action: 'contact.delete', entityType: 'contact', entityId: id, changes: { before: snapshot('contact', contact) } });
+    await audit(tx, {
+      ...by(ctx),
+      action: 'contact.delete',
+      entityType: 'contact',
+      entityId: id,
+      changes: { before: snapshot('contact', contact), ...(tickets.count ? { clearedTickets: tickets.count } : {}) },
+    });
   });
 }

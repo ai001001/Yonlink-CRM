@@ -19,6 +19,8 @@ export interface AppNotification {
   accountId: string | null;
   dealId: string | null;
   activityId: string | null;
+  /** 服务工单 / service ticket */
+  ticketId?: string | null;
   actor: { id: string; name: string } | null;
 }
 
@@ -45,7 +47,8 @@ export function notifyChanged(): void {
  * 通知关联记录的列表页与记录 ID。
  * The list page and record id a notification points at.
  */
-export function notificationTarget(n: AppNotification): { path: string; id: string; entity: 'lead' | 'account' | 'deal' | 'activity' } {
+export function notificationTarget(n: AppNotification): { path: string; id: string; entity: 'lead' | 'account' | 'deal' | 'activity' | 'ticket' } {
+  if (n.ticketId) return { path: '/tickets', id: n.ticketId, entity: 'ticket' };
   if (n.leadId) return { path: '/leads', id: n.leadId, entity: 'lead' };
   if (n.accountId) return { path: '/accounts', id: n.accountId, entity: 'account' };
   if (n.dealId) return { path: '/deals', id: n.dealId, entity: 'deal' };

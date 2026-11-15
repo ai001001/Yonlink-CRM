@@ -38,6 +38,8 @@ model Organization {
   savedViews       SavedView[]
   viewDefaults     UserViewDefault[]
   dashboardLayouts UserDashboardLayout[]
+  tickets          Ticket[]
+  ticketCounters   TicketCounter[]
   attachments      Attachment[]
   salesTargets     SalesTarget[]
   notifications    Notification[]
@@ -87,6 +89,7 @@ model User {
   savedViews        SavedView[]
   viewDefaults      UserViewDefault[]
   dashboardLayout   UserDashboardLayout?
+  tickets           Ticket[]             @relation("TicketOwner")
   uploads           Attachment[]         @relation("AttachmentUploader")
   salesTargets      SalesTarget[]        @relation("TargetOwner")
   targetsUpdated    SalesTarget[]        @relation("TargetUpdater")
@@ -201,6 +204,8 @@ model Account {
   attachments    Attachment[]
   notifications  Notification[]
 
+  tickets Ticket[]
+
   @@unique([organizationId, id])
   @@index([organizationId, createdAt(sort: Desc)])
   @@map("accounts")
@@ -222,6 +227,7 @@ model Contact {
   account        Account           @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Cascade)
   convertedLeads Lead[]            @relation("LeadConvertedContact")
   dealRoles      DealContactRole[]
+  tickets        Ticket[]
 
   @@unique([organizationId, id])
   @@index([organizationId, accountId])
@@ -716,6 +722,7 @@ model Notification {
   accountId      String?          @map("account_id") @db.Uuid
   dealId         String?          @map("deal_id") @db.Uuid
   activityId     String?          @map("activity_id") @db.Uuid
+  ticketId       String?          @map("ticket_id") @db.Uuid
   title          String           @db.VarChar(200)
   dueAt          DateTime?        @map("due_at") @db.Timestamptz(6)
   dedupKey       String?          @map("dedup_key") @db.VarChar(100)
@@ -728,6 +735,7 @@ model Notification {
   account        Account?         @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Cascade)
   deal           Deal?            @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Cascade)
   activity       Activity?        @relation(fields: [organizationId, activityId], references: [organizationId, id], onDelete: Cascade)
+  ticket         Ticket?          @relation(fields: [organizationId, ticketId], references: [organizationId, id], onDelete: Cascade)
 
   @@unique([userId, dedupKey])
   @@index([organizationId, userId, createdAt(sort: Desc)])
@@ -1075,4 +1083,96 @@ model UserDashboardLayout {
 
   @@unique([organizationId, userId])
   @@map("user_dashboard_layouts")
+}
+
+/// 工单状态 / ticket status
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_CUSTOMER
+  RESOLVED
+  CLOSED
+
+  @@map("ticket_status")
+}
+
+/// 工单优先级 / ticket priority
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+
+  @@map("ticket_priority")
+}
+
+/// 工单类型 / ticket type
+enum TicketType {
+  QUESTION
+  PROBLEM
+  FEATURE_REQUEST
+
+  @@map("ticket_type")
+}
+
+/// 工单来源渠道 / ticket channel
+enum TicketChannel {
+  PHONE
+  EMAIL
+  WEB
+  ONSITE
+  OTHER
+
+  @@map("ticket_channel")
+}
+
+/// 服务工单（对标 Zoho Cases）：属于一个客户，可指定该客户的联系人；工单号 CS-年份-序号在组织内唯一。
+/// 已解决、已关闭必须有解决方案与解决时间；有工单的客户不能删除（RESTRICT）；删除联系人时清空工单的联系人。
+/// Service ticket (cf. Zoho Cases): belongs to an account, optionally one of its contacts; CS-year-sequence numbers
+/// are unique per organization. Resolved/closed tickets carry a resolution and resolved time; accounts with tickets
+/// cannot be deleted (RESTRICT); deleting a contact clears it on tickets.
+model Ticket {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  ticketNumber   String         @map("ticket_number") @db.VarChar(20)
+  subject        String         @db.VarChar(200)
+  description    String?        @db.Text
+  accountId      String         @map("account_id") @db.Uuid
+  contactId      String?        @map("contact_id") @db.Uuid
+  ownerId        String?        @map("owner_id") @db.Uuid
+  status         TicketStatus   @default(OPEN)
+  priority       TicketPriority @default(MEDIUM)
+  type           TicketType     @default(QUESTION)
+  channel        TicketChannel  @default(PHONE)
+  /// 处理期限 / due time
+  dueAt          DateTime?      @map("due_at") @db.Timestamptz(6)
+  resolution     String?        @db.Text
+  resolvedAt     DateTime?      @map("resolved_at") @db.Timestamptz(6)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  account        Account        @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Restrict)
+  contact        Contact?       @relation(fields: [organizationId, contactId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  owner          User?          @relation("TicketOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  notifications  Notification[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, ticketNumber])
+  @@index([organizationId, status])
+  @@index([organizationId, accountId])
+  @@index([organizationId, ownerId])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("tickets")
+}
+
+/// 工单号计数器（每个组织每年一行，原子递增；删除的工单号不会被复用）。
+/// Ticket number counter (one row per organization and year, incremented atomically; numbers of deleted tickets are never reused).
+model TicketCounter {
+  organizationId String       @map("organization_id") @db.Uuid
+  year           Int
+  last           Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, year])
+  @@map("ticket_counters")
 }

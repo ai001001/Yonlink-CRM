@@ -97,7 +97,7 @@ export default function AccountsPage() {
       if (detail?.id === account.id) setDetail(null);
       void reload();
     } catch (err) {
-      message.error(err instanceof ClientApiError && err.code === 'CONFLICT' ? t('accounts.hasDeals') : (err as Error).message);
+      message.error(err instanceof ClientApiError && err.code === 'CONFLICT' ? t(err.details?.tickets ? 'accounts.hasTickets' : 'accounts.hasDeals') : (err as Error).message);
     }
   };
 

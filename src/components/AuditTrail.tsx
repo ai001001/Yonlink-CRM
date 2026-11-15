@@ -13,7 +13,7 @@ import { useOwners } from '@/lib/hooks';
 import { actionLabel, AuditChanges, type AuditLogEntry } from './AuditChanges';
 
 interface Props {
-  entityType: 'lead' | 'account' | 'deal';
+  entityType: 'lead' | 'account' | 'deal' | 'ticket';
   entityId: string;
   /** 变化时重新加载（如保存后）/ reload when this changes (e.g. after saving) */
   version?: string;

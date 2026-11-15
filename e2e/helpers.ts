@@ -14,7 +14,7 @@ export async function signIn(page: Page): Promise<void> {
 }
 
 /** 点击左侧导航 / Click a side-navigation entry */
-export async function nav(page: Page, name: '工作台' | '线索' | '市场活动' | '客户' | '联系人' | '商机' | '跟进' | '报价单' | '销售订单' | '发票' | '报表' | '销售预测' | '产品' | '汇率' | '查重合并' | '回收站' | '审计日志' | '用户管理'): Promise<void> {
+export async function nav(page: Page, name: '工作台' | '线索' | '市场活动' | '客户' | '联系人' | '商机' | '跟进' | '服务工单' | '报价单' | '销售订单' | '发票' | '报表' | '销售预测' | '产品' | '汇率' | '查重合并' | '回收站' | '审计日志' | '用户管理'): Promise<void> {
   await page.getByRole('menu').getByRole('link', { name, exact: true }).click();
 }
 
@@ -46,6 +46,8 @@ export async function selectOption(page: Page, scope: Locator, label: string, op
  */
 export async function searchList(page: Page, placeholder: string, text: string): Promise<void> {
   await expect(page.locator('.ant-modal-wrap:visible')).toHaveCount(0);
+  // 抽屉同理：关闭动画结束后焦点回到列表中的记录名按钮，回车会重新打开详情 / drawers too: focus returns to the record-name button
+  await expect(page.locator('.ant-drawer-content-wrapper:visible')).toHaveCount(0);
   const box = page.getByPlaceholder(placeholder);
   await box.fill(text);
   await box.press('Enter');

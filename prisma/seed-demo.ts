@@ -16,7 +16,7 @@ import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
 import { toBase } from '../src/server/modules/exchange-rates';
 import { Prisma } from '../src/generated/prisma/client';
-import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -86,6 +86,9 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.activity.deleteMany({ where: { organizationId: o } });
         await tx.lead.updateMany({ where: { organizationId: o }, data: { convertedAccountId: null, convertedContactId: null, convertedDealId: null } });
         await tx.deal.deleteMany({ where: { organizationId: o } });
+        // 工单引用客户（RESTRICT）与联系人，须先删除；工单号计数器一并重置 / tickets reference accounts (RESTRICT) and contacts, so they go first; reset the number counter too
+        await tx.ticket.deleteMany({ where: { organizationId: o } });
+        await tx.ticketCounter.deleteMany({ where: { organizationId: o } });
         await tx.contact.deleteMany({ where: { organizationId: o } });
         await tx.account.deleteMany({ where: { organizationId: o } });
         await tx.lead.deleteMany({ where: { organizationId: o } });
@@ -197,6 +200,36 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
           return { organizationId: o, dealId: dealIds[r.deal]!, contactId: contactIds.get(`${accountIds[deal.account]}|【演示】${contact.name}`)!, role: r.role, isPrimary: r.isPrimary };
         }),
       });
+
+      // 服务工单（工单号按创建先后编号，计数器同步）/ service tickets (numbered by creation order; counter kept in sync)
+      const tickets = demoTickets(data).sort((x, y) => y.ageDays - x.ageDays);
+      const ticketYear = new Date().getUTCFullYear();
+      for (const [i, tk] of tickets.entries()) {
+        const accountId = accountIds[tk.account]!;
+        const contact = await tx.contact.findFirst({ where: { organizationId: o, accountId }, orderBy: [{ isPrimary: 'desc' }, { name: 'asc' }], select: { id: true } });
+        const created = new Date(Date.now() - tk.ageDays * DAY - 3_600_000);
+        const done = tk.status === 'RESOLVED' || tk.status === 'CLOSED';
+        await tx.ticket.create({
+          data: {
+            organizationId: o,
+            ticketNumber: `CS-${ticketYear}-${String(i + 1).padStart(4, '0')}`,
+            subject: tk.subject,
+            description: '虚构演示工单，用于展示服务工单的处理流程。',
+            accountId,
+            contactId: contact?.id ?? null,
+            ownerId: owner(tk.owner),
+            status: tk.status,
+            priority: tk.priority,
+            type: tk.type,
+            channel: tk.channel,
+            dueAt: new Date(Date.now() + tk.dueInHours * 3_600_000),
+            resolution: tk.resolution,
+            resolvedAt: done ? new Date(Math.min(Date.now(), created.getTime() + 2 * DAY)) : null,
+            createdAt: created,
+          },
+        });
+      }
+      await tx.ticketCounter.create({ data: { organizationId: o, year: ticketYear, last: tickets.length } });
 
       const catalog = new Map(data.products.map((p) => [p.sku, p]));
       await tx.dealLineItem.createMany({
@@ -561,7 +594,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length + 1} 客户（含 1 条重复）、${data.accounts.reduce((n, a) => n + a.contacts.length, 0) + 2} 联系人、` +
-      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
+      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
   );
 }
 

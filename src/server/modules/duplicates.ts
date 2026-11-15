@@ -220,6 +220,7 @@ export async function mergeDuplicates(ctx: AuthContext, input: z.infer<typeof me
       }
       moved.contacts = (await tx.contact.updateMany({ where: { organizationId: org, accountId: { in: dupIds } }, data: { accountId: master.id } })).count;
       moved.deals = (await tx.deal.updateMany({ where: { organizationId: org, accountId: { in: dupIds } }, data: { accountId: master.id } })).count;
+      moved.tickets = (await tx.ticket.updateMany({ where: { organizationId: org, accountId: { in: dupIds } }, data: { accountId: master.id } })).count;
       moved.notes = (await tx.note.updateMany({ where: { organizationId: org, accountId: { in: dupIds } }, data: { accountId: master.id } })).count;
       moved.activities = (await tx.activity.updateMany({ where: { organizationId: org, accountId: { in: dupIds } }, data: { accountId: master.id } })).count;
       moved.attachments = (await tx.attachment.updateMany({ where: { organizationId: org, accountId: { in: dupIds } }, data: { accountId: master.id } })).count;

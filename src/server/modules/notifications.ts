@@ -34,9 +34,9 @@ export const RETENTION_DAYS = 90;
 const SYNC_LIMIT = 100;
 
 /** 通知关联的记录类型 / record types a notification can point at */
-export type NotificationTarget = { entity: 'lead' | 'account' | 'deal' | 'activity'; id: string };
+export type NotificationTarget = { entity: 'lead' | 'account' | 'deal' | 'activity' | 'ticket'; id: string };
 
-const TARGET_FIELD = { lead: 'leadId', account: 'accountId', deal: 'dealId', activity: 'activityId' } as const;
+const TARGET_FIELD = { lead: 'leadId', account: 'accountId', deal: 'dealId', activity: 'activityId', ticket: 'ticketId' } as const;
 
 /** 列表查询 / List query */
 export const notificationListSchema = z.strictObject({
@@ -62,6 +62,7 @@ const select = {
   accountId: true,
   dealId: true,
   activityId: true,
+  ticketId: true,
   actor: { select: { id: true, name: true } },
 } satisfies Prisma.NotificationSelect;
 
