@@ -40,6 +40,12 @@ export interface Contact {
   isPrimary: boolean;
 }
 
+/** 联系人（列表与详情，含所属客户）/ Contact with its account (list and detail) */
+export interface ContactRow extends Contact {
+  createdAt: string;
+  account: { id: string; name: string; ownerId: string | null; owner: { id: string; name: string } | null };
+}
+
 /** 客户 / Account */
 export interface Account {
   id: string;

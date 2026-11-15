@@ -1,0 +1,52 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+18 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+ ❯ tests/contacts/contacts-list.r1-functional.test.ts (5 tests | 5 failed) 1138ms
+   ❯ contacts list R1 (5)
+     × 跨客户列出，最新在前，含所属客户与负责人 / all contacts with their accounts 593ms
+     × 按姓名、职位、电话、邮箱、客户名称搜索；通配符按字面匹配 / search fields, literal wildcards 155ms
+     × 按客户、负责人（客户负责人）、主要联系人筛选；分页 / filters and paging 134ms
+     × 详情含所属客户；编辑后列表与详情同步 / detail and edits 136ms
+     × 导出 CSV：与筛选一致、表头与内容、审计 / export 118ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/contacts/contacts-list.r1-functional.test.ts > contacts list R1 > 跨客户列出，最新在前，含所属客户与负责人 / all contacts with their accounts
+ FAIL  tests/contacts/contacts-list.r1-functional.test.ts > contacts list R1 > 按姓名、职位、电话、邮箱、客户名称搜索；通配符按字面匹配 / search fields, literal wildcards
+ FAIL  tests/contacts/contacts-list.r1-functional.test.ts > contacts list R1 > 按客户、负责人（客户负责人）、主要联系人筛选；分页 / filters and paging
+ FAIL  tests/contacts/contacts-list.r1-functional.test.ts > contacts list R1 > 详情含所属客户；编辑后列表与详情同步 / detail and edits
+ FAIL  tests/contacts/contacts-list.r1-functional.test.ts > contacts list R1 > 导出 CSV：与筛选一致、表头与内容、审计 / export
+AssertionError: expected 400 to be 201 // Object.is equality
+
+- Expected
++ Received
+
+- 201
++ 400
+
+ ❯ add tests/contacts/contacts-list.r1-functional.test.ts:22:20
+     20| const add = async (accountId: string, body: object) => {
+     21|   const r = await call(accountContacts.POST, { token: a.token, params:…
+     22|   expect(r.status).toBe(201);
+       |                    ^
+     23|   return r.json as { id: string };
+     24| };
+ ❯ tests/contacts/contacts-list.r1-functional.test.ts:36:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed (5)
+   Start at  02:23:39
+   Duration  3.33s (tests 76%, import 16%, transform 6%, setup 1%)
+

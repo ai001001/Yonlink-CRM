@@ -61,6 +61,15 @@ const contactFields = {
 export const contactCreateSchema = z.strictObject(contactFields);
 /** 更新联系人 / Update contact */
 export const contactUpdateSchema = z.strictObject({ ...contactFields, isPrimary: z.boolean() }).partial();
+/** 联系人列表查询（跨客户）；负责人指所属客户的负责人 / Contact list query across accounts; owner = the account owner */
+export const contactListSchema = listQuery.extend({
+  accountId: z.uuid().optional(),
+  ownerId: z.uuid().optional(),
+  isPrimary: z.enum(['true', 'false']).optional(),
+});
+
+/** 联系人返回时附带的所属客户 / account included with contacts */
+const contactInclude = { account: { select: { id: true, name: true, ownerId: true, owner: { select: { id: true, name: true } } } } } satisfies Prisma.ContactInclude;
 
 /**
  * 客户返回内容；商机数与商机列表遵循相同可见范围（销售代表只统计自己负责的商机）。
@@ -210,6 +219,49 @@ async function requireContact(ctx: AuthContext, id: string) {
     where: { id, organizationId: ctx.organizationId, account: visible(ctx) },
     include: { account: { select: { ownerId: true } } },
   });
+  if (!contact) throw notFound();
+  return contact;
+}
+
+/**
+ * 联系人列表与导出共用的查询条件：所属客户可见（销售代表只看自己负责客户下的联系人）+ 筛选 + 搜索
+ * （姓名、职位、电话、邮箱、客户名称）。
+ * Query conditions shared by the contact list and export: visible account (sales reps see contacts of their own
+ * accounts) + filters + search (name, title, phone, email, account name).
+ */
+export function contactWhere(ctx: AuthContext, query: Omit<z.infer<typeof contactListSchema>, 'page' | 'pageSize'>): Prisma.ContactWhereInput {
+  const where: Prisma.ContactWhereInput = {
+    organizationId: ctx.organizationId,
+    account: { AND: [visible(ctx), query.ownerId ? { ownerId: query.ownerId } : {}] },
+    accountId: query.accountId,
+    isPrimary: query.isPrimary === undefined ? undefined : query.isPrimary === 'true',
+  };
+  if (query.q) {
+    const c = containsText(query.q);
+    where.OR = [{ name: c }, { title: c }, { phone: c }, { email: c }, { account: { name: c } }];
+  }
+  return where;
+}
+
+/**
+ * 分页搜索全部可见联系人（最新在前）。
+ * Search all visible contacts, newest first, paginated.
+ */
+export async function listAllContacts(ctx: AuthContext, query: z.infer<typeof contactListSchema>): Promise<Page<unknown>> {
+  const where = contactWhere(ctx, query);
+  const [items, total] = await prisma.$transaction([
+    prisma.contact.findMany({ where, include: contactInclude, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }], skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
+    prisma.contact.count({ where }),
+  ]);
+  return { items, total, page: query.page, pageSize: query.pageSize };
+}
+
+/**
+ * 联系人详情（含所属客户与负责人）；不可见 404。
+ * Contact detail with its account and owner; 404 when not visible.
+ */
+export async function getContact(ctx: AuthContext, id: string) {
+  const contact = await prisma.contact.findFirst({ where: { id, organizationId: ctx.organizationId, account: visible(ctx) }, include: contactInclude });
   if (!contact) throw notFound();
   return contact;
 }

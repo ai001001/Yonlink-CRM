@@ -16,7 +16,7 @@ import { parseCsv, toCsv, uncsvCell } from '../csv';
 import { prisma } from '../db';
 import { ApiError } from '../errors';
 import { can, requirePermission } from '../permissions';
-import { accountCreateSchema, accountListSchema, accountWhere, contactCreateSchema } from './accounts';
+import { accountCreateSchema, accountListSchema, accountWhere, contactCreateSchema, contactListSchema, contactWhere } from './accounts';
 import { activityListSchema, activityWhere } from './activities';
 import { dealListSchema, dealWhere } from './deals';
 import { leadCreateSchema, leadListSchema, leadWhere } from './leads';
@@ -42,7 +42,7 @@ export function parseLang(value: string | null | undefined): Locale {
   return value;
 }
 
-export type ExportEntity = 'leads' | 'accounts' | 'deals' | 'activities';
+export type ExportEntity = 'leads' | 'accounts' | 'contacts' | 'deals' | 'activities';
 
 /** 导出结果 / Export result */
 export interface ExportResult {
@@ -56,7 +56,7 @@ export interface ExportResult {
  * 记录导出审计（只记筛选条件的键值与是否搜索，不记搜索词）。
  * Audit an export (filters and whether a search was used; never the search text).
  */
-async function auditExport(ctx: AuthContext, entityType: 'lead' | 'account' | 'deal' | 'activity', query: Record<string, unknown>, count: number, truncated: boolean) {
+async function auditExport(ctx: AuthContext, entityType: 'lead' | 'account' | 'contact' | 'deal' | 'activity', query: Record<string, unknown>, count: number, truncated: boolean) {
   const filters = Object.fromEntries(Object.entries(query).filter(([k, v]) => v !== undefined && !['q', 'page', 'pageSize'].includes(k)));
   await prisma.$transaction((tx) =>
     audit(tx, { ...by(ctx), action: `${entityType}.export`, entityType, changes: { count, truncated, searched: !!query.q, filters } }),
@@ -90,6 +90,19 @@ export async function exportCsv(ctx: AuthContext, entity: ExportEntity, input: R
     );
     await auditExport(ctx, 'lead', query, data.length, truncated);
     return { filename: `leads-${stamp}.csv`, csv, count: data.length, truncated };
+  }
+
+  if (entity === 'contacts') {
+    const query = contactListSchema.parse(params);
+    const rows = await prisma.contact.findMany({ where: contactWhere(ctx, query), include: { account: { select: { name: true, owner: { select: { name: true } } } } }, orderBy, take });
+    const truncated = rows.length > EXPORT_MAX;
+    const data = rows.slice(0, EXPORT_MAX);
+    const csv = toCsv(
+      [t('contacts.name'), t('contacts.title'), t('contacts.phone'), t('contacts.email'), t('contacts.isPrimary'), t('contacts.account'), t('common.owner'), TIME_HEADER(t('common.createdAt'))],
+      data.map((c) => [c.name, c.title, c.phone, c.email, c.isPrimary ? t('common.yes') : t('common.no'), c.account.name, c.account.owner?.name, fmtTime(c.createdAt)]),
+    );
+    await auditExport(ctx, 'contact', query, data.length, truncated);
+    return { filename: `contacts-${stamp}.csv`, csv, count: data.length, truncated };
   }
 
   if (entity === 'accounts') {

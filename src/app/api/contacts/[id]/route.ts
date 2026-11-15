@@ -1,9 +1,10 @@
 /**
- * PATCH/DELETE /api/contacts/:id — 编辑、删除联系人 / update or delete a contact.
+ * GET/PATCH/DELETE /api/contacts/:id — 联系人详情、编辑、删除 / contact detail, update and delete.
  */
 import { authedRoute, parseBody, preflight, routeId } from '@/server/http';
-import { contactUpdateSchema, deleteContact, updateContact } from '@/server/modules/accounts';
+import { contactUpdateSchema, deleteContact, getContact, updateContact } from '@/server/modules/accounts';
 
+export const GET = authedRoute(async (_req, ctx, route) => Response.json(await getContact(ctx, await routeId(route))));
 export const PATCH = authedRoute(async (req, ctx, route) =>
   Response.json(await updateContact(ctx, await routeId(route), await parseBody(req, contactUpdateSchema))),
 );

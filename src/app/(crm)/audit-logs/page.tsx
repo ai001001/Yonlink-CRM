@@ -16,7 +16,7 @@ const ENTITIES = ['lead', 'account', 'contact', 'deal', 'activity', 'note', 'pro
 const ACTIONS: Record<string, string[]> = {
   lead: ['create', 'update', 'delete', 'restore', 'purge', 'expire', 'merge', 'convert', 'tags', 'import', 'export'],
   account: ['create', 'update', 'delete', 'restore', 'purge', 'expire', 'merge', 'tags', 'import', 'export'],
-  contact: ['create', 'update', 'delete'],
+  contact: ['create', 'update', 'delete', 'export'],
   deal: ['create', 'update', 'delete', 'restore', 'purge', 'expire', 'tags', 'export', 'add_item', 'update_item', 'remove_item'],
   activity: ['create', 'update', 'delete', 'export'],
   note: ['create', 'update', 'delete'],

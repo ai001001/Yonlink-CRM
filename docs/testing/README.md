@@ -46,6 +46,7 @@
 | 应收账款报表 | ✅ | ✅ | ✅ | [receivables.md](receivables.md) |
 | 应收账款导出 CSV | ✅ | ✅ | ✅ | [receivables-export.md](receivables-export.md) |
 | 销售报表与预测导出 CSV | ✅ | ✅ | ✅ | [report-exports.md](report-exports.md) |
+| 联系人列表 | ✅ | ✅ | ✅ | [contacts-list.md](contacts-list.md) |
 
 ## 整体回归（全部模块完成后）
 命令：`scripts/regression.sh final-mvp` → **PASS**（lint、typecheck、11 文件 181/181、静态导出、生产构建、E2E 6/6）。原始输出：[results/final-mvp-r3-regression.txt](results/final-mvp-r3-regression.txt)

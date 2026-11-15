@@ -12,7 +12,7 @@ import { apiDownload, qs } from '@/lib/api';
 import { usePermissions } from './AuthProvider';
 
 interface Props {
-  resource: 'leads' | 'accounts' | 'deals' | 'activities' | 'reports/receivables' | 'reports/sales' | 'forecasts';
+  resource: 'leads' | 'accounts' | 'contacts' | 'deals' | 'activities' | 'reports/receivables' | 'reports/sales' | 'forecasts';
   /** 下载文件名前缀（默认为 resource）/ download file name prefix (defaults to the resource) */
   fileName?: string;
   /** 当前筛选条件 / current filters */
