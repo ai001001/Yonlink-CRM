@@ -46,6 +46,7 @@ model Organization {
   invoiceItems    InvoiceLineItem[]
   invoicePayments InvoicePayment[]
   exchangeRates   ExchangeRate[]
+  campaigns       Campaign[]
 
   @@map("organizations")
 }
@@ -62,6 +63,7 @@ model User {
   createdInvoices   Invoice[]         @relation("InvoiceCreator")
   recordedPayments  InvoicePayment[]  @relation("PaymentRecorder")
   ratesCreated      ExchangeRate[]    @relation("RateCreator")
+  ownedCampaigns    Campaign[]        @relation("CampaignOwner")
   /// 角色（服务端每个请求从数据库读取）/ role (read from the DB on every request)
   role              UserRole          @default(SALES)
   isActive          Boolean           @default(true) @map("is_active")
@@ -129,6 +131,8 @@ model Lead {
   id                 String         @id @default(uuid()) @db.Uuid
   organizationId     String         @map("organization_id") @db.Uuid
   ownerId            String?        @map("owner_id") @db.Uuid
+  /// 来源市场活动 / source campaign
+  campaignId         String?        @map("campaign_id") @db.Uuid
   name               String         @db.VarChar(100)
   company            String?        @db.VarChar(200)
   title              String?        @db.VarChar(100)
@@ -157,7 +161,11 @@ model Lead {
   tags               LeadTag[]
   attachments        Attachment[]
 
+  // 来源市场活动；有关联记录的活动不能删除 / source campaign; campaigns with linked records cannot be deleted
+  campaign Campaign? @relation(fields: [organizationId, campaignId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
   @@unique([organizationId, id])
+  @@index([organizationId, campaignId])
   @@index([organizationId, createdAt(sort: Desc)])
   @@index([organizationId, status])
   @@index([convertedAccountId])
@@ -229,6 +237,8 @@ model Deal {
   id                String         @id @default(uuid()) @db.Uuid
   organizationId    String         @map("organization_id") @db.Uuid
   ownerId           String?        @map("owner_id") @db.Uuid
+  /// 来源市场活动 / source campaign
+  campaignId        String?        @map("campaign_id") @db.Uuid
   accountId         String         @map("account_id") @db.Uuid
   name              String         @db.VarChar(200)
   amount            Decimal        @default(0) @db.Decimal(18, 2)
@@ -253,7 +263,11 @@ model Deal {
   tags              DealTag[]
   attachments       Attachment[]
 
+  // 来源市场活动；有关联记录的活动不能删除 / source campaign; campaigns with linked records cannot be deleted
+  campaign Campaign? @relation(fields: [organizationId, campaignId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
   @@unique([organizationId, id])
+  @@index([organizationId, campaignId])
   @@index([organizationId, createdAt(sort: Desc)])
   @@index([organizationId, accountId])
   @@index([organizationId, stage])
@@ -923,4 +937,56 @@ model ExchangeRate {
   @@unique([organizationId, currency, effectiveDate])
   @@index([organizationId, currency, effectiveDate(sort: Desc)])
   @@map("exchange_rates")
+}
+
+/// 市场活动类型 / campaign type
+enum CampaignType {
+  EXHIBITION
+  ADVERTISEMENT
+  EMAIL
+  WEBINAR
+  SOCIAL_MEDIA
+  OTHER
+
+  @@map("campaign_type")
+}
+
+/// 市场活动状态 / campaign status
+enum CampaignStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+
+  @@map("campaign_status")
+}
+
+/// 市场活动：线索与商机可关联来源活动，用于统计线索、转化、成交与投入产出；有关联记录时不能删除（可改为已取消）。
+/// Marketing campaign: leads and deals may name their source campaign for lead, conversion, revenue and ROI
+/// statistics; campaigns with linked records cannot be deleted (cancel them instead).
+model Campaign {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  name           String         @db.VarChar(100)
+  type           CampaignType
+  status         CampaignStatus @default(PLANNED)
+  startDate      DateTime?      @map("start_date") @db.Date
+  endDate        DateTime?      @map("end_date") @db.Date
+  /// 预算与实际花费的币种 / currency of the budget and actual cost
+  currency       String         @default("CNY") @db.Char(3)
+  budget         Decimal?       @db.Decimal(18, 2)
+  actualCost     Decimal?       @map("actual_cost") @db.Decimal(18, 2)
+  description    String?        @db.Text
+  ownerId        String?        @map("owner_id") @db.Uuid
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner          User?          @relation("CampaignOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  leads          Lead[]
+  deals          Deal[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, name])
+  @@index([organizationId, status])
+  @@map("campaigns")
 }

@@ -65,6 +65,11 @@ const FIELD_LABELS: Record<string, MessageKey> = {
   expectedDelivery: 'orders.expectedDelivery',
   shippingAddress: 'orders.shippingAddress',
   cancelReason: 'orders.cancelReason',
+  campaignId: 'campaigns.source',
+  budget: 'campaigns.budget',
+  actualCost: 'campaigns.actualCost',
+  startDate: 'campaigns.startDate',
+  endDate: 'campaigns.endDate',
   invoiceNumber: 'invoices.number',
   salesOrderId: 'invoices.order',
   paidAmount: 'invoices.paidAmount',
@@ -117,6 +122,9 @@ const fieldLabel = (field: string, entityType: string): string => {
   if (entityType === 'order' && field === 'status') return t('orders.status');
   if (entityType === 'order' && field === 'notes') return t('orders.notes');
   if (entityType === 'invoice' && field === 'subject') return t('invoices.subject');
+  if (entityType === 'campaign' && field === 'name') return t('campaigns.name');
+  if (entityType === 'campaign' && field === 'status') return t('campaigns.status');
+  if (entityType === 'campaign' && field === 'type') return t('campaigns.type');
   if (entityType === 'invoice' && field === 'status') return t('invoices.status');
   if (entityType === 'invoice' && field === 'notes') return t('invoices.notes');
   const key = FIELD_LABELS[field];
@@ -136,8 +144,10 @@ function value(field: string, v: unknown, users: Map<string, string>, entityType
   if (entityType === 'quote' && field === 'status') return tEnum('quoteStatus', String(v));
   if (entityType === 'order' && field === 'status') return tEnum('orderStatus', String(v));
   if (entityType === 'invoice' && field === 'status') return tEnum('invoiceStatus', String(v));
+  if (entityType === 'campaign' && field === 'status') return tEnum('campaignStatus', String(v));
+  if (entityType === 'campaign' && field === 'type') return tEnum('campaignType', String(v));
   if (ENUM_PREFIX[field]) return tEnum(ENUM_PREFIX[field]!, String(v));
-  if (field === 'expectedCloseDate' || field === 'validUntil' || field === 'expectedDelivery' || field === 'invoiceDate' || field === 'dueDate') return String(v).slice(0, 10);
+  if (field === 'expectedCloseDate' || field === 'validUntil' || field === 'expectedDelivery' || field === 'invoiceDate' || field === 'dueDate' || field === 'startDate' || field === 'endDate') return String(v).slice(0, 10);
   if (field === 'dueAt') return String(v).replace('T', ' ').slice(0, 16);
   return String(v);
 }

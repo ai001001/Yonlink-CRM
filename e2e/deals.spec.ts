@@ -3,7 +3,7 @@
  * Deals round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
-import { closeDrawer, nav, searchList, selectOption, signIn } from './helpers';
+import { closeDrawer, nav, pickRecord, searchList, selectOption, signIn } from './helpers';
 
 const SAVE = /保\s*存/;
 
@@ -26,9 +26,7 @@ test('商机完整业务流程 / full deals flow', async ({ page }) => {
   await dialog.getByRole('button', { name: SAVE }).click();
   await expect(dialog.getByText('请填写关联客户')).toBeVisible();
   await dialog.getByLabel('商机名称').fill('E2E 服务器扩容');
-  await dialog.getByLabel('关联客户').click();
-  await dialog.getByLabel('关联客户').fill('海川');
-  await page.getByTitle('E2E 海川电子').click();
+  await pickRecord(page, dialog, '关联客户', '海川', 'E2E 海川电子');
   await dialog.getByLabel('商机金额').fill('128000.50');
   await selectOption(page, dialog, '销售阶段', '方案报价');
   await dialog.getByLabel('预计成交日期').fill('2027-06-30');

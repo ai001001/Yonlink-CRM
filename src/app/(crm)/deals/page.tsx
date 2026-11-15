@@ -4,6 +4,7 @@
  */
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import { App, Button, Card, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Segmented, Select, Space, Statistic, Table, Tabs, Tag, Typography } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
@@ -16,6 +17,7 @@ import { NotesPanel } from '@/components/NotesPanel';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
+import { CampaignSelect } from '@/components/CampaignSelect';
 import { SavedViews } from '@/components/SavedViews';
 import { TagEditor, TagFilter, TagList, tagsOf } from '@/components/Tags';
 import { ExportButton } from '@/components/ExportButton';
@@ -49,11 +51,12 @@ export default function DealsPage() {
   const perm = usePermissions();
   const search = useSearch();
   const q = search.q;
+  const [campaignId, setCampaignId] = useState<string>();
   const [tagId, setTagId] = useState<string>();
   const [view, setView] = useState<'list' | 'board'>('list');
   const [boardVersion, setBoardVersion] = useState(0);
   const [stage, setStage] = useState<string>();
-  const { data, loading, reload, pagination } = usePagedList<Deal>('/api/deals', { q, stage, tagId });
+  const { data, loading, reload, pagination } = usePagedList<Deal>('/api/deals', { q, stage, tagId, campaignId });
   /** 套用视图（null 恢复列表默认筛选）/ apply a saved view (null resets the list filters) */
   const applyView = (f: Record<string, string> | null) => {
     search.set(f?.q ?? '');
@@ -136,7 +139,7 @@ export default function DealsPage() {
       title={t('deals.title')}
       extra={
         <Space>
-          <ExportButton resource="deals" filters={{ q, stage }} />
+          <ExportButton resource="deals" filters={{ q, stage, campaignId }} />
           {perm.canCreate && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
               {t('deals.new')}
@@ -158,6 +161,9 @@ export default function DealsPage() {
           {view === 'list' && <SavedViews entity="deals" filters={{ q, stage, tagId }} onApply={applyView} />}
           <Input.Search allowClear placeholder={t('deals.searchPlaceholder')} style={{ width: 280 }} {...search.inputProps} />
           {view === 'list' && <TagFilter value={tagId} onChange={setTagId} onManaged={() => refresh()} />}
+          {view === 'list' && (
+            <CampaignSelect aria-label={t('campaigns.filter')} placeholder={t('campaigns.filter')} style={{ width: 180 }} value={campaignId} onChange={(v) => setCampaignId(v ?? undefined)} />
+          )}
           {view === 'list' && (
             <Select allowClear aria-label={t('deals.stage')} placeholder={t('deals.stage')} style={{ width: 140 }} options={stageOptions} value={stage} onChange={setStage} />
           )}
@@ -281,6 +287,9 @@ export default function DealsPage() {
               <Select allowClear={perm.canAssign} disabled={!perm.canAssign} options={owners.map((u) => ({ value: u.id, label: u.name }))} />
             </Form.Item>
           </div>
+          <Form.Item name="campaignId" label={t('campaigns.source')}>
+            <CampaignSelect key={editing && editing !== 'new' ? editing.id : 'new'} />
+          </Form.Item>
           <Form.Item name="description" label={t('common.description')}>
             <Input.TextArea rows={3} maxLength={5000} />
           </Form.Item>
@@ -319,6 +328,9 @@ export default function DealsPage() {
                       )}
                     </Descriptions.Item>
                     <Descriptions.Item label={t('common.owner')}>{detail.owner?.name ?? t('common.unassigned')}</Descriptions.Item>
+                    <Descriptions.Item label={t('campaigns.source')}>
+                      {detail.campaign ? <Link href={`/campaigns?id=${detail.campaign.id}`}>{detail.campaign.name}</Link> : null}
+                    </Descriptions.Item>
                     <Descriptions.Item label={t('common.createdAt')}>{fmtDateTime(detail.createdAt)}</Descriptions.Item>
                     <Descriptions.Item label={t('tags.title')} span={2}>
                       <TagEditor key={`tags-${detail.id}`} path="/api/deals" record={detail} onChanged={() => refresh()} />

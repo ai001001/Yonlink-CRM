@@ -3,7 +3,7 @@
  * Dashboard round 3: end-to-end regression.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { closeDrawer, nav, selectOption, signIn } from './helpers';
+import { closeDrawer, nav, pickRecord, selectOption, signIn } from './helpers';
 
 const SAVE = /保\s*存/;
 
@@ -38,20 +38,7 @@ test('工作台统计与全局搜索 / dashboard figures and global search', asy
   await page.getByRole('button', { name: '新增商机' }).click();
   dialog = page.getByRole('dialog', { name: '新增商机' });
   await dialog.getByLabel('商机名称').fill('E2E 工作台商机');
-  // 下拉展开动画期间的点击可能被忽略：按结果重试——客户已显示在选择框中则结束，否则重新打开、搜索并点击
-  // clicks during the dropdown's opening animation can be ignored, so retry by outcome: done once the account shows
-  // in the select; otherwise reopen, search and click
-  const picked = dialog.getByTitle('E2E 工作台客户', { exact: true });
-  const option = page.locator('.ant-select-dropdown:visible').getByTitle('E2E 工作台客户', { exact: true });
-  await expect(async () => {
-    if (await picked.isVisible()) return;
-    if (!(await option.isVisible())) {
-      await dialog.getByLabel('关联客户').click({ timeout: 2000 });
-      await dialog.getByLabel('关联客户').fill('工作台客户', { timeout: 2000 });
-    }
-    await option.click({ timeout: 2000 });
-    await expect(picked).toBeVisible({ timeout: 2000 });
-  }).toPass({ timeout: 20000 });
+  await pickRecord(page, dialog, '关联客户', '工作台客户', 'E2E 工作台客户');
   await dialog.getByLabel('商机金额').fill('7000000');
   await dialog.getByRole('button', { name: SAVE }).click();
   await expect(page.getByRole('row', { name: /E2E 工作台商机/ })).toBeVisible();

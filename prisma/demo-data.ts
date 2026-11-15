@@ -733,6 +733,22 @@ export function demoOrders(data: ReturnType<typeof buildDemoData>): DemoOrder[] 
   });
 }
 
+/** 演示市场活动 / Demo campaigns */
+export const DEMO_CAMPAIGNS = [
+  { key: 'expo', name: '【演示】2026 上海国际汽配展', type: 'EXHIBITION', status: 'COMPLETED', startIn: -200, endIn: -197, currency: 'CNY', budget: '150000.00', actualCost: '138000.00', owner: 'manager', source: 'EXHIBITION' },
+  { key: 'ads', name: '【演示】行业媒体广告投放', type: 'ADVERTISEMENT', status: 'ACTIVE', startIn: -90, endIn: 30, currency: 'CNY', budget: '60000.00', actualCost: '42000.00', owner: 'manager', source: 'ADVERTISEMENT' },
+  { key: 'social', name: '【演示】海外社媒推广', type: 'SOCIAL_MEDIA', status: 'ACTIVE', startIn: -60, endIn: 60, currency: 'USD', budget: '8000.00', actualCost: '5200.00', owner: 'sales2', source: 'SOCIAL_MEDIA' },
+  { key: 'webinar', name: '【演示】年度客户技术研讨会', type: 'WEBINAR', status: 'PLANNED', startIn: 20, endIn: 20, currency: 'CNY', budget: '20000.00', actualCost: null, owner: 'manager', source: null },
+] as const;
+
+/**
+ * 线索按来源归入演示活动（展会、广告、社交媒体）；其他来源不关联。
+ * Leads join a demo campaign by source (exhibition, advertising, social media); other sources stay unlinked.
+ */
+export function demoCampaignFor(source: string | null | undefined): (typeof DEMO_CAMPAIGNS)[number]['key'] | null {
+  return DEMO_CAMPAIGNS.find((c) => c.source !== null && c.source === source)?.key ?? null;
+}
+
 /**
  * 演示汇率（1 单位外币 = 多少人民币）：每种外币两期，分别在 200 天前和 30 天前生效，覆盖全部演示发票的开票日。
  * 数值为演示用的近似值，不代表真实汇率。

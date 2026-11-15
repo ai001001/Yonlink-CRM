@@ -11,6 +11,7 @@ import { prisma } from '../db';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
+import { assertCampaign } from './campaign-links';
 import { notifyAssigned } from './notifications';
 import { recycle } from './recycle-bin';
 import { tagFilter, tagsInclude } from './tags';
@@ -45,6 +46,8 @@ const fields = {
     .transform((v) => (v ? new Date(`${v}T00:00:00Z`) : null)),
   description: optionalText(5000),
   ownerId: optionalUuid.optional(),
+  /** 来源市场活动 / source campaign */
+  campaignId: optionalUuid.optional(),
 };
 
 /** 新建商机 / Create deal */
@@ -59,6 +62,7 @@ export const dealListSchema = listQuery.extend({
   accountId: z.uuid().optional(),
   ownerId: z.uuid().optional(),
   tagId: z.uuid().optional(),
+  campaignId: z.uuid().optional(),
 });
 
 const include = {
@@ -66,6 +70,7 @@ const include = {
   account: { select: { id: true, name: true } },
   _count: { select: { lineItems: true } },
   tags: tagsInclude,
+  campaign: { select: { id: true, name: true } },
 } satisfies Prisma.DealInclude;
 
 /**
@@ -82,7 +87,7 @@ async function assertAccount(ctx: AuthContext, accountId: string): Promise<void>
  * Query conditions shared by the list and the export (visibility + filters + search).
  */
 export function dealWhere(ctx: AuthContext, query: Omit<z.infer<typeof dealListSchema>, 'page' | 'pageSize'>): Prisma.DealWhereInput {
-  const where: Prisma.DealWhereInput = { AND: [visible(ctx), { stage: query.stage, accountId: query.accountId, ownerId: query.ownerId }, tagFilter(query.tagId)] };
+  const where: Prisma.DealWhereInput = { AND: [visible(ctx), { stage: query.stage, accountId: query.accountId, ownerId: query.ownerId, campaignId: query.campaignId }, tagFilter(query.tagId)] };
   if (query.q) {
     const c = containsText(query.q);
     where.OR = [{ name: c }, { account: { name: c } }];
@@ -137,6 +142,7 @@ export async function createDeal(ctx: AuthContext, input: z.infer<typeof dealCre
   const { ownerId, ...data } = input;
   requirePermission(ctx, 'record.create');
   assertOwnerAssignable(ctx, ownerId);
+  await assertCampaign(ctx.organizationId, data.campaignId);
   await assertAccount(ctx, data.accountId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
   return prisma.$transaction(async (tx) => {
@@ -156,6 +162,7 @@ export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<ty
   assertCanUpdate(ctx, current);
   const { ownerId, ...data } = input;
   assertOwnerAssignable(ctx, ownerId);
+  await assertCampaign(ctx.organizationId, data.campaignId);
   // 有产品明细时金额由明细计算，币种需与明细一致 / with line items the amount is computed and the currency is locked
   if (data.amount !== undefined || (data.currency !== undefined && data.currency !== current.currency)) {
     const items = await prisma.dealLineItem.count({ where: { organizationId: ctx.organizationId, dealId: id } });

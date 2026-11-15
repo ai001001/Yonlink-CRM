@@ -11,6 +11,7 @@ import { prisma } from '../db';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
+import { assertCampaign } from './campaign-links';
 import { amountSchema, CURRENCIES, dateOnly } from './deals';
 import { notifyAssigned } from './notifications';
 import { recycle } from './recycle-bin';
@@ -32,6 +33,8 @@ const fields = {
   status: z.enum(LeadStatus).exclude([LeadStatus.CONVERTED]).default(LeadStatus.NEW),
   description: optionalText(5000),
   ownerId: optionalUuid.optional(),
+  /** 来源市场活动 / source campaign */
+  campaignId: optionalUuid.optional(),
 };
 
 /** 新建线索输入 / Create input */
@@ -44,6 +47,7 @@ export const leadListSchema = listQuery.extend({
   source: z.enum(LEAD_SOURCES).optional(),
   ownerId: z.uuid().optional(),
   tagId: z.uuid().optional(),
+  campaignId: z.uuid().optional(),
 });
 
 const include = {
@@ -52,6 +56,7 @@ const include = {
   convertedContact: { select: { id: true, name: true } },
   convertedDeal: { select: { id: true, name: true } },
   tags: tagsInclude,
+  campaign: { select: { id: true, name: true } },
 } satisfies Prisma.LeadInclude;
 
 /**
@@ -60,7 +65,7 @@ const include = {
  */
 export function leadWhere(ctx: AuthContext, query: Omit<z.infer<typeof leadListSchema>, 'page' | 'pageSize'>): Prisma.LeadWhereInput {
   // 可见范围与筛选条件同时满足 / visibility AND filters
-  const where: Prisma.LeadWhereInput = { AND: [visible(ctx), { status: query.status, source: query.source, ownerId: query.ownerId }, tagFilter(query.tagId)] };
+  const where: Prisma.LeadWhereInput = { AND: [visible(ctx), { status: query.status, source: query.source, ownerId: query.ownerId, campaignId: query.campaignId }, tagFilter(query.tagId)] };
   if (query.q) {
     const contains = containsText(query.q);
     where.OR = [{ name: contains }, { company: contains }, { email: contains }, { phone: contains }, { mobile: contains }];
@@ -105,6 +110,7 @@ export async function createLead(ctx: AuthContext, input: z.infer<typeof leadCre
   const { ownerId, ...data } = input;
   requirePermission(ctx, 'record.create');
   assertOwnerAssignable(ctx, ownerId);
+  await assertCampaign(ctx.organizationId, data.campaignId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
   return prisma.$transaction(async (tx) => {
     const lead = await tx.lead.create({ data: { ...data, organizationId: ctx.organizationId, ownerId: owner }, include });
@@ -123,6 +129,7 @@ export async function updateLead(ctx: AuthContext, id: string, input: z.infer<ty
   assertCanUpdate(ctx, current);
   const { ownerId, ...data } = input;
   assertOwnerAssignable(ctx, ownerId);
+  await assertCampaign(ctx.organizationId, data.campaignId);
   if (current.convertedAt && data.status !== undefined) {
     throw new ApiError(409, 'CONFLICT', 'Lead already converted', { status: ['Converted leads keep their status'] });
   }
@@ -227,7 +234,8 @@ export async function convertLead(ctx: AuthContext, id: string, input: z.infer<t
     await audit(tx, { ...by(ctx), action: 'contact.create', entityType: 'contact', entityId: contact.id, changes: { after: snapshot('contact', contact), via: 'lead.convert' } });
 
     // 商机（可选）/ optional deal
-    const deal = input.deal ? await tx.deal.create({ data: { ...input.deal, organizationId: org, ownerId, accountId: account.id } }) : null;
+    // 商机继承线索的来源市场活动 / the deal inherits the lead's source campaign
+    const deal = input.deal ? await tx.deal.create({ data: { ...input.deal, organizationId: org, ownerId, accountId: account.id, campaignId: lead.campaignId } }) : null;
     if (deal) {
       await audit(tx, { ...by(ctx), action: 'deal.create', entityType: 'deal', entityId: deal.id, changes: { after: snapshot('deal', deal), via: 'lead.convert' } });
     }

@@ -16,7 +16,7 @@ export interface RequestMeta {
 }
 
 /** 审计对象类型 / Audited entity types */
-export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'order' | 'invoice' | 'report' | 'rate' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
+export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'order' | 'invoice' | 'report' | 'rate' | 'campaign' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
 
 /** 字段策略 / Field policy */
 type Policy = 'plain' | 'mask' | 'redact';
@@ -25,7 +25,7 @@ type Policy = 'plain' | 'mask' | 'redact';
 export const AUDIT_FIELDS: Record<Exclude<AuditEntity, 'auth'>, Record<string, Policy>> = {
   lead: {
     name: 'plain', company: 'plain', title: 'plain', phone: 'mask', mobile: 'mask', email: 'mask',
-    source: 'plain', status: 'plain', description: 'redact', ownerId: 'plain',
+    source: 'plain', status: 'plain', description: 'redact', ownerId: 'plain', campaignId: 'plain',
   },
   account: {
     name: 'plain', industry: 'plain', phone: 'mask', website: 'plain', address: 'redact', description: 'redact', ownerId: 'plain',
@@ -33,7 +33,7 @@ export const AUDIT_FIELDS: Record<Exclude<AuditEntity, 'auth'>, Record<string, P
   contact: { name: 'plain', title: 'plain', phone: 'mask', email: 'mask', isPrimary: 'plain', accountId: 'plain' },
   deal: {
     name: 'plain', accountId: 'plain', amount: 'plain', currency: 'plain', stage: 'plain',
-    expectedCloseDate: 'plain', description: 'redact', ownerId: 'plain',
+    expectedCloseDate: 'plain', description: 'redact', ownerId: 'plain', campaignId: 'plain',
   },
   user: { name: 'plain', email: 'mask', role: 'plain', isActive: 'plain' },
   note: { content: 'redact', leadId: 'plain', accountId: 'plain', dealId: 'plain' },
@@ -52,6 +52,10 @@ export const AUDIT_FIELDS: Record<Exclude<AuditEntity, 'auth'>, Record<string, P
   },
   // 报表导出没有记录字段，只记筛选与行数 / report exports have no record fields, only filters and row counts
   report: {},
+  campaign: {
+    name: 'plain', type: 'plain', status: 'plain', startDate: 'plain', endDate: 'plain', currency: 'plain', budget: 'plain', actualCost: 'plain',
+    description: 'redact', ownerId: 'plain',
+  },
   // 汇率审计直接记录币种、日期与汇率 / rate audits record currency, date and rate directly
   rate: {},
   invoice: {

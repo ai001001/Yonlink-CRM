@@ -15,6 +15,7 @@ import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch, useSe
 import { AuditTrail } from '@/components/AuditTrail';
 import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
+import { CampaignSelect } from '@/components/CampaignSelect';
 import { SavedViews } from '@/components/SavedViews';
 import { TagEditor, TagFilter, TagList, tagsOf } from '@/components/Tags';
 import { ExportButton } from '@/components/ExportButton';
@@ -46,6 +47,9 @@ interface Lead {
   tags?: RecordTags;
   createdAt: string;
   updatedAt: string;
+  /** 来源市场活动 / source campaign */
+  campaignId?: string | null;
+  campaign?: { id: string; name: string } | null;
 }
 
 const STATUSES = ['NEW', 'CONTACTED', 'QUALIFIED', 'UNQUALIFIED', 'CONVERTED'] as const;
@@ -64,10 +68,11 @@ export default function LeadsPage() {
   const perm = usePermissions();
   const search = useSearch();
   const q = search.q;
+  const [campaignId, setCampaignId] = useState<string>();
   const [tagId, setTagId] = useState<string>();
   const [status, setStatus] = useState<string>();
   const [source, setSource] = useState<string>();
-  const { data, loading, reload, pagination } = usePagedList<Lead>('/api/leads', { q, status, source, tagId });
+  const { data, loading, reload, pagination } = usePagedList<Lead>('/api/leads', { q, status, source, tagId, campaignId });
   /** 套用视图（null 恢复列表默认筛选）/ apply a saved view (null resets the list filters) */
   const applyView = (f: Record<string, string> | null) => {
     search.set(f?.q ?? '');
@@ -144,7 +149,7 @@ export default function LeadsPage() {
               {t('import.button')}
             </Button>
           )}
-          <ExportButton resource="leads" filters={{ q, status, source }} />
+          <ExportButton resource="leads" filters={{ q, status, source, campaignId }} />
           {perm.canCreate && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
               {t('leads.new')}
@@ -159,6 +164,7 @@ export default function LeadsPage() {
         <TagFilter value={tagId} onChange={setTagId} onManaged={() => void reload()} />
         <Select allowClear aria-label={t('leads.status')} placeholder={t('leads.status')} style={{ width: 140 }} options={statusOptions} value={status} onChange={setStatus} />
         <Select allowClear aria-label={t('leads.source')} placeholder={t('leads.source')} style={{ width: 140 }} options={sourceOptions} value={source} onChange={setSource} />
+        <CampaignSelect aria-label={t('campaigns.filter')} placeholder={t('campaigns.filter')} style={{ width: 180 }} value={campaignId} onChange={(v) => setCampaignId(v ?? undefined)} />
       </Space>
       <BulkBar
         path="/api/leads"
@@ -267,6 +273,9 @@ export default function LeadsPage() {
               <Select allowClear={perm.canAssign} disabled={!perm.canAssign} options={owners.map((u) => ({ value: u.id, label: u.name }))} />
             </Form.Item>
           </div>
+          <Form.Item name="campaignId" label={t('campaigns.source')}>
+            <CampaignSelect key={editing && editing !== 'new' ? editing.id : 'new'} />
+          </Form.Item>
           <Form.Item name="description" label={t('common.description')}>
             <Input.TextArea rows={3} maxLength={5000} />
           </Form.Item>
@@ -301,6 +310,9 @@ export default function LeadsPage() {
               <Descriptions.Item label={t('leads.phone')}>{detail.phone}</Descriptions.Item>
               <Descriptions.Item label={t('leads.mobile')}>{detail.mobile}</Descriptions.Item>
               <Descriptions.Item label={t('leads.source')}>{tEnum('leadSource', detail.source)}</Descriptions.Item>
+              <Descriptions.Item label={t('campaigns.source')}>
+                {detail.campaign ? <Link href={`/campaigns?id=${detail.campaign.id}`}>{detail.campaign.name}</Link> : null}
+              </Descriptions.Item>
               <Descriptions.Item label={t('leads.status')}>{tEnum('leadStatus', detail.status)}</Descriptions.Item>
               <Descriptions.Item label={t('common.owner')}>{detail.owner?.name ?? t('common.unassigned')}</Descriptions.Item>
               <Descriptions.Item label={t('common.createdAt')}>{fmtDateTime(detail.createdAt)}</Descriptions.Item>

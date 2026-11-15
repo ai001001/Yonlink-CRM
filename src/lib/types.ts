@@ -85,6 +85,9 @@ export interface Deal {
   owner: Ref | null;
   createdAt: string;
   updatedAt: string;
+  /** 来源市场活动 / source campaign */
+  campaignId?: string | null;
+  campaign?: { id: string; name: string } | null;
 }
 
 /** 产品 / Product */

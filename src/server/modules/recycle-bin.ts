@@ -238,6 +238,7 @@ export async function restoreItem(ctx: AuthContext, itemId: string) {
       account: async (v: unknown) => !!v && (await tx.account.count({ where: { id: v as string, organizationId: org } })) > 0,
       contact: async (v: unknown) => !!v && (await tx.contact.count({ where: { id: v as string, organizationId: org } })) > 0,
       deal: async (v: unknown) => !!v && (await tx.deal.count({ where: { id: v as string, organizationId: org } })) > 0,
+      campaign: async (v: unknown) => !!v && (await tx.campaign.count({ where: { id: v as string, organizationId: org } })) > 0,
     };
     const skipped: string[] = [];
 
@@ -256,6 +257,10 @@ export async function restoreItem(ctx: AuthContext, itemId: string) {
         rec.convertedDealId = null;
         skipped.push('convertedDeal');
       }
+      if (rec.campaignId && !(await exists.campaign(rec.campaignId))) {
+        rec.campaignId = null;
+        skipped.push('campaign');
+      }
       await tx.lead.create({ data: rec });
     } else if (entity === 'account') {
       await tx.account.create({ data: revive<Prisma.AccountUncheckedCreateInput>(p.record, org) });
@@ -266,6 +271,11 @@ export async function restoreItem(ctx: AuthContext, itemId: string) {
       const productIds = [...new Set((p.lineItems ?? []).map((i) => i.productId as string))];
       if (productIds.length && (await tx.product.count({ where: { organizationId: org, id: { in: productIds } } })) !== productIds.length) {
         throw missing('products', 'missing');
+      }
+      // 来源市场活动已删除时置空 / clear a vanished source campaign
+      if (rec.campaignId && !(await exists.campaign(rec.campaignId))) {
+        rec.campaignId = null;
+        skipped.push('campaign');
       }
       await tx.deal.create({ data: rec });
       await tx.dealLineItem.createMany({ data: (p.lineItems ?? []).map((i) => revive<Prisma.DealLineItemCreateManyInput>(i, org)) });

@@ -21,6 +21,7 @@ import {
   FundOutlined,
   LogoutOutlined,
   AimOutlined,
+  NotificationOutlined,
   AppstoreOutlined,
   AuditOutlined,
   AccountBookOutlined,
@@ -39,6 +40,7 @@ import { NotificationBell } from './NotificationBell';
 const NAV: { key: string; icon: React.ReactNode; label: string; permission?: string }[] = [
   { key: '/', icon: <DashboardOutlined />, label: t('nav.dashboard') },
   { key: '/leads', icon: <UserAddOutlined />, label: t('nav.leads') },
+  { key: '/campaigns', icon: <NotificationOutlined />, label: t('nav.campaigns') },
   { key: '/accounts', icon: <BankOutlined />, label: t('nav.accounts') },
   { key: '/contacts', icon: <ContactsOutlined />, label: t('nav.contacts') },
   { key: '/deals', icon: <FundOutlined />, label: t('nav.deals') },

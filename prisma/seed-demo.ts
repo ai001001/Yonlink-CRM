@@ -16,7 +16,7 @@ import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
 import { toBase } from '../src/server/modules/exchange-rates';
 import { Prisma } from '../src/generated/prisma/client';
-import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -97,6 +97,29 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.recycleBinItem.deleteMany({ where: { organizationId: o } });
         await tx.salesTarget.deleteMany({ where: { organizationId: o } });
         await tx.exchangeRate.deleteMany({ where: { organizationId: o } });
+        // 线索、商机已删除，活动可删 / leads and deals are gone, so campaigns can go
+        await tx.campaign.deleteMany({ where: { organizationId: o } });
+      }
+
+      // 市场活动（线索与商机引用，先写入）/ campaigns first (leads and deals reference them)
+      const campaignIds: Record<string, string> = {};
+      for (const c of DEMO_CAMPAIGNS) {
+        const row = await tx.campaign.create({
+          data: {
+            organizationId: o,
+            name: c.name,
+            type: c.type,
+            status: c.status,
+            startDate: dayOffset(c.startIn),
+            endDate: dayOffset(c.endIn),
+            currency: c.currency,
+            budget: c.budget,
+            actualCost: c.actualCost,
+            description: '【演示】虚构市场活动，数据仅用于演示。',
+            ownerId: ids[c.owner],
+          },
+        });
+        campaignIds[c.key] = row.id;
       }
 
       // 汇率（发票快照依赖，先写入）/ exchange rates first (invoice snapshots depend on them)
@@ -352,6 +375,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
             source: l.source,
             status: l.status,
             description: l.description,
+            campaignId: demoCampaignFor(l.source) ? campaignIds[demoCampaignFor(l.source)!] : null,
             createdAt: new Date(Date.now() - l.daysAgo * DAY),
             // 演示转化结果：关联客户与商机，转化时间 = 商机创建时间 / demo conversion: linked account and deal, converted when the deal was created
             ...(l.convertedDeal
@@ -364,6 +388,11 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
           },
         });
         leadIds.push(created.id);
+      }
+      // 转化生成的商机沿用线索的来源活动 / deals converted from campaign leads keep the campaign
+      for (const l of data.leads) {
+        const key = demoCampaignFor(l.source);
+        if (key && l.convertedDeal) await tx.deal.update({ where: { id: dealIds[l.convertedDeal]! }, data: { campaignId: campaignIds[key] } });
       }
 
       // 附件元数据（文件在事务提交后写入）/ attachment metadata (files are written after the commit)
@@ -513,7 +542,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length + 1} 客户（含 1 条重复）、${data.accounts.reduce((n, a) => n + a.contacts.length, 0) + 2} 联系人、` +
-      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
+      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
   );
 }
 

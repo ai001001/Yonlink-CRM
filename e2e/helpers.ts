@@ -14,7 +14,7 @@ export async function signIn(page: Page): Promise<void> {
 }
 
 /** 点击左侧导航 / Click a side-navigation entry */
-export async function nav(page: Page, name: '工作台' | '线索' | '客户' | '联系人' | '商机' | '跟进' | '报价单' | '销售订单' | '发票' | '报表' | '销售预测' | '产品' | '汇率' | '查重合并' | '回收站' | '审计日志' | '用户管理'): Promise<void> {
+export async function nav(page: Page, name: '工作台' | '线索' | '市场活动' | '客户' | '联系人' | '商机' | '跟进' | '报价单' | '销售订单' | '发票' | '报表' | '销售预测' | '产品' | '汇率' | '查重合并' | '回收站' | '审计日志' | '用户管理'): Promise<void> {
   await page.getByRole('menu').getByRole('link', { name, exact: true }).click();
 }
 
@@ -64,4 +64,29 @@ export async function closeDrawer(page: Page, drawer: Locator): Promise<void> {
   await page.mouse.move(1, 1);
   await expect(page.locator('.ant-message-notice')).toHaveCount(0, { timeout: 15000 });
   await drawer.getByRole('button', { name: '关闭' }).first().click();
+}
+
+/**
+ * 在可搜索的记录选择框（关联客户、线索、商机等）中搜索并选择一条记录，按结果重试：记录已显示在选择框中则结束；
+ * 否则（重新）打开、输入搜索词并点击选项。下拉展开动画期间的点击可能被忽略，按结果判断比按下拉状态判断可靠。
+ * Search and pick a record in a searchable record select (account, lead, deal …), retrying by outcome: done once
+ * the record shows in the select; otherwise (re)open, type the search and click the option. Clicks during the
+ * dropdown's opening animation can be ignored; judging by the outcome is more reliable than by dropdown state.
+ * @param scope 表单所在的对话框 / dialog containing the field
+ * @param label 字段标签 / field label
+ * @param search 搜索词 / search text
+ * @param title 选项文字（完整匹配）/ option text (exact)
+ */
+export async function pickRecord(page: Page, scope: Locator, label: string, search: string, title: string): Promise<void> {
+  const picked = scope.getByTitle(title, { exact: true });
+  const option = page.locator('.ant-select-dropdown:visible').getByTitle(title, { exact: true });
+  await expect(async () => {
+    if (await picked.isVisible()) return;
+    if (!(await option.isVisible())) {
+      await scope.getByLabel(label).click({ timeout: 2000 });
+      await scope.getByLabel(label).fill(search, { timeout: 2000 });
+    }
+    await option.click({ timeout: 2000 });
+    await expect(picked).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 20000 });
 }
