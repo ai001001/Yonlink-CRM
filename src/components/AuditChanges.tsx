@@ -183,6 +183,12 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     const f = (c.filters ?? {}) as { currency?: string };
     lines.push(t(c.truncated ? 'receivables.auditExportTruncated' : 'receivables.auditExport', { currency: f.currency ?? '', count: Number(c.count ?? 0) }));
   }
+  if (entry.action === 'report.export' && (c.report === 'sales' || c.report === 'forecast')) {
+    // 报表导出：报表名与主要筛选 / report export: report name and main filters
+    const f = (c.filters ?? {}) as { currency?: string; from?: string; to?: string; period?: string };
+    const scope = c.report === 'sales' ? `${f.from ?? ''} ~ ${f.to ?? ''}` : (f.period ?? '');
+    lines.push(t('reportExport.audit', { report: t(c.report === 'sales' ? 'reports.title' : 'forecasts.title'), currency: f.currency ?? '', scope }));
+  }
   if (typeof c.via === 'string') lines.push(t('audit.via', { via: actionLabel(c.via) }));
   if (!lines.length) return null;
   return (

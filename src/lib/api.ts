@@ -96,7 +96,7 @@ export function qs(params: Record<string, string | number | boolean | null | und
  * 下载文件（携带 Bearer 令牌），触发浏览器保存，返回响应头供读取导出信息。
  * Download a file with the Bearer token, trigger a browser save, and return the headers.
  * @param path 以 /api 开头的路径 / path starting with /api
- * @param filename 保存的文件名 / file name to save as
+ * @param filename 默认文件名；服务器给出安全文件名时优先使用服务器的 / default file name; a safe server-provided name takes precedence
  */
 export async function apiDownload(path: string, filename: string): Promise<Headers> {
   const token = getToken();
@@ -113,7 +113,10 @@ export async function apiDownload(path: string, filename: string): Promise<Heade
   const url = URL.createObjectURL(await res.blob());
   const a = document.createElement('a');
   a.href = url;
-  a.download = filename;
+  // 优先使用服务器给出的文件名（只接受安全字符），否则用调用方的默认名
+  // prefer the server's file name (safe characters only), else the caller's default
+  const served = /filename="([\w.\-]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1];
+  a.download = served ?? filename;
   document.body.appendChild(a);
   a.click();
   a.remove();

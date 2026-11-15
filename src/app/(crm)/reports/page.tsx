@@ -11,6 +11,7 @@ import { Alert, App, Card, Col, DatePicker, Row, Select, Space, Spin, Statistic,
 import dayjs, { type Dayjs } from 'dayjs';
 import { usePermissions } from '@/components/AuthProvider';
 import { ColumnChart, HBarChart } from '@/components/Charts';
+import { ExportButton } from '@/components/ExportButton';
 import { t, tEnum, type MessageKey } from '@/i18n';
 import { api, ClientApiError, qs } from '@/lib/api';
 import { fmtMoney } from '@/lib/format';
@@ -108,6 +109,11 @@ export default function ReportsPage() {
             options={owners.map((u) => ({ value: u.id, label: u.name }))}
           />
         )}
+        <ExportButton
+          resource="reports/sales"
+          fileName={`sales-report-${currency}`}
+          filters={{ currency, from: range[0].format('YYYY-MM-DD'), to: range[1].format('YYYY-MM-DD'), ownerId }}
+        />
       </Space>
       <Alert type="info" showIcon title={`${t('reports.definitions')}${canPickOwner ? '' : t('reports.salesScope')}`} style={{ marginBottom: 16 }} />
       <Spin spinning={loading}>

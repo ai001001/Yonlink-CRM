@@ -1,0 +1,137 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+18 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:2070725) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/report-exports/report-exports.r1-functional.test.ts (5 tests | 1 failed) 1650ms
+   ❯ report exports R1 sales (2)
+     × 各板块与接口一致，含筛选说明、文件名与响应头 / every section matches the API 835ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/report-exports/report-exports.r1-functional.test.ts > report exports R1 sales > 各板块与接口一致，含筛选说明、文件名与响应头 / every section matches the API
+AssertionError: expected [ [ '阶段', '数量', '金额' ], …(20) ] to deeply equal [ [ '阶段', '数量', '金额' ], …(4) ]
+
+- Expected
++ Received
+
+@@ -22,6 +22,93 @@
+    [
+      "商务谈判",
+      "1",
+      "2000.00",
+    ],
++   [
++     "按月赢单",
++   ],
++   [
++     "月份",
++     "赢单数",
++     "赢单金额",
++     "输单数",
++   ],
++   [
++     "2026-11",
++     "1",
++     "1000.50",
++     "1",
++   ],
++   [
++     "负责人排行",
++   ],
++   [
++     "负责人",
++     "进行中",
++     "在手金额",
++     "赢单数",
++     "赢单金额",
++     "输单数",
++     "赢单率 %",
++     "跟进数",
++   ],
++   [
++     "用户A1",
++     "2",
++     "2500.00",
++     "1",
++     "1000.50",
++     "1",
++     "50",
++     "0",
++   ],
++   [
++     "线索来源转化",
++   ],
++   [
++     "来源",
++     "线索数",
++     "已转化",
++     "转化率 %",
++   ],
++   [
++     "官网",
++     "2",
++     "0",
++     "0",
++   ],
++   [
++     "客户推荐",
++     "1",
++     "0",
++     "0",
++   ],
++   [
++     "报价单状态",
++   ],
++   [
++     "状态",
++     "数量",
++     "金额",
++   ],
++   [
++     "草稿",
++     "0",
++     "0.00",
++   ],
++   [
++     "已发送",
++     "0",
++     "0.00",
++   ],
++   [
++     "已接受",
++     "0",
++     "0.00",
++   ],
++   [
++     "已拒绝",
++     "0",
++     "0.00",
++   ],
+  ]
+
+ ❯ tests/report-exports/report-exports.r1-functional.test.ts:80:42
+     78|       '报价接受率 %': '',
+     79|     });
+     80|     expect(section(rows, '销售漏斗（进行中商机）')).toEqual([
+       |                                          ^
+     81|       ['阶段', '数量', '金额'],
+     82|       ...json.funnel.map((f: { count: number; amount: string }, i: num…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  00:56:37
+   Duration  3.88s (tests 82%, import 12%, transform 4%, setup 1%)
+

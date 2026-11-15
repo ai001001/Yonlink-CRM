@@ -841,6 +841,17 @@ export const zhCN = {
   'receivables.bucket.d31_60': '逾期 31–60 天',
   'receivables.bucket.d61_90': '逾期 61–90 天',
   'receivables.bucket.d90_plus': '逾期 90 天以上',
+  'auditEntity.report': '报表',
+  'reportExport.summary': '概览',
+  'reportExport.metric': '指标',
+  'reportExport.value': '值',
+  'reportExport.lostAmount': '期间输单金额',
+  'reportExport.stage': '阶段',
+  'reportExport.month': '月份',
+  'reportExport.monthly': '按月赢单',
+  'reportExport.status': '状态',
+  'reportExport.openCount': '在手商机数',
+  'reportExport.audit': '{report}导出：{currency}，{scope}',
 } as const;
 
 export type MessageKey = keyof typeof zhCN;

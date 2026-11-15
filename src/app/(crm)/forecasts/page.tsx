@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, App, Card, Col, DatePicker, InputNumber, Progress, Row, Segmented, Select, Space, Statistic, Table, Typography } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { usePermissions } from '@/components/AuthProvider';
+import { ExportButton } from '@/components/ExportButton';
 import { t, tEnum } from '@/i18n';
 import { api, qs } from '@/lib/api';
 import { fmtMoney } from '@/lib/format';
@@ -140,6 +141,7 @@ export default function ForecastsPage() {
         />
         <DatePicker aria-label={t('forecasts.period')} picker={kind} allowClear={false} value={date} onChange={(d) => d && setDate(d)} />
         <Select aria-label={t('forecasts.currency')} style={{ width: 100 }} value={currency} onChange={setCurrency} options={CURRENCIES.map((c) => ({ value: c, label: c }))} />
+        <ExportButton resource="forecasts" fileName={`forecast-${currency}-${periodOf(kind, date)}`} filters={{ period: periodOf(kind, date), currency }} />
       </Space>
       <Alert type="info" showIcon title={`${t('forecasts.hint', { probs })}${perm.can('record.read.all') ? '' : t('forecasts.salesScope')}`} style={{ marginBottom: 12 }} />
       {data?.kind === 'quarter' && perm.can('forecast.manage') && <Alert type="warning" showIcon title={t('forecasts.quarterHint')} style={{ marginBottom: 12 }} />}
