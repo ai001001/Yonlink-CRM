@@ -178,6 +178,11 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     lines.push(`${t('nav.accounts')}${t('common.colon')}${value('accountId', c.accountId, users)}`);
     if (c.dealId) lines.push(`${t('nav.deals')}${t('common.colon')}${value('dealId', c.dealId, users)}`);
   }
+  if (c.report === 'receivables') {
+    // 应收账款导出：币种、行数、是否截断 / receivables export: currency, rows, truncation
+    const f = (c.filters ?? {}) as { currency?: string };
+    lines.push(t(c.truncated ? 'receivables.auditExportTruncated' : 'receivables.auditExport', { currency: f.currency ?? '', count: Number(c.count ?? 0) }));
+  }
   if (typeof c.via === 'string') lines.push(t('audit.via', { via: actionLabel(c.via) }));
   if (!lines.length) return null;
   return (

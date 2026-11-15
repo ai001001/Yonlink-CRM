@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { Alert, App, Card, Col, Row, Select, Space, Spin, Statistic, Table, Tag, Typography } from 'antd';
 import { usePermissions } from '@/components/AuthProvider';
 import { HBarChart } from '@/components/Charts';
+import { ExportButton } from '@/components/ExportButton';
 import { t, type MessageKey } from '@/i18n';
 import { api, qs } from '@/lib/api';
 import { fmtDate, fmtMoney } from '@/lib/format';
@@ -37,6 +38,7 @@ interface Receivables {
     invoiceDate: string;
     dueDate: string;
     total: string;
+    paidAmount: string;
     balance: string;
     daysOverdue: number;
     bucket: Bucket;
@@ -88,6 +90,7 @@ export default function ReceivablesPage() {
             options={owners.map((u) => ({ value: u.id, label: u.name }))}
           />
         )}
+        <ExportButton resource="reports/receivables" fileName={`receivables-${currency}`} filters={{ currency, ownerId }} />
       </Space>
       <Alert
         type="info"

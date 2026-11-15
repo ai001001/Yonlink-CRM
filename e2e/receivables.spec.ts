@@ -3,6 +3,7 @@
  * 点击发票号打开发票详情；销售代表只看到自己负责的）。基于演示数据。
  * Receivables round 3: end-to-end regression on the demo data.
  */
+import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import { nav, selectOption } from './helpers';
 
@@ -53,4 +54,29 @@ test('销售代表只看到自己负责的应收 / sales reps see only their own
   await selectOption(page, page.locator('main'), '币种', 'USD');
   await expect(report.getByTestId('receivables-accounts').getByRole('row', { name: /曼谷涡轮专修中心/ })).toBeVisible();
   await expect(report.getByTestId('kpi-outstanding')).toContainText('1 张发票');
+});
+
+test('经理导出应收账款 CSV；只读用户没有导出按钮 / export CSV; read-only users have no export', async ({ page }) => {
+  await demoSignIn(page, '郑经理');
+  await page.goto('/reports/receivables');
+  await expect(page.getByTestId('kpi-outstanding')).toContainText('2 张发票');
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: /导\s*出/ }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^receivables-CNY-\d{8}\.csv$/);
+  const content = (await readFile(await download.path())).toString('utf8');
+  const lines = content.replace(/^\uFEFF/, '').trim().split('\r\n');
+  expect(lines[0]).toBe('发票号,客户,负责人,币种,开票日期,到期日,发票金额,已收金额,未付余额,逾期天数,账龄');
+  expect(lines).toHaveLength(3);
+  expect(content).toContain('北方重卡配件集团');
+  expect(content).toContain('逾期 90 天以上');
+  await expect(page.getByText('已导出 2 条').first()).toBeVisible();
+
+  // 只读用户 / read-only user
+  await page.getByTestId('user-menu').hover();
+  await page.getByText('退出登录').click();
+  await demoSignIn(page, '周会计');
+  await page.goto('/reports/receivables');
+  await expect(page.getByTestId('kpi-outstanding')).toBeVisible();
+  await expect(page.getByRole('button', { name: /导\s*出/ })).toHaveCount(0);
 });

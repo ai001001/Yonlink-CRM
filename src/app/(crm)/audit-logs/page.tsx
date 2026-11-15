@@ -23,7 +23,7 @@ const ACTIONS: Record<string, string[]> = {
   product: ['create', 'update', 'delete'],
   quote: ['create', 'update', 'sync_items', 'status', 'delete'],
   order: ['create', 'update', 'status'],
-  invoice: ['create', 'update', 'payment', 'payment_delete', 'void'],
+  invoice: ['create', 'update', 'payment', 'payment_delete', 'void', 'export'],
   tag: ['create', 'update', 'delete'],
   view: ['create', 'update', 'delete'],
   attachment: ['create', 'delete'],

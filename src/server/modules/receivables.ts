@@ -15,10 +15,14 @@
 import { z } from 'zod';
 import { Prisma } from '@/generated/prisma/client';
 import { InvoiceStatus } from '@/generated/prisma/enums';
+import { translate, type MessageKey } from '@/i18n';
+import { audit, by } from '../audit';
 import type { AuthContext } from '../auth';
+import { toCsv } from '../csv';
 import { prisma } from '../db';
-import { visible } from '../permissions';
+import { requirePermission, visible } from '../permissions';
 import { CURRENCIES } from './deals';
+import { EXPORT_MAX, parseLang, type ExportResult } from './import-export';
 import { todayUtc } from './invoices';
 
 /** 账龄分段 / aging buckets */
@@ -133,6 +137,7 @@ export async function receivablesReport(ctx: AuthContext, query: z.infer<typeof 
       invoiceDate: r.invoiceDate,
       dueDate: r.dueDate,
       total: r.total.toFixed(2),
+      paidAmount: r.paidAmount.toFixed(2),
       balance: balance.toFixed(2),
       daysOverdue: Math.max(0, days),
       bucket,
@@ -160,4 +165,63 @@ export async function receivablesReport(ctx: AuthContext, query: z.infer<typeof 
     invoices: invoices.slice(0, limit),
     truncated: invoices.length > limit,
   };
+}
+
+/**
+ * 导出应收账款明细 CSV（需导出权限，写审计）：当前币种与负责人筛选下的未收发票，与报表口径一致；
+ * 最多 10000 行，超出时截断并告知。金额为不带货币符号的两位小数，便于在表格软件中计算。
+ * Export the open invoices of the receivables report as CSV (export permission, audited) using the report's
+ * definitions for the current currency and owner; at most 10,000 rows (truncation is reported); amounts are plain
+ * two-decimal numbers for spreadsheets.
+ * @param input 查询参数（currency、ownerId、lang）/ query parameters (currency, ownerId, lang)
+ * @param now 统计时间（测试用）/ reference time (for tests)
+ * @param limit 最多导出行数 / max rows
+ */
+export async function exportReceivables(ctx: AuthContext, input: Record<string, string>, now = new Date(), limit = EXPORT_MAX): Promise<ExportResult> {
+  requirePermission(ctx, 'data.export');
+  // 语言参数只决定表头与账龄文字 / the locale only affects headers and bucket labels
+  const { lang, ...params } = input;
+  const locale = parseLang(lang);
+  const query = receivablesQuerySchema.parse(params);
+  const t = (key: MessageKey, vars?: Record<string, string | number>) => translate(locale, key, vars);
+  const report = await receivablesReport(ctx, query, now, limit);
+  const csv = toCsv(
+    [
+      t('invoices.number'),
+      t('quotes.account'),
+      t('reports.owner'),
+      t('reports.currency'),
+      t('invoices.invoiceDate'),
+      t('invoices.dueDate'),
+      t('invoices.total'),
+      t('invoices.paidAmount'),
+      t('invoices.balance'),
+      t('receivables.daysOverdueHeader'),
+      t('receivables.agingColumn'),
+    ],
+    report.invoices.map((i) => [
+      i.invoiceNumber,
+      i.account.name,
+      i.owner?.name,
+      report.currency,
+      i.invoiceDate.toISOString().slice(0, 10),
+      i.dueDate.toISOString().slice(0, 10),
+      i.total,
+      i.paidAmount,
+      i.balance,
+      i.daysOverdue,
+      t(`receivables.bucket.${i.bucket}` as MessageKey),
+    ]),
+  );
+  const count = report.invoices.length;
+  // 审计只记筛选条件、行数与是否截断 / the audit records filters, row count and truncation only
+  await prisma.$transaction((tx) =>
+    audit(tx, {
+      ...by(ctx),
+      action: 'invoice.export',
+      entityType: 'invoice',
+      changes: { report: 'receivables', count, truncated: report.truncated, filters: { currency: query.currency, ...(query.ownerId ? { ownerId: query.ownerId } : {}) } },
+    }),
+  );
+  return { filename: `receivables-${report.currency}-${report.asOf.replace(/-/g, '')}.csv`, csv, count, truncated: report.truncated };
 }

@@ -1,0 +1,64 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+18 migrations found in prisma/migrations
+
+
+┌─────────────────────────────────────────────────────────┐
+│  Update available 7.10.1 -> 8.0.0-rc.33                 │
+│                                                         │
+│  This is a major update - please follow the guide at    │
+│  https://pris.ly/d/major-version-upgrade                │
+│                                                         │
+│  Run the following to update                            │
+│    npm i --save-dev prisma@latest                       │
+│    npm i @prisma/client@latest                          │
+└─────────────────────────────────────────────────────────┘
+No pending migrations to apply.
+(node:2023118) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/receivables/receivables-export.r1-functional.test.ts (6 tests | 1 failed) 2711ms
+   ❯ receivables export R1 (6)
+     × 内容与报表一致：表头、金额、逾期天数、账龄，按到期日排序 / content matches the report 1094ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/receivables/receivables-export.r1-functional.test.ts > receivables export R1 > 内容与报表一致：表头、金额、逾期天数、账龄，按到期日排序 / content matches the report
+AssertionError: expected [ '发票号', '客户', '负责人', '币种', …(7) ] to deeply equal [ '发票号', '客户', '负责人', '币种', …(7) ]
+
+- Expected
++ Received
+
+@@ -5,9 +5,9 @@
+    "币种",
+    "开票日期",
+    "到期日",
+    "发票金额",
+    "已收金额",
+-   "未收余额",
++   "未付余额",
+    "逾期天数",
+    "账龄",
+  ]
+
+ ❯ tests/receivables/receivables-export.r1-functional.test.ts:72:21
+     70|     expect(res.headers.get('X-Export-Count')).toBe('2');
+     71|     expect(res.headers.get('X-Export-Truncated')).toBe('false');
+     72|     expect(rows[0]).toEqual(['发票号', '客户', '负责人', '币种', '开票日期', '到期日', …
+       |                     ^
+     73|     const inv1 = await prisma.invoice.findUniqueOrThrow({ where: { id:…
+     74|     const inv2 = await prisma.invoice.findUniqueOrThrow({ where: { id:…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  23:46:20
+   Duration  4.97s (tests 87%, import 9%, transform 3%)
+

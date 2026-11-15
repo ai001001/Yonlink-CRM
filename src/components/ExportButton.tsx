@@ -12,12 +12,14 @@ import { apiDownload, qs } from '@/lib/api';
 import { usePermissions } from './AuthProvider';
 
 interface Props {
-  resource: 'leads' | 'accounts' | 'deals' | 'activities';
+  resource: 'leads' | 'accounts' | 'deals' | 'activities' | 'reports/receivables';
+  /** 下载文件名前缀（默认为 resource）/ download file name prefix (defaults to the resource) */
+  fileName?: string;
   /** 当前筛选条件 / current filters */
   filters: Record<string, string | undefined>;
 }
 
-export function ExportButton({ resource, filters }: Props) {
+export function ExportButton({ resource, filters, fileName }: Props) {
   const { message } = App.useApp();
   const perm = usePermissions();
   const [busy, setBusy] = useState(false);
@@ -27,7 +29,7 @@ export function ExportButton({ resource, filters }: Props) {
     setBusy(true);
     try {
       const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const headers = await apiDownload(`/api/${resource}/export${qs({ ...filters, lang: getLocale() })}`, `${resource}-${stamp}.csv`);
+      const headers = await apiDownload(`/api/${resource}/export${qs({ ...filters, lang: getLocale() })}`, `${fileName ?? resource}-${stamp}.csv`);
       const n = Number(headers.get('X-Export-Count') ?? 0);
       if (headers.get('X-Export-Truncated') === 'true') message.warning(t('export.truncated', { n }));
       else message.success(t('export.done', { n }));
