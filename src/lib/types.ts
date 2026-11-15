@@ -228,6 +228,10 @@ export interface Invoice {
   taxAmount: string;
   total: string;
   paidAmount: string;
+  /** 开票日汇率快照（1 单位发票币种 = 多少人民币）/ rate snapshot on the invoice date */
+  exchangeRate: string | null;
+  /** 折合人民币的发票金额 / invoice total in CNY */
+  baseTotal: string | null;
   invoiceDate: string;
   dueDate: string;
   billingAddress: string | null;

@@ -24,6 +24,7 @@ import { ApiError, notFound } from '../errors';
 import { assertCanUpdate, visible } from '../permissions';
 import { containsText, listQuery, optionalText, requiredText, type Page } from '../validation';
 import { amountSchema, dateOnly } from './deals';
+import { ratesOn, toBase } from './exchange-rates';
 
 /** 默认付款期限（天）/ default payment term in days */
 export const DEFAULT_TERM_DAYS = 30;
@@ -166,6 +167,8 @@ export async function createInvoice(ctx: AuthContext, input: z.infer<typeof invo
         throw new ApiError(409, 'CONFLICT', 'Cancelled orders cannot be invoiced', { salesOrderId: ['cancelled'] });
       }
       if (await tx.invoice.count({ where: { organizationId: ctx.organizationId, salesOrderId: order.id, status: { not: InvoiceStatus.VOID } } })) throw hasInvoice();
+      // 开票日汇率快照（无可用汇率时为空）/ rate snapshot on the invoice date (null without a rate)
+      const rate = (await ratesOn(ctx.organizationId, invoiceDate, tx)).get(order.currency) ?? null;
       // 总计为 0 时直接视为已付清 / a zero total is paid from the start
       const zero = order.total.isZero();
       const invoice = await tx.invoice.create({
@@ -179,6 +182,8 @@ export async function createInvoice(ctx: AuthContext, input: z.infer<typeof invo
           status: zero ? InvoiceStatus.PAID : InvoiceStatus.UNPAID,
           paidAt: zero ? new Date() : null,
           currency: order.currency,
+          exchangeRate: rate,
+          baseTotal: rate ? toBase(order.total, rate) : null,
           taxPercent: order.taxPercent,
           subtotal: order.subtotal,
           taxAmount: order.taxAmount,
@@ -233,7 +238,14 @@ export async function updateInvoice(ctx: AuthContext, id: string, input: z.infer
   const current = await requireActive(ctx, id);
   if ((input.dueDate ?? current.dueDate) < (input.invoiceDate ?? current.invoiceDate)) throw badDates();
   await prisma.$transaction(async (tx) => {
-    const n = await tx.invoice.updateMany({ where: { id, status: { not: InvoiceStatus.VOID } }, data: input });
+    // 开票日期变化时按新日期重新取汇率快照 / a new invoice date re-takes the rate snapshot for that date
+    const data: Prisma.InvoiceUpdateManyMutationInput = { ...input };
+    if (input.invoiceDate && input.invoiceDate.getTime() !== current.invoiceDate.getTime()) {
+      const rate = (await ratesOn(ctx.organizationId, input.invoiceDate, tx)).get(current.currency) ?? null;
+      data.exchangeRate = rate;
+      data.baseTotal = rate ? toBase(current.total, rate) : null;
+    }
+    const n = await tx.invoice.updateMany({ where: { id, status: { not: InvoiceStatus.VOID } }, data });
     if (n.count !== 1) throw new ApiError(409, 'CONFLICT', 'Invoice is void', { status: ['void'] });
     const invoice = await tx.invoice.findUniqueOrThrow({ where: { id } });
     const fields = diff('invoice', current, invoice);

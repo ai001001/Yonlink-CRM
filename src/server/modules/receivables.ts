@@ -23,6 +23,7 @@ import { prisma } from '../db';
 import { requirePermission, visible } from '../permissions';
 import { CURRENCIES } from './deals';
 import { EXPORT_MAX, parseLang, type ExportResult } from './import-export';
+import { BASE_CURRENCY, ratesOn, sumInBase } from './exchange-rates';
 import { todayUtc } from './invoices';
 
 /** 账龄分段 / aging buckets */
@@ -78,7 +79,7 @@ export async function receivablesReport(ctx: AuthContext, query: z.infer<typeof 
   const deal: Prisma.DealWhereInput = { AND: [forced ? { ownerId: forced } : {}, query.ownerId ? { ownerId: query.ownerId } : {}] };
   const open: Prisma.InvoiceWhereInput = { organizationId: ctx.organizationId, deal, status: { in: [InvoiceStatus.UNPAID, InvoiceStatus.PARTIALLY_PAID] } };
 
-  const [rows, currencies, collected] = await Promise.all([
+  const [rows, currencies, collected, allOpen, rates] = await Promise.all([
     prisma.invoice.findMany({
       where: { ...open, currency: query.currency },
       select: {
@@ -102,7 +103,19 @@ export async function receivablesReport(ctx: AuthContext, query: z.infer<typeof 
       _sum: { amount: true },
       _count: { _all: true },
     }),
+    // 全部币种的未付清发票（用于折合本币）/ open invoices in every currency (for base totals)
+    prisma.invoice.findMany({ where: open, select: { currency: true, total: true, paidAmount: true, dueDate: true } }),
+    ratesOn(ctx.organizationId, today),
   ]);
+  const outstandingBy = new Map<string, Prisma.Decimal>();
+  const overdueBy = new Map<string, Prisma.Decimal>();
+  for (const r of allOpen) {
+    const balance = r.total.minus(r.paidAmount);
+    outstandingBy.set(r.currency, (outstandingBy.get(r.currency) ?? zero()).plus(balance));
+    if (daysOverdue(r.dueDate, today) > 0) overdueBy.set(r.currency, (overdueBy.get(r.currency) ?? zero()).plus(balance));
+  }
+  const outstandingBase = sumInBase(outstandingBy, rates);
+  const overdueBase = sumInBase(overdueBy, rates);
 
   const buckets = emptyBuckets();
   const bucketCounts = Object.fromEntries(BUCKETS.map((b) => [b, 0])) as Record<Bucket, number>;
@@ -156,6 +169,8 @@ export async function receivablesReport(ctx: AuthContext, query: z.infer<typeof 
       collected: (collected._sum.amount ?? zero()).toFixed(2),
       collectedCount: collected._count._all,
     },
+    // 全部币种折合本币（按今天的汇率；缺少汇率的币种不计入并列出）/ all currencies in the base currency
+    base: { currency: BASE_CURRENCY, outstanding: outstandingBase.total, overdue: overdueBase.total, missing: [...new Set([...outstandingBase.missing, ...overdueBase.missing])].sort() },
     buckets: BUCKETS.map((b) => ({ bucket: b, count: bucketCounts[b], amount: buckets[b].toFixed(2) })),
     // 欠款最多的客户在前 / largest balances first
     accounts: [...accounts.values()]

@@ -14,7 +14,9 @@ import { hashPassword } from '../src/server/auth';
 import { createHash, randomUUID } from 'node:crypto';
 import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
-import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { toBase } from '../src/server/modules/exchange-rates';
+import { Prisma } from '../src/generated/prisma/client';
+import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -94,7 +96,13 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         // 回收站中的旧快照对应已不存在的旧数据，一并清空 / old snapshots refer to the wiped data
         await tx.recycleBinItem.deleteMany({ where: { organizationId: o } });
         await tx.salesTarget.deleteMany({ where: { organizationId: o } });
+        await tx.exchangeRate.deleteMany({ where: { organizationId: o } });
       }
+
+      // 汇率（发票快照依赖，先写入）/ exchange rates first (invoice snapshots depend on them)
+      await tx.exchangeRate.createMany({
+        data: DEMO_RATES.map((r) => ({ organizationId: o, currency: r.currency, rate: r.rate, effectiveDate: dayOffset(-r.daysAgo), createdById: ids.admin })),
+      });
 
       await tx.product.createMany({ data: data.products.map((p) => ({ ...p, organizationId: o })) });
       const productIds = new Map(
@@ -288,6 +296,11 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
             taxAmount: so.taxAmount,
             total: so.total,
             paidAmount: (paidCents / 100).toFixed(2),
+            ...(() => {
+              // 开票日汇率快照 / rate snapshot on the invoice date
+              const rate = demoRateOn(so.currency, inv.daysAgo);
+              return { exchangeRate: rate, baseTotal: rate ? toBase(so.total, new Prisma.Decimal(rate)) : null };
+            })(),
             invoiceDate,
             dueDate: dayOffset(-inv.daysAgo + inv.termDays),
             billingAddress: so.shippingAddress,
@@ -500,7 +513,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length + 1} 客户（含 1 条重复）、${data.accounts.reduce((n, a) => n + a.contacts.length, 0) + 2} 联系人、` +
-      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
+      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
   );
 }
 

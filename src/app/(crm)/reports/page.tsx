@@ -38,6 +38,7 @@ interface Report {
     leadConversionRate: number | null;
     quoteAcceptanceRate: number | null;
   };
+  base: { currency: string; openAmount: string; wonAmount: string; missing: string[] };
   funnel: { stage: string; count: number; amount: string }[];
   monthly: { month: string; wonCount: number; wonAmount: string; lostCount: number }[];
   owners: { ownerId: string | null; name: string | null; openCount: number; openAmount: string; wonCount: number; wonAmount: string; lostCount: number; winRate: number | null; activities: number }[];
@@ -119,6 +120,13 @@ export default function ReportsPage() {
       <Spin spinning={loading}>
         {data && (
           <div data-testid="reports">
+            <Alert
+              type={data.base.missing.length ? 'warning' : 'success'}
+              showIcon
+              data-testid="reports-base"
+              style={{ marginBottom: 16 }}
+              title={`${t('rates.baseSales', { base: data.base.currency, open: fmtMoney(data.base.openAmount, data.base.currency), won: fmtMoney(data.base.wonAmount, data.base.currency) })}${data.base.missing.length ? t('rates.missing', { list: data.base.missing.join(t('common.listSep')) }) : ''}`}
+            />
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
               <Col xs={24} sm={12} lg={8} xl={4}>
                 <Card size="small" data-testid="kpi-open">

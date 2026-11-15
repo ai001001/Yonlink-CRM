@@ -733,6 +733,33 @@ export function demoOrders(data: ReturnType<typeof buildDemoData>): DemoOrder[] 
   });
 }
 
+/**
+ * 演示汇率（1 单位外币 = 多少人民币）：每种外币两期，分别在 200 天前和 30 天前生效，覆盖全部演示发票的开票日。
+ * 数值为演示用的近似值，不代表真实汇率。
+ * Demo exchange rates (CNY per unit): two entries per currency, effective 200 and 30 days ago, covering every demo
+ * invoice date. Illustrative values only, not real market rates.
+ */
+export const DEMO_RATES = [
+  { currency: 'USD', daysAgo: 200, rate: '7.12000000' },
+  { currency: 'USD', daysAgo: 30, rate: '7.18000000' },
+  { currency: 'EUR', daysAgo: 200, rate: '7.70000000' },
+  { currency: 'EUR', daysAgo: 30, rate: '7.80000000' },
+  { currency: 'HKD', daysAgo: 200, rate: '0.91200000' },
+  { currency: 'HKD', daysAgo: 30, rate: '0.91800000' },
+  { currency: 'JPY', daysAgo: 200, rate: '0.04750000' },
+  { currency: 'JPY', daysAgo: 30, rate: '0.04820000' },
+] as const;
+
+/**
+ * 某天（几天前）某币种的演示汇率：该日及之前最近生效的一条；人民币为 1；没有则为 null。
+ * Demo rate of a currency on a day (days ago): the latest effective on or before it; CNY is 1; null if none.
+ */
+export function demoRateOn(currency: string, daysAgo: number): string | null {
+  if (currency === 'CNY') return '1';
+  const hit = DEMO_RATES.filter((r) => r.currency === currency && r.daysAgo >= daysAgo).sort((a, b) => a.daysAgo - b.daysAgo)[0];
+  return hit?.rate ?? null;
+}
+
 /** 演示发票 / Demo invoice */
 export interface DemoInvoice {
   /** 来源订单所属商机 / deal of the source order */

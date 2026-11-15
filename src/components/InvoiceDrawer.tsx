@@ -289,6 +289,15 @@ export function InvoiceDrawer({ invoiceId, onClose, onChanged }: Props) {
             <Descriptions.Item label={t('invoices.paidAmount')}>
               <span data-testid="invoice-paid">{fmtMoney(invoice.paidAmount, invoice.currency)}</span>
             </Descriptions.Item>
+            <Descriptions.Item label={t('rates.snapshot')} span={2}>
+              <span data-testid="invoice-rate">
+                {invoice.exchangeRate === null
+                  ? t('rates.noSnapshot')
+                  : invoice.currency === 'CNY'
+                    ? '—'
+                    : t('rates.snapshotText', { currency: invoice.currency, rate: Number(invoice.exchangeRate), amount: fmtMoney(invoice.baseTotal, 'CNY') })}
+              </span>
+            </Descriptions.Item>
             <Descriptions.Item label={t('invoices.balance')} span={2}>
               <Typography.Text strong data-testid="invoice-balance">
                 {fmtMoney(balanceOf(invoice), invoice.currency)}

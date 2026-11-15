@@ -28,6 +28,7 @@ interface Receivables {
   asOf: string;
   currencies: string[];
   summary: { outstanding: string; outstandingCount: number; overdue: string; overdueCount: number; collected: string; collectedCount: number };
+  base: { currency: string; outstanding: string; overdue: string; missing: string[] };
   buckets: { bucket: Bucket; count: number; amount: string }[];
   accounts: { accountId: string; name: string; count: number; outstanding: string; buckets: Record<Bucket, string>; oldestDueDate: string; maxDaysOverdue: number }[];
   invoices: {
@@ -101,6 +102,13 @@ export default function ReceivablesPage() {
       <Spin spinning={loading}>
         {data && (
           <div data-testid="receivables">
+            <Alert
+              type={data.base.missing.length ? 'warning' : 'success'}
+              showIcon
+              data-testid="receivables-base"
+              style={{ marginBottom: 16 }}
+              title={`${t('rates.baseReceivables', { base: data.base.currency, outstanding: fmtMoney(data.base.outstanding, data.base.currency), overdue: fmtMoney(data.base.overdue, data.base.currency) })}${data.base.missing.length ? t('rates.missing', { list: data.base.missing.join(t('common.listSep')) }) : ''}`}
+            />
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
               <Col xs={24} md={8}>
                 <Card size="small" data-testid="kpi-outstanding">

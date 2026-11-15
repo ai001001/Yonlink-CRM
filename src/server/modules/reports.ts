@@ -18,6 +18,7 @@ import { prisma } from '../db';
 import { ApiError } from '../errors';
 import { visible } from '../permissions';
 import { CURRENCIES, dateOnly } from './deals';
+import { BASE_CURRENCY, ratesOn, sumInBase } from './exchange-rates';
 
 const OPEN_STAGES = ['QUALIFICATION', 'NEEDS_ANALYSIS', 'PROPOSAL', 'NEGOTIATION'] as const;
 const QUOTE_STATUSES = ['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED'] as const;
@@ -122,6 +123,16 @@ export async function salesReport(ctx: AuthContext, query: z.infer<typeof report
     prisma.deal.groupBy({ by: ['currency'], where: { organizationId: org, ...owner }, _count: { _all: true }, orderBy: { currency: 'asc' } }),
   ]);
 
+  // 全部币种折合本币（按今天的汇率）/ all currencies in the base currency (today's rates)
+  const [openByCurrency, wonByCurrency, rates] = await Promise.all([
+    prisma.deal.groupBy({ by: ['currency'], where: { organizationId: org, ...owner, stage: { in: [...OPEN_STAGES] } }, _sum: { amount: true }, orderBy: { currency: 'asc' } }),
+    prisma.deal.groupBy({ by: ['currency'], where: { organizationId: org, ...owner, stage: 'CLOSED_WON', expectedCloseDate: closeDate }, _sum: { amount: true }, orderBy: { currency: 'asc' } }),
+    ratesOn(org, new Date()),
+  ]);
+  const byCurrency = (rows: { currency: string; _sum: { amount: Prisma.Decimal | null } }[]) => new Map(rows.map((r) => [r.currency, r._sum.amount ?? new Prisma.Decimal(0)]));
+  const openBase = sumInBase(byCurrency(openByCurrency), rates);
+  const wonBase = sumInBase(byCurrency(wonByCurrency), rates);
+
   const count = (r: { _count?: { _all?: number } | true }) => (typeof r._count === 'object' ? (r._count._all ?? 0) : 0);
 
   // 漏斗（补零）/ funnel (zero-filled)
@@ -206,6 +217,12 @@ export async function salesReport(ctx: AuthContext, query: z.infer<typeof report
       leadConverted,
       leadConversionRate: rate(leadConverted, leadTotal),
       quoteAcceptanceRate: rate(accepted, accepted + rejected),
+    },
+    base: {
+      currency: BASE_CURRENCY,
+      openAmount: openBase.total,
+      wonAmount: wonBase.total,
+      missing: [...new Set([...openBase.missing, ...wonBase.missing])].sort(),
     },
     funnel,
     monthly: months,

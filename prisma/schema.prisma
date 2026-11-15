@@ -45,6 +45,7 @@ model Organization {
   invoices        Invoice[]
   invoiceItems    InvoiceLineItem[]
   invoicePayments InvoicePayment[]
+  exchangeRates   ExchangeRate[]
 
   @@map("organizations")
 }
@@ -60,6 +61,7 @@ model User {
   createdOrders     SalesOrder[]      @relation("OrderCreator")
   createdInvoices   Invoice[]         @relation("InvoiceCreator")
   recordedPayments  InvoicePayment[]  @relation("PaymentRecorder")
+  ratesCreated      ExchangeRate[]    @relation("RateCreator")
   /// 角色（服务端每个请求从数据库读取）/ role (read from the DB on every request)
   role              UserRole          @default(SALES)
   isActive          Boolean           @default(true) @map("is_active")
@@ -832,6 +834,10 @@ model Invoice {
   taxAmount      Decimal           @map("tax_amount") @db.Decimal(18, 2)
   total          Decimal           @db.Decimal(18, 2)
   paidAmount     Decimal           @default(0) @map("paid_amount") @db.Decimal(18, 2)
+  /// 开票日汇率快照：1 单位发票币种 = 多少本币；无可用汇率时为空 / rate snapshot on the invoice date (base units per 1 unit); null without a rate
+  exchangeRate   Decimal?          @map("exchange_rate") @db.Decimal(18, 8)
+  /// 折合本币的发票金额（快照）/ invoice total in the base currency (snapshot)
+  baseTotal      Decimal?          @map("base_total") @db.Decimal(18, 2)
   invoiceDate    DateTime          @map("invoice_date") @db.Date
   dueDate        DateTime          @map("due_date") @db.Date
   billingAddress String?           @map("billing_address") @db.VarChar(500)
@@ -897,4 +903,24 @@ model InvoicePayment {
 
   @@index([organizationId, invoiceId, paidOn])
   @@map("invoice_payments")
+}
+
+/// 汇率：1 单位外币 = rate 本币（本币为人民币），按生效日期保存历史；查询某日汇率取该日及之前最近生效的一条。
+/// Exchange rate: 1 unit of the currency = rate base units (the base is CNY), kept as dated history; the rate for a
+/// day is the latest entry effective on or before it.
+model ExchangeRate {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  currency       String       @db.Char(3)
+  rate           Decimal      @db.Decimal(18, 8)
+  effectiveDate  DateTime     @map("effective_date") @db.Date
+  createdById    String?      @map("created_by_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User?        @relation("RateCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organizationId, currency, effectiveDate])
+  @@index([organizationId, currency, effectiveDate(sort: Desc)])
+  @@map("exchange_rates")
 }
