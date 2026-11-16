@@ -44,6 +44,7 @@ interface MyTicket {
   status: string;
   priority: string;
   dueAt: string | null;
+  escalatedAt: string | null;
   overdue: boolean;
   account: { id: string; name: string };
 }
@@ -223,6 +224,7 @@ export default function DashboardPage() {
                       <Tag color={PRIORITY_COLOR[tk.priority]}>{tEnum('ticketPriority', tk.priority)}</Tag>
                       <Link href={`/tickets?id=${tk.id}`}>{tk.subject}</Link>
                       {tk.overdue && <Tag color="red">{t('tickets.overdue')}</Tag>}
+                      {tk.escalatedAt && <Tag color="magenta">{t('sla.escalated')}</Tag>}
                     </Space>
                   }
                   description={`${tk.ticketNumber} · ${tEnum('ticketStatus', tk.status)} · ${tk.account.name}${tk.dueAt ? ` · ${t('tickets.dueAt')}${t('common.colon')}${fmtDateTime(tk.dueAt)}` : ''}`}

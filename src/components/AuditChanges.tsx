@@ -90,6 +90,13 @@ const FIELD_LABELS: Record<string, MessageKey> = {
   resolvedAt: 'tickets.resolvedAt',
   isInternal: 'ticketComments.internal',
   body: 'ticketComments.body',
+  escalatedAt: 'sla.escalatedAt',
+  enabled: 'sla.enabled',
+  urgentHours: 'sla.urgentHours',
+  highHours: 'sla.highHours',
+  mediumHours: 'sla.mediumHours',
+  lowHours: 'sla.lowHours',
+  escalateToId: 'sla.escalateTo',
 };
 
 // 枚举字段 → 翻译前缀 / enum field → translation prefix
@@ -168,7 +175,8 @@ function value(field: string, v: unknown, users: Map<string, string>, entityType
   if (entityType === 'ticket' && field === 'type') return tEnum('ticketType', String(v));
   if (entityType === 'ticket' && field === 'priority') return tEnum('ticketPriority', String(v));
   if (entityType === 'ticket' && field === 'channel') return tEnum('ticketChannel', String(v));
-  if (field === 'resolvedAt') return String(v).replace('T', ' ').slice(0, 16);
+  if (field === 'resolvedAt' || field === 'escalatedAt') return String(v).replace('T', ' ').slice(0, 16);
+  if (field === 'escalateToId') return users.get(String(v)) ?? String(v).slice(0, 8);
   if (entityType === 'campaign' && field === 'type') return tEnum('campaignType', String(v));
   if (ENUM_PREFIX[field]) return tEnum(ENUM_PREFIX[field]!, String(v));
   if (field === 'expectedCloseDate' || field === 'validUntil' || field === 'expectedDelivery' || field === 'invoiceDate' || field === 'dueDate' || field === 'startDate' || field === 'endDate') return String(v).slice(0, 10);
@@ -197,6 +205,10 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     // 商机联系人角色：联系人 · 角色 / deal contact role: contact · role
     const role = typeof c.contactRole === 'string' ? ` · ${tEnum('dealContactRole', c.contactRole)}` : '';
     lines.push(`${t('contactRoles.audit', { name: c.contact })}${role}${c.isPrimary === true ? ` · ${t('contactRoles.primary')}` : ''}`);
+  }
+  if (entry.action === 'ticket.escalate' && typeof c.dueAt === 'string') {
+    // 超时升级：原处理期限与通知人数 / escalation: the missed due time and how many were notified
+    lines.push(t('sla.auditEscalate', { due: value('dueAt', c.dueAt, users), n: Number(c.notified ?? 0) }));
   }
   if (typeof c.commentId === 'string') {
     // 工单评论：类型与字数（内容不记录）/ ticket comment: kind and length (content is not recorded)

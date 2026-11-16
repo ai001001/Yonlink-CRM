@@ -977,3 +977,6 @@ export const DEMO_TICKET_COMMENTS: Record<string, { body: string; isInternal: bo
     { body: '财务已重开发票，快递单号已告知客户。', isInternal: false, hoursAfter: 24 },
   ],
 };
+
+/** 演示 SLA 时限（小时，与系统默认一致）/ demo SLA limits in hours (same as the system defaults) */
+export const DEMO_SLA_HOURS = { urgentHours: 4, highHours: 24, mediumHours: 72, lowHours: 168 } as const;

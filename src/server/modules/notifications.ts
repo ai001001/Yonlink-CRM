@@ -23,6 +23,7 @@ import { NotificationType } from '@/generated/prisma/enums';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { notFound } from '../errors';
+import { sweepEscalations } from './ticket-sla';
 
 /** 到期前多久提醒 / how long before the due time to remind */
 export const REMIND_BEFORE_MS = 30 * 60 * 1000;
@@ -152,6 +153,8 @@ export async function syncReminders(ctx: AuthContext, now = new Date()): Promise
  * Unread count (reminders are generated first).
  */
 export async function unreadCount(ctx: AuthContext): Promise<{ count: number }> {
+  // 顺带检查工单超时升级（系统没有定时任务）/ also run the ticket escalation check (there is no scheduler)
+  await sweepEscalations(ctx.organizationId);
   await syncReminders(ctx);
   return { count: await prisma.notification.count({ where: { ...mine(ctx), readAt: null } }) };
 }
@@ -161,6 +164,7 @@ export async function unreadCount(ctx: AuthContext): Promise<{ count: number }> 
  * My notifications, newest first, with the unread count.
  */
 export async function listNotifications(ctx: AuthContext, query: z.infer<typeof notificationListSchema>) {
+  await sweepEscalations(ctx.organizationId);
   await syncReminders(ctx);
   const where: Prisma.NotificationWhereInput = { ...mine(ctx), ...(query.status === 'unread' ? { readAt: null } : {}) };
   const [items, total, unread] = await Promise.all([

@@ -22,6 +22,7 @@ import { ApiError, notFound } from '../errors';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
 import { containsText, listQuery, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 import { notifyAssigned } from './notifications';
+import { activePolicy, slaDue, sweepEscalations } from './ticket-sla';
 
 /** 已解决类状态 / resolved-like statuses */
 export const DONE_STATUSES: TicketStatus[] = [TicketStatus.RESOLVED, TicketStatus.CLOSED];
@@ -61,6 +62,8 @@ export const ticketListSchema = listQuery.extend({
   ownerId: z.uuid().optional(),
   accountId: z.uuid().optional(),
   overdue: z.enum(['true']).optional(),
+  /** 只看已升级（未解决）/ escalated and unresolved only */
+  escalated: z.enum(['true']).optional(),
 });
 
 const include = {
@@ -128,6 +131,7 @@ export function ticketWhere(ctx: AuthContext, query: z.infer<typeof ticketListSc
   if (query.ownerId) and.push({ ownerId: query.ownerId });
   if (query.accountId) and.push({ accountId: query.accountId });
   if (query.overdue) and.push({ status: { in: OPEN_STATUSES }, dueAt: { lt: new Date() } });
+  if (query.escalated) and.push({ status: { in: OPEN_STATUSES }, escalatedAt: { not: null } });
   if (query.q) {
     const c = containsText(query.q);
     and.push({ OR: [{ ticketNumber: c }, { subject: c }, { account: { name: c } }, { contact: { name: c } }] });
@@ -140,6 +144,7 @@ export function ticketWhere(ctx: AuthContext, query: z.infer<typeof ticketListSc
  * Search tickets (number, subject, account, contact), newest first, with per-status counts (ignoring the status filter).
  */
 export async function listTickets(ctx: AuthContext, query: z.infer<typeof ticketListSchema>): Promise<Page<unknown> & { counts: Record<string, number> }> {
+  await sweepEscalations(ctx.organizationId);
   const where = ticketWhere(ctx, query);
   const [items, total, byStatus] = await prisma.$transaction([
     prisma.ticket.findMany({ where, include, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }], skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
@@ -157,6 +162,7 @@ export async function listTickets(ctx: AuthContext, query: z.infer<typeof ticket
  * Ticket detail; 404 when not visible.
  */
 export async function getTicket(ctx: AuthContext, id: string) {
+  await sweepEscalations(ctx.organizationId);
   const ticket = await prisma.ticket.findFirst({ where: { id, ...visible(ctx) }, include });
   if (!ticket) throw notFound();
   return withOverdue(ticket);
@@ -173,9 +179,12 @@ export async function createTicket(ctx: AuthContext, input: z.infer<typeof ticke
   await assertParties(ctx, data.accountId, data.contactId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
   const resolvedAt = resolvedAtFor(data.status, data.resolution, null);
+  // 未填处理期限且启用 SLA 时按优先级自动计算 / without a due time, the SLA (if enabled) sets one from the priority
+  const policy = data.dueAt === undefined ? await activePolicy(prisma, ctx.organizationId) : null;
+  const dueAt = policy ? slaDue(policy, data.priority, new Date()) : (data.dueAt ?? null);
   return prisma.$transaction(async (tx) => {
     const ticket = await tx.ticket.create({
-      data: { ...data, dueAt: data.dueAt ?? null, organizationId: ctx.organizationId, ownerId: owner, resolvedAt, ticketNumber: await nextNumber(tx, ctx.organizationId) },
+      data: { ...data, dueAt, dueAuto: !!policy, organizationId: ctx.organizationId, ownerId: owner, resolvedAt, ticketNumber: await nextNumber(tx, ctx.organizationId) },
       include,
     });
     await audit(tx, { ...by(ctx), action: 'ticket.create', entityType: 'ticket', entityId: ticket.id, changes: { after: snapshot('ticket', ticket) } });
@@ -200,11 +209,22 @@ export async function updateTicket(ctx: AuthContext, id: string, input: z.infer<
   const status = data.status ?? current.status;
   const resolution = data.resolution !== undefined ? data.resolution : current.resolution;
   const resolvedAt = resolvedAtFor(status, resolution, DONE_STATUSES.includes(current.status) ? current.resolvedAt : null);
+  // 处理期限：手动填写则不再自动；自动期限随优先级重算；期限移到未来时清除升级标记以便再次升级
+  // due time: a hand-set one stops being automatic; an automatic one follows the priority; moving it into the future clears the escalation
+  const sla: { dueAt?: Date | null; dueAuto?: boolean; escalatedAt?: null } = {};
+  if (data.dueAt !== undefined) {
+    sla.dueAuto = false;
+  } else if (data.priority && data.priority !== current.priority && current.dueAuto) {
+    const policy = await activePolicy(prisma, ctx.organizationId);
+    if (policy) sla.dueAt = slaDue(policy, data.priority, current.createdAt);
+  }
+  const nextDue = sla.dueAt !== undefined ? sla.dueAt : data.dueAt;
+  if (nextDue !== undefined && current.escalatedAt && (!nextDue || nextDue > new Date())) sla.escalatedAt = null;
   return prisma.$transaction(async (tx) => {
     // 乐观并发：只在 updatedAt 未变时写入 / optimistic concurrency: write only if updatedAt is unchanged
     const { count } = await tx.ticket.updateMany({
       where: { id, organizationId: ctx.organizationId, updatedAt: current.updatedAt },
-      data: { ...data, ownerId: owner, resolvedAt },
+      data: { ...data, ...sla, ownerId: owner, resolvedAt },
     });
     if (!count) throw new ApiError(409, 'CONFLICT', 'Ticket was changed by someone else', { ticket: ['stale'] });
     const ticket = await tx.ticket.findUniqueOrThrow({ where: { id }, include });

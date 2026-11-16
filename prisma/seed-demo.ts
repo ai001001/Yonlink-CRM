@@ -16,7 +16,7 @@ import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
 import { toBase } from '../src/server/modules/exchange-rates';
 import { Prisma } from '../src/generated/prisma/client';
-import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -89,6 +89,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         // 工单引用客户（RESTRICT）与联系人，须先删除；工单号计数器一并重置 / tickets reference accounts (RESTRICT) and contacts, so they go first; reset the number counter too
         await tx.ticket.deleteMany({ where: { organizationId: o } });
         await tx.ticketCounter.deleteMany({ where: { organizationId: o } });
+        await tx.ticketSlaPolicy.deleteMany({ where: { organizationId: o } });
         await tx.contact.deleteMany({ where: { organizationId: o } });
         await tx.account.deleteMany({ where: { organizationId: o } });
         await tx.lead.deleteMany({ where: { organizationId: o } });
@@ -241,6 +242,9 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
           })),
         });
       }
+      // 演示 SLA：默认时限，升级接收人为郑经理；已逾期的演示工单会在首次查看时升级
+      // demo SLA: default limits, escalations go to the manager; overdue demo tickets escalate when first viewed
+      await tx.ticketSlaPolicy.create({ data: { organizationId: o, enabled: true, ...DEMO_SLA_HOURS, escalateToId: owner('manager') } });
       await tx.ticketCounter.create({ data: { organizationId: o, year: ticketYear, last: tickets.length } });
 
       const catalog = new Map(data.products.map((p) => [p.sku, p]));

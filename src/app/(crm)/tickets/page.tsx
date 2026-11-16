@@ -8,8 +8,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { App, Button, Card, Checkbox, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Segmented, Select, Space, Table, Tag, Typography } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { App, Button, Card, Checkbox, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Segmented, Select, Space, Switch, Table, Tag, Typography } from 'antd';
+import { PlusOutlined, SettingOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { AuditTrail } from '@/components/AuditTrail';
 import { ExportButton } from '@/components/ExportButton';
@@ -46,12 +46,34 @@ interface Ticket {
   type: string;
   channel: string;
   dueAt: string | null;
+  /** 处理期限由 SLA 自动计算 / due time computed by the SLA */
+  dueAuto: boolean;
+  /** 超时升级时间 / escalation time */
+  escalatedAt: string | null;
   resolution: string | null;
   resolvedAt: string | null;
   createdAt: string;
   updatedAt: string;
   overdue: boolean;
 }
+
+/** SLA 规则 / SLA policy */
+interface Sla {
+  configured: boolean;
+  enabled: boolean;
+  urgentHours: number;
+  highHours: number;
+  mediumHours: number;
+  lowHours: number;
+  escalateToId: string | null;
+}
+
+const SLA_FIELDS = [
+  ['URGENT', 'urgentHours'],
+  ['HIGH', 'highHours'],
+  ['MEDIUM', 'mediumHours'],
+  ['LOW', 'lowHours'],
+] as const;
 
 interface TicketForm {
   subject: string;
@@ -86,8 +108,11 @@ export default function TicketsPage() {
   const [priority, setPriority] = useState<string>();
   const [ownerId, setOwnerId] = useState<string>();
   const [overdue, setOverdue] = useState(false);
+  const [escalated, setEscalated] = useState(false);
+  const [sla, setSla] = useState<Sla | null>(null);
+  const [slaForm] = Form.useForm<Sla>();
   // 列表与导出共用筛选 / filters shared by the list and the export
-  const filters = { q: search.q || undefined, status: status === 'all' ? undefined : status, priority, ownerId, overdue: overdue ? 'true' : undefined };
+  const filters = { q: search.q || undefined, status: status === 'all' ? undefined : status, priority, ownerId, overdue: overdue ? 'true' : undefined, escalated: escalated ? 'true' : undefined };
   const { data, loading, reload, pagination } = usePagedList<Ticket>('/api/tickets', filters);
   const counts = (data as unknown as { counts?: Record<string, number> }).counts ?? {};
   const [detail, setDetail] = useState<Ticket | null>(null);
@@ -137,7 +162,11 @@ export default function TicketsPage() {
 
   const save = async () => {
     const v = await form.validateFields();
-    const body = { ...v, description: v.description ?? null, contactId: v.contactId ?? null, ownerId: v.ownerId ?? null, dueAt: v.dueAt ? v.dueAt.toISOString() : null };
+    const body: Record<string, unknown> = { ...v, description: v.description ?? null, contactId: v.contactId ?? null, ownerId: v.ownerId ?? null, dueAt: v.dueAt ? v.dueAt.toISOString() : null };
+    // 处理期限：新建时留空交给 SLA 自动计算；编辑时未改动则不提交（保留自动期限）
+    // due time: left empty on create so the SLA can set it; not sent on edit when unchanged (keeps an automatic one)
+    const original = editing && editing !== 'new' ? editing.dueAt : null;
+    if (editing === 'new' ? !v.dueAt : (v.dueAt ? v.dueAt.isSame(dayjs(original), 'minute') : !original)) delete body.dueAt;
     setSaving(true);
     try {
       const tk =
@@ -175,6 +204,28 @@ export default function TicketsPage() {
     }
   };
 
+  const openSla = async () => {
+    try {
+      const r = await api<Sla>('/api/tickets/sla');
+      slaForm.setFieldsValue(r);
+      setSla(r);
+    } catch (err) {
+      message.error((err as Error).message);
+    }
+  };
+
+  const saveSla = async () => {
+    const v = await slaForm.validateFields();
+    try {
+      await api('/api/tickets/sla', { method: 'PUT', body: { ...v, escalateToId: v.escalateToId ?? null } });
+      message.success(t('common.saved'));
+      setSla(null);
+      void reload();
+    } catch (err) {
+      message.error((err as Error).message);
+    }
+  };
+
   const openCount = (counts.OPEN ?? 0) + (counts.IN_PROGRESS ?? 0) + (counts.WAITING_CUSTOMER ?? 0);
   const editable = detail ? perm.canEdit(detail) : false;
 
@@ -183,6 +234,11 @@ export default function TicketsPage() {
       title={t('tickets.title')}
       extra={
         <Space>
+          {perm.can('sla.manage') && (
+            <Button icon={<SettingOutlined />} onClick={openSla}>
+              {t('sla.settings')}
+            </Button>
+          )}
           <ExportButton resource="tickets" filters={filters} />
           {perm.can('record.create') && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
@@ -209,6 +265,9 @@ export default function TicketsPage() {
         <Checkbox checked={overdue} onChange={(e) => setOverdue(e.target.checked)}>
           {t('tickets.overdueOnly')}
         </Checkbox>
+        <Checkbox checked={escalated} onChange={(e) => setEscalated(e.target.checked)}>
+          {t('sla.escalatedOnly')}
+        </Checkbox>
       </Space>
       <Table<Ticket>
         rowKey="id"
@@ -229,7 +288,16 @@ export default function TicketsPage() {
           },
           { title: t('tickets.account'), render: (_, r) => r.account.name },
           { title: t('tickets.priority'), dataIndex: 'priority', render: (v: string) => <Tag color={PRIORITY_COLOR[v]}>{tEnum('ticketPriority', v)}</Tag> },
-          { title: t('tickets.status'), dataIndex: 'status', render: (v: string) => <Tag color={STATUS_COLOR[v]}>{tEnum('ticketStatus', v)}</Tag> },
+          {
+            title: t('tickets.status'),
+            dataIndex: 'status',
+            render: (v: string, r) => (
+              <Space size={4}>
+                <Tag color={STATUS_COLOR[v]}>{tEnum('ticketStatus', v)}</Tag>
+                {r.escalatedAt && !DONE.includes(v) && <Tag color="magenta">{t('sla.escalated')}</Tag>}
+              </Space>
+            ),
+          },
           {
             title: t('tickets.dueAt'),
             render: (_, r) => (
@@ -292,6 +360,7 @@ export default function TicketsPage() {
                 <Space size={4}>
                   <Tag color={STATUS_COLOR[detail.status]}>{tEnum('ticketStatus', detail.status)}</Tag>
                   {detail.overdue && <Tag color="red">{t('tickets.overdue')}</Tag>}
+                  {detail.escalatedAt && !DONE.includes(detail.status) && <Tag color="magenta">{t('sla.escalated')}</Tag>}
                 </Space>
               </Descriptions.Item>
               <Descriptions.Item label={t('tickets.priority')}>
@@ -306,9 +375,15 @@ export default function TicketsPage() {
               <Descriptions.Item label={t('tickets.type')}>{tEnum('ticketType', detail.type)}</Descriptions.Item>
               <Descriptions.Item label={t('tickets.channel')}>{tEnum('ticketChannel', detail.channel)}</Descriptions.Item>
               <Descriptions.Item label={t('common.owner')}>{detail.owner?.name ?? t('common.unassigned')}</Descriptions.Item>
-              <Descriptions.Item label={t('tickets.dueAt')}>{fmtDateTime(detail.dueAt)}</Descriptions.Item>
+              <Descriptions.Item label={t('tickets.dueAt')}>
+                <span data-testid="ticket-due">
+                  {fmtDateTime(detail.dueAt)}
+                  {detail.dueAuto && detail.dueAt && <Typography.Text type="secondary">{` ${t('sla.auto')}`}</Typography.Text>}
+                </span>
+              </Descriptions.Item>
               <Descriptions.Item label={t('common.createdAt')}>{fmtDateTime(detail.createdAt)}</Descriptions.Item>
               <Descriptions.Item label={t('tickets.resolvedAt')}>{fmtDateTime(detail.resolvedAt)}</Descriptions.Item>
+              <Descriptions.Item label={t('sla.escalatedAt')}>{fmtDateTime(detail.escalatedAt)}</Descriptions.Item>
               <Descriptions.Item label={t('common.description')} span={2}>
                 <span style={{ whiteSpace: 'pre-wrap' }}>{detail.description}</span>
               </Descriptions.Item>
@@ -338,6 +413,25 @@ export default function TicketsPage() {
       >
         <Typography.Paragraph type="secondary">{t('tickets.resolutionHint')}</Typography.Paragraph>
         <Input.TextArea aria-label={t('tickets.resolution')} rows={5} maxLength={10000} value={resolution} onChange={(e) => setResolution(e.target.value)} />
+      </Modal>
+
+      <Modal title={t('sla.settings')} open={sla !== null} onOk={saveSla} onCancel={() => setSla(null)} okText={t('common.save')} forceRender zIndex={1100}>
+        <Typography.Paragraph type="secondary">{t('sla.hint')}</Typography.Paragraph>
+        <Form form={slaForm} name="sla" layout="vertical">
+          <Form.Item name="enabled" label={t('sla.enabled')} valuePropName="checked">
+            <Switch />
+          </Form.Item>
+          <div className="form-row">
+            {SLA_FIELDS.map(([p, field]) => (
+              <Form.Item key={field} name={field} label={`${tEnum('ticketPriority', p)}${t('sla.hours')}`} rules={[{ required: true, message: t('common.required', { field: tEnum('ticketPriority', p) }) }]}>
+                <InputNumber min={1} max={8760} precision={0} style={{ width: '100%' }} />
+              </Form.Item>
+            ))}
+          </div>
+          <Form.Item name="escalateToId" label={t('sla.escalateTo')} extra={t('sla.escalateToHint')}>
+            <Select allowClear options={owners.map((u) => ({ value: u.id, label: u.name }))} />
+          </Form.Item>
+        </Form>
       </Modal>
 
       <Modal title={editing === 'new' ? t('tickets.new') : t('tickets.edit')} open={editing !== null} onOk={save} confirmLoading={saving} onCancel={() => setEditing(null)} okText={t('common.save')} width={680} forceRender zIndex={1100}>
@@ -373,7 +467,7 @@ export default function TicketsPage() {
             <Form.Item name="ownerId" label={t('common.owner')} extra={perm.canAssign ? undefined : t('common.ownerLocked')}>
               <Select allowClear={perm.canAssign} disabled={!perm.canAssign} options={owners.map((u) => ({ value: u.id, label: u.name }))} />
             </Form.Item>
-            <Form.Item name="dueAt" label={t('tickets.dueAt')}>
+            <Form.Item name="dueAt" label={t('tickets.dueAt')} extra={editing === 'new' ? t('sla.dueHint') : undefined}>
               <DatePicker showTime={{ format: 'HH:mm' }} format="YYYY-MM-DD HH:mm" style={{ width: '100%' }} />
             </Form.Item>
           </div>

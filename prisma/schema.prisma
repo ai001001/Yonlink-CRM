@@ -41,6 +41,7 @@ model Organization {
   tickets          Ticket[]
   ticketCounters   TicketCounter[]
   ticketComments   TicketComment[]
+  ticketSla        TicketSlaPolicy?
   attachments      Attachment[]
   salesTargets     SalesTarget[]
   notifications    Notification[]
@@ -91,6 +92,7 @@ model User {
   viewDefaults      UserViewDefault[]
   dashboardLayout   UserDashboardLayout?
   tickets           Ticket[]             @relation("TicketOwner")
+  slaEscalations    TicketSlaPolicy[]    @relation("SlaEscalateTo")
   ticketComments    TicketComment[]      @relation("TicketCommentAuthor")
   uploads           Attachment[]         @relation("AttachmentUploader")
   salesTargets      SalesTarget[]        @relation("TargetOwner")
@@ -708,6 +710,8 @@ enum NotificationType {
   ACTIVITY_DUE
   /// 我负责的工单有新评论 / a ticket I own got a comment
   TICKET_COMMENT
+  /// 工单超过处理期限已升级 / a ticket passed its due time and was escalated
+  TICKET_ESCALATED
 
   @@map("notification_type")
 }
@@ -1150,6 +1154,10 @@ model Ticket {
   channel        TicketChannel  @default(PHONE)
   /// 处理期限 / due time
   dueAt          DateTime?      @map("due_at") @db.Timestamptz(6)
+  /// 处理期限由 SLA 自动计算（改优先级时重算；手动填写后为 false）/ due time computed by the SLA (recomputed on priority change; false once set by hand)
+  dueAuto        Boolean        @default(false) @map("due_auto")
+  /// 超时升级时间（未升级为空）/ when the ticket was escalated for passing its due time
+  escalatedAt    DateTime?      @map("escalated_at") @db.Timestamptz(6)
   resolution     String?        @db.Text
   resolvedAt     DateTime?      @map("resolved_at") @db.Timestamptz(6)
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1202,4 +1210,22 @@ model TicketComment {
 
   @@index([organizationId, ticketId, createdAt])
   @@map("ticket_comments")
+}
+
+/// 工单 SLA 规则（每个组织一行）：按优先级的处理时限（小时）与升级接收人；没有记录即未启用。
+/// Ticket SLA policy (one row per organization): resolution hours per priority and the escalation recipient; no row means disabled.
+model TicketSlaPolicy {
+  organizationId String       @id @map("organization_id") @db.Uuid
+  enabled        Boolean      @default(true)
+  urgentHours    Int          @map("urgent_hours")
+  highHours      Int          @map("high_hours")
+  mediumHours    Int          @map("medium_hours")
+  lowHours       Int          @map("low_hours")
+  /// 升级接收人（可空）/ escalation recipient (optional)
+  escalateToId   String?      @map("escalate_to_id") @db.Uuid
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  escalateTo     User?        @relation("SlaEscalateTo", fields: [organizationId, escalateToId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("ticket_sla_policies")
 }

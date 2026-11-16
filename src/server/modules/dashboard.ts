@@ -9,6 +9,7 @@ import { visible } from '../permissions';
 import { containsText } from '../validation';
 import { activityInclude } from './activities';
 import { getLayout, type DashboardWidget } from './dashboard-layout';
+import { sweepEscalations } from './ticket-sla';
 import { OPEN_STATUSES } from './tickets';
 
 const CLOSED = ['CLOSED_WON', 'CLOSED_LOST'] as const;
@@ -42,6 +43,7 @@ export async function getDashboard(ctx: AuthContext) {
   const scope = visible(ctx);
   const now = new Date();
   const layout = await getLayout(ctx);
+  if (layout.widgets.includes('myTickets')) await sweepEscalations(ctx.organizationId);
   const on = (w: DashboardWidget) => layout.widgets.includes(w);
   const todoWhere = { ...scope, ownerId: ctx.userId, completed: false };
   const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
@@ -80,7 +82,7 @@ export async function getDashboard(ctx: AuthContext) {
       ? Promise.all([
           prisma.ticket.findMany({
             where: ticketWhere,
-            select: { id: true, ticketNumber: true, subject: true, status: true, priority: true, dueAt: true, account: { select: { id: true, name: true } } },
+            select: { id: true, ticketNumber: true, subject: true, status: true, priority: true, dueAt: true, escalatedAt: true, account: { select: { id: true, name: true } } },
             // 枚举按声明顺序排序（LOW < … < URGENT），降序即紧急在前 / enums sort in declaration order, so desc puts URGENT first
             orderBy: [{ priority: 'desc' }, { dueAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }, { id: 'asc' }],
             take: 10,
