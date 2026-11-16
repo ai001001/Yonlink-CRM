@@ -96,6 +96,17 @@ export async function notifyAssigned(
 }
 
 /**
+ * 工单有新评论时通知负责人（评论人就是负责人时不通知；在业务事务内调用）。
+ * Notify the ticket owner of a new comment (not when the commenter is the owner; call inside the transaction).
+ */
+export async function notifyTicketComment(tx: Prisma.TransactionClient, ctx: AuthContext, ticket: { id: string; ownerId: string | null; title: string }): Promise<void> {
+  if (!ticket.ownerId || ticket.ownerId === ctx.userId) return;
+  await tx.notification.create({
+    data: { organizationId: ctx.organizationId, userId: ticket.ownerId, type: NotificationType.TICKET_COMMENT, actorId: ctx.userId, ticketId: ticket.id, title: ticket.title.slice(0, 200) },
+  });
+}
+
+/**
  * 撤销某条跟进尚未阅读的提醒（完成、改期、改负责人时调用）。
  * Withdraw an activity's unread reminders (on completion, rescheduling or reassignment).
  */

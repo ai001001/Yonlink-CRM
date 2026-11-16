@@ -1081,6 +1081,23 @@ export const zhCN = {
   'dashboard.myTickets': '我的待处理工单',
   'dashboard.ticketSummary': '未解决 {total} 项，已逾期 {overdue} 项',
   'dashboard.widget.myTickets': '我的待处理工单',
+  'notificationType.TICKET_COMMENT': '工单评论',
+  'notifications.ticketComment': '{actor} 评论了工单 {title}',
+  'auditAction.comment': '发表评论',
+  'auditAction.comment_update': '修改评论',
+  'auditAction.comment_delete': '删除评论',
+  'ticketComments.title': '处理记录',
+  'ticketComments.body': '评论内容',
+  'ticketComments.external': '对外回复',
+  'ticketComments.internal': '内部备注',
+  'ticketComments.externalHint': '已告知客户的内容（本系统不会自动发送给客户）',
+  'ticketComments.internalHint': '只给同事看的备注',
+  'ticketComments.placeholder': '记录处理过程、与客户的沟通或给同事的备注',
+  'ticketComments.send': '发表',
+  'ticketComments.edited': '已编辑',
+  'ticketComments.confirmDelete': '删除这条评论？',
+  'ticketComments.empty': '还没有处理记录',
+  'ticketComments.audit': '{kind} · {n} 字',
 } as const;
 
 export type MessageKey = keyof typeof zhCN;

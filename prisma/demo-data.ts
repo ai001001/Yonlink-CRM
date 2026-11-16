@@ -953,3 +953,27 @@ export function demoTickets(data: ReturnType<typeof buildDemoData>): DemoTicket[
     return { ...p, subject: `【演示】${p.subject}`, account: acc.key, owner: acc.owner, resolution: done ? DEMO_RESOLUTIONS[p.type]! : null };
   });
 }
+
+/**
+ * 演示工单评论：按工单主题匹配（虚构内容）。hoursAfter 为相对工单创建的小时数。
+ * Demo ticket comments keyed by ticket subject (fictional). hoursAfter is relative to the ticket's creation.
+ */
+export const DEMO_TICKET_COMMENTS: Record<string, { body: string; isInternal: boolean; hoursAfter: number }[]> = {
+  '【演示】涡轮增压器异响，怠速时明显': [
+    { body: '已电话联系客户，确认异响出现在冷车怠速时，热车后减轻。', isInternal: false, hoursAfter: 2 },
+    { body: '怀疑轴承间隙偏大，需要安排技术人员上门听诊。', isInternal: true, hoursAfter: 3 },
+  ],
+  '【演示】希望提供中英文双语安装手册': [
+    { body: '已告知客户正在整理双语版本，请客户确认需要的机型清单。', isInternal: false, hoursAfter: 6 },
+  ],
+  '【演示】增压压力偏低，排查执行器': [
+    { body: '远程指导客户检查真空管路，未发现漏气。', isInternal: false, hoursAfter: 4 },
+    { body: '下一步寄送执行器备件，费用走质保。', isInternal: true, hoursAfter: 5 },
+  ],
+  '【演示】询问 4.0L 机型适配的增压器型号': [
+    { body: '已邮件发送适配型号对照表。', isInternal: false, hoursAfter: 1 },
+  ],
+  '【演示】发票抬头信息更正': [
+    { body: '财务已重开发票，快递单号已告知客户。', isInternal: false, hoursAfter: 24 },
+  ],
+};

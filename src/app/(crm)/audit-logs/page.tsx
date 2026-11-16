@@ -27,7 +27,7 @@ const ACTIONS: Record<string, string[]> = {
   report: ['export'],
   rate: ['create', 'update', 'delete'],
   campaign: ['create', 'update', 'delete'],
-  ticket: ['create', 'update', 'delete'],
+  ticket: ['create', 'update', 'delete', 'comment', 'comment_update', 'comment_delete'],
   tag: ['create', 'update', 'delete'],
   view: ['create', 'update', 'delete'],
   attachment: ['create', 'delete'],

@@ -16,7 +16,7 @@ import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
 import { toBase } from '../src/server/modules/exchange-rates';
 import { Prisma } from '../src/generated/prisma/client';
-import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -209,7 +209,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         const contact = await tx.contact.findFirst({ where: { organizationId: o, accountId }, orderBy: [{ isPrimary: 'desc' }, { name: 'asc' }], select: { id: true } });
         const created = new Date(Date.now() - tk.ageDays * DAY - 3_600_000);
         const done = tk.status === 'RESOLVED' || tk.status === 'CLOSED';
-        await tx.ticket.create({
+        const ticket = await tx.ticket.create({
           data: {
             organizationId: o,
             ticketNumber: `CS-${ticketYear}-${String(i + 1).padStart(4, '0')}`,
@@ -227,6 +227,18 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
             resolvedAt: done ? new Date(Math.min(Date.now(), created.getTime() + 2 * DAY)) : null,
             createdAt: created,
           },
+        });
+        // 处理往来（作者为工单负责人；不超过当前时间）/ comments by the ticket owner, never in the future
+        const comments = DEMO_TICKET_COMMENTS[tk.subject] ?? [];
+        await tx.ticketComment.createMany({
+          data: comments.map((c) => ({
+            organizationId: o,
+            ticketId: ticket.id,
+            authorId: owner(tk.owner),
+            body: c.body,
+            isInternal: c.isInternal,
+            createdAt: new Date(Math.min(Date.now() - 60_000, created.getTime() + c.hoursAfter * 3_600_000)),
+          })),
         });
       }
       await tx.ticketCounter.create({ data: { organizationId: o, year: ticketYear, last: tickets.length } });
@@ -594,7 +606,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length + 1} 客户（含 1 条重复）、${data.accounts.reduce((n, a) => n + a.contacts.length, 0) + 2} 联系人、` +
-      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
+      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单（${Object.values(DEMO_TICKET_COMMENTS).flat().length} 条处理记录）、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
   );
 }
 

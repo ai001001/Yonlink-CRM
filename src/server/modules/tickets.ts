@@ -223,8 +223,10 @@ export async function deleteTicket(ctx: AuthContext, id: string): Promise<void> 
   assertCanDelete(ctx);
   const current = await getTicket(ctx, id);
   await prisma.$transaction(async (tx) => {
+    // 评论随工单级联删除，记录数量 / comments cascade with the ticket; record how many
+    const comments = await tx.ticketComment.count({ where: { organizationId: ctx.organizationId, ticketId: id } });
     const { count } = await tx.ticket.deleteMany({ where: { id, organizationId: ctx.organizationId } });
     if (!count) throw notFound();
-    await audit(tx, { ...by(ctx), action: 'ticket.delete', entityType: 'ticket', entityId: id, changes: { before: snapshot('ticket', current) } });
+    await audit(tx, { ...by(ctx), action: 'ticket.delete', entityType: 'ticket', entityId: id, changes: { before: snapshot('ticket', current), cascadedComments: comments } });
   });
 }

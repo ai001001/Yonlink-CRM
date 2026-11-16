@@ -40,6 +40,7 @@ model Organization {
   dashboardLayouts UserDashboardLayout[]
   tickets          Ticket[]
   ticketCounters   TicketCounter[]
+  ticketComments   TicketComment[]
   attachments      Attachment[]
   salesTargets     SalesTarget[]
   notifications    Notification[]
@@ -90,6 +91,7 @@ model User {
   viewDefaults      UserViewDefault[]
   dashboardLayout   UserDashboardLayout?
   tickets           Ticket[]             @relation("TicketOwner")
+  ticketComments    TicketComment[]      @relation("TicketCommentAuthor")
   uploads           Attachment[]         @relation("AttachmentUploader")
   salesTargets      SalesTarget[]        @relation("TargetOwner")
   targetsUpdated    SalesTarget[]        @relation("TargetUpdater")
@@ -704,6 +706,8 @@ enum NotificationType {
   ASSIGNED
   /// 我的跟进即将到期 / my activity is coming due
   ACTIVITY_DUE
+  /// 我负责的工单有新评论 / a ticket I own got a comment
+  TICKET_COMMENT
 
   @@map("notification_type")
 }
@@ -1156,6 +1160,8 @@ model Ticket {
   owner          User?          @relation("TicketOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
   notifications  Notification[]
 
+  comments TicketComment[]
+
   @@unique([organizationId, id])
   @@unique([organizationId, ticketNumber])
   @@index([organizationId, status])
@@ -1175,4 +1181,25 @@ model TicketCounter {
 
   @@id([organizationId, year])
   @@map("ticket_counters")
+}
+
+/// 工单评论（处理往来）：对外回复（已告知客户）或内部备注；作者可修改、删除自己的，管理员与经理可删除任何评论。
+/// 随工单删除；作者账号保留引用（用户不会被物理删除）。
+/// Ticket comment: an external reply (already told to the customer) or an internal note; authors edit or delete
+/// their own, admins and managers delete any. Removed with the ticket.
+model TicketComment {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  ticketId       String       @map("ticket_id") @db.Uuid
+  authorId       String       @map("author_id") @db.Uuid
+  body           String       @db.Text
+  isInternal     Boolean      @default(false) @map("is_internal")
+  editedAt       DateTime?    @map("edited_at") @db.Timestamptz(6)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ticket         Ticket       @relation(fields: [organizationId, ticketId], references: [organizationId, id], onDelete: Cascade)
+  author         User         @relation("TicketCommentAuthor", fields: [organizationId, authorId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organizationId, ticketId, createdAt])
+  @@map("ticket_comments")
 }

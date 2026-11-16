@@ -88,6 +88,8 @@ const FIELD_LABELS: Record<string, MessageKey> = {
   channel: 'tickets.channel',
   resolution: 'tickets.resolution',
   resolvedAt: 'tickets.resolvedAt',
+  isInternal: 'ticketComments.internal',
+  body: 'ticketComments.body',
 };
 
 // 枚举字段 → 翻译前缀 / enum field → translation prefix
@@ -195,6 +197,11 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     // 商机联系人角色：联系人 · 角色 / deal contact role: contact · role
     const role = typeof c.contactRole === 'string' ? ` · ${tEnum('dealContactRole', c.contactRole)}` : '';
     lines.push(`${t('contactRoles.audit', { name: c.contact })}${role}${c.isPrimary === true ? ` · ${t('contactRoles.primary')}` : ''}`);
+  }
+  if (typeof c.commentId === 'string') {
+    // 工单评论：类型与字数（内容不记录）/ ticket comment: kind and length (content is not recorded)
+    const kind = t(c.isInternal === true ? 'ticketComments.internal' : 'ticketComments.external');
+    lines.push(typeof c.length === 'number' ? t('ticketComments.audit', { kind, n: c.length }) : kind);
   }
   if (typeof c.competitor === 'string') {
     // 商机竞争对手：名称 · 威胁程度 / deal competitor: name · threat

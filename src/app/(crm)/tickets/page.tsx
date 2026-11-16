@@ -14,6 +14,7 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { AuditTrail } from '@/components/AuditTrail';
 import { usePermissions } from '@/components/AuthProvider';
 import { RecordSelect } from '@/components/RecordSelect';
+import { TicketComments } from '@/components/TicketComments';
 import { t, tEnum } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
@@ -317,6 +318,7 @@ export default function TicketsPage() {
                 </span>
               </Descriptions.Item>
             </Descriptions>
+            <TicketComments key={`comments-${detail.id}`} ticket={detail} />
             <Typography.Title level={5}>{t('audit.trail')}</Typography.Title>
             <AuditTrail entityType="ticket" entityId={detail.id} version={detail.updatedAt} />
           </div>
