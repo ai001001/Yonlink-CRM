@@ -1105,4 +1105,5 @@ export const enUS: Record<MessageKey, string> = {
   'ticketComments.confirmDelete': 'Delete this comment?',
   'ticketComments.empty': 'No activity yet',
   'ticketComments.audit': '{kind} · {n} characters',
+  'tickets.commentCount': 'Comments',
 };

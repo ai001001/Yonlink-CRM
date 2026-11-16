@@ -20,6 +20,7 @@ import { accountCreateSchema, accountListSchema, accountWhere, contactCreateSche
 import { activityListSchema, activityWhere } from './activities';
 import { dealListSchema, dealWhere } from './deals';
 import { leadCreateSchema, leadListSchema, leadWhere } from './leads';
+import { OPEN_STATUSES, ticketListSchema, ticketWhere } from './tickets';
 
 /** 单次导出上限 / Export row cap */
 export const EXPORT_MAX = 10_000;
@@ -42,7 +43,7 @@ export function parseLang(value: string | null | undefined): Locale {
   return value;
 }
 
-export type ExportEntity = 'leads' | 'accounts' | 'contacts' | 'deals' | 'activities';
+export type ExportEntity = 'leads' | 'accounts' | 'contacts' | 'deals' | 'activities' | 'tickets';
 
 /** 导出结果 / Export result */
 export interface ExportResult {
@@ -56,7 +57,7 @@ export interface ExportResult {
  * 记录导出审计（只记筛选条件的键值与是否搜索，不记搜索词）。
  * Audit an export (filters and whether a search was used; never the search text).
  */
-async function auditExport(ctx: AuthContext, entityType: 'lead' | 'account' | 'contact' | 'deal' | 'activity', query: Record<string, unknown>, count: number, truncated: boolean) {
+async function auditExport(ctx: AuthContext, entityType: 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'ticket', query: Record<string, unknown>, count: number, truncated: boolean) {
   const filters = Object.fromEntries(Object.entries(query).filter(([k, v]) => v !== undefined && !['q', 'page', 'pageSize'].includes(k)));
   await prisma.$transaction((tx) =>
     audit(tx, { ...by(ctx), action: `${entityType}.export`, entityType, changes: { count, truncated, searched: !!query.q, filters } }),
@@ -90,6 +91,69 @@ export async function exportCsv(ctx: AuthContext, entity: ExportEntity, input: R
     );
     await auditExport(ctx, 'lead', query, data.length, truncated);
     return { filename: `leads-${stamp}.csv`, csv, count: data.length, truncated };
+  }
+
+  if (entity === 'tickets') {
+    const query = ticketListSchema.parse(params);
+    const rows = await prisma.ticket.findMany({
+      where: ticketWhere(ctx, query),
+      include: {
+        account: { select: { name: true } },
+        contact: { select: { name: true, phone: true, email: true } },
+        owner: { select: { name: true } },
+        _count: { select: { comments: true } },
+      },
+      orderBy,
+      take,
+    });
+    const truncated = rows.length > EXPORT_MAX;
+    const data = rows.slice(0, EXPORT_MAX);
+    const now = new Date();
+    const csv = toCsv(
+      [
+        t('tickets.number'),
+        t('tickets.subject'),
+        t('tickets.account'),
+        t('tickets.contact'),
+        t('contacts.phone'),
+        t('contacts.email'),
+        t('tickets.type'),
+        t('tickets.channel'),
+        t('tickets.priority'),
+        t('tickets.status'),
+        t('tickets.overdue'),
+        t('common.owner'),
+        TIME_HEADER(t('tickets.dueAt')),
+        TIME_HEADER(t('tickets.resolvedAt')),
+        TIME_HEADER(t('common.createdAt')),
+        t('tickets.commentCount'),
+        t('common.description'),
+        t('tickets.resolution'),
+      ],
+      data.map((tk) => [
+        tk.ticketNumber,
+        tk.subject,
+        tk.account.name,
+        tk.contact?.name,
+        tk.contact?.phone,
+        tk.contact?.email,
+        tEnum('ticketType', tk.type),
+        tEnum('ticketChannel', tk.channel),
+        tEnum('ticketPriority', tk.priority),
+        tEnum('ticketStatus', tk.status),
+        // 逾期按导出时刻计算 / overdue as of the export time
+        tk.dueAt && tk.dueAt < now && OPEN_STATUSES.includes(tk.status) ? t('common.yes') : t('common.no'),
+        tk.owner?.name,
+        fmtTime(tk.dueAt),
+        fmtTime(tk.resolvedAt),
+        fmtTime(tk.createdAt),
+        tk._count.comments,
+        tk.description,
+        tk.resolution,
+      ]),
+    );
+    await auditExport(ctx, 'ticket', query, data.length, truncated);
+    return { filename: `tickets-${stamp}.csv`, csv, count: data.length, truncated };
   }
 
   if (entity === 'contacts') {

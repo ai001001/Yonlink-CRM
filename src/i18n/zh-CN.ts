@@ -1098,6 +1098,7 @@ export const zhCN = {
   'ticketComments.confirmDelete': '删除这条评论？',
   'ticketComments.empty': '还没有处理记录',
   'ticketComments.audit': '{kind} · {n} 字',
+  'tickets.commentCount': '处理记录数',
 } as const;
 
 export type MessageKey = keyof typeof zhCN;

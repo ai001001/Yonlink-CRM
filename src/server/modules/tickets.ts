@@ -116,10 +116,10 @@ function resolvedAtFor(status: TicketStatus, resolution: string | null | undefin
 }
 
 /**
- * 列表条件。
- * List filter.
+ * 列表条件（列表与导出共用）。
+ * List filter (shared by the list and the export).
  */
-function ticketWhere(ctx: AuthContext, query: z.infer<typeof ticketListSchema>): Prisma.TicketWhereInput {
+export function ticketWhere(ctx: AuthContext, query: z.infer<typeof ticketListSchema>): Prisma.TicketWhereInput {
   const where: Prisma.TicketWhereInput = { AND: [visible(ctx), { organizationId: ctx.organizationId }] };
   const and = where.AND as Prisma.TicketWhereInput[];
   if (query.status === 'open') and.push({ status: { in: OPEN_STATUSES } });

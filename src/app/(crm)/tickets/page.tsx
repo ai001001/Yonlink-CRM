@@ -12,6 +12,7 @@ import { App, Button, Card, Checkbox, DatePicker, Descriptions, Drawer, Form, In
 import { PlusOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { AuditTrail } from '@/components/AuditTrail';
+import { ExportButton } from '@/components/ExportButton';
 import { usePermissions } from '@/components/AuthProvider';
 import { RecordSelect } from '@/components/RecordSelect';
 import { TicketComments } from '@/components/TicketComments';
@@ -85,13 +86,9 @@ export default function TicketsPage() {
   const [priority, setPriority] = useState<string>();
   const [ownerId, setOwnerId] = useState<string>();
   const [overdue, setOverdue] = useState(false);
-  const { data, loading, reload, pagination } = usePagedList<Ticket>('/api/tickets', {
-    q: search.q || undefined,
-    status: status === 'all' ? undefined : status,
-    priority,
-    ownerId,
-    overdue: overdue ? 'true' : undefined,
-  });
+  // 列表与导出共用筛选 / filters shared by the list and the export
+  const filters = { q: search.q || undefined, status: status === 'all' ? undefined : status, priority, ownerId, overdue: overdue ? 'true' : undefined };
+  const { data, loading, reload, pagination } = usePagedList<Ticket>('/api/tickets', filters);
   const counts = (data as unknown as { counts?: Record<string, number> }).counts ?? {};
   const [detail, setDetail] = useState<Ticket | null>(null);
   const [editing, setEditing] = useState<Ticket | 'new' | null>(null);
@@ -185,11 +182,14 @@ export default function TicketsPage() {
     <Card
       title={t('tickets.title')}
       extra={
-        perm.can('record.create') && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
-            {t('tickets.new')}
-          </Button>
-        )
+        <Space>
+          <ExportButton resource="tickets" filters={filters} />
+          {perm.can('record.create') && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
+              {t('tickets.new')}
+            </Button>
+          )}
+        </Space>
       }
     >
       <Segmented
