@@ -13,7 +13,7 @@ import { t, type MessageKey } from '@/i18n';
 import { api } from '@/lib/api';
 
 /** 全部卡片键（与服务端一致，顺序即默认顺序）/ every card key (same as the server, default order) */
-export const DASHBOARD_WIDGETS = ['counts', 'dealAmounts', 'myTodos', 'recentActivities', 'closingSoon', 'stages'] as const;
+export const DASHBOARD_WIDGETS = ['counts', 'dealAmounts', 'myTodos', 'myTickets', 'recentActivities', 'closingSoon', 'stages'] as const;
 /** 卡片键 / Card key */
 export type DashboardWidget = (typeof DASHBOARD_WIDGETS)[number];
 

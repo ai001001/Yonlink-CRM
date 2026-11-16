@@ -53,6 +53,7 @@
 | 商机竞争对手与联系人角色 | ✅ | ✅ | ✅ | [deal-competitors.md](deal-competitors.md) |
 | 工作台自定义 | ✅ | ✅ | ✅ | [dashboard-layout.md](dashboard-layout.md) |
 | 服务工单 | ✅ | ✅ | ✅ | [tickets.md](tickets.md) |
+| 工作台待处理工单卡片 | ✅ | ✅ | ✅ | [dashboard-tickets.md](dashboard-tickets.md) |
 
 ## 整体回归（全部模块完成后）
 命令：`scripts/regression.sh final-mvp` → **PASS**（lint、typecheck、11 文件 181/181、静态导出、生产构建、E2E 6/6）。原始输出：[results/final-mvp-r3-regression.txt](results/final-mvp-r3-regression.txt)

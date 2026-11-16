@@ -1,7 +1,7 @@
 /**
- * 工作台：数量统计、商机金额汇总、我的待办、最近跟进、即将成交、阶段分布（全部来自数据库实时数据）。
+ * 工作台：数量统计、商机金额汇总、我的待办、我的待处理工单、最近跟进、即将成交、阶段分布（全部来自数据库实时数据）。
  * 显示哪些卡片及顺序由个人布局决定，可在“自定义工作台”中修改。
- * Dashboard: counts, deal amounts, my to-dos, recent activities, closing soon and stage breakdown (live data).
+ * Dashboard: counts, deal amounts, my to-dos, my pending tickets, recent activities, closing soon and stage breakdown (live data).
  * Which cards show and their order follow the personal layout, editable via “Customise dashboard”.
  */
 'use client';
@@ -36,6 +36,20 @@ interface SoonDeal {
   owner: { id: string; name: string } | null;
 }
 
+/** 我的待处理工单 / My pending ticket */
+interface MyTicket {
+  id: string;
+  ticketNumber: string;
+  subject: string;
+  status: string;
+  priority: string;
+  dueAt: string | null;
+  overdue: boolean;
+  account: { id: string; name: string };
+}
+
+const PRIORITY_COLOR: Record<string, string> = { URGENT: 'red', HIGH: 'volcano', MEDIUM: 'gold', LOW: 'default' };
+
 /** 工作台数据：隐藏的卡片对应字段为 null / dashboard data: hidden cards come back as null */
 interface Dashboard {
   layout: DashboardWidget[];
@@ -47,6 +61,7 @@ interface Dashboard {
   myTodoCount: number | null;
   myOverdueCount: number | null;
   closingSoon: { items: SoonDeal[]; total: number; days: number } | null;
+  myTickets: { items: MyTicket[]; total: number; overdue: number } | null;
 }
 
 const STAGE_ORDER = ['QUALIFICATION', 'NEEDS_ANALYSIS', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST'];
@@ -187,6 +202,31 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </Space>
+              </List.Item>
+            )}
+          />
+        </Card>
+      </Col>
+    ),
+    myTickets: () => (
+      <Col key="myTickets" xs={24} xl={12} data-testid="widget-myTickets">
+        <Card title={t('dashboard.myTickets')} extra={<Link href="/tickets">{t('dashboard.viewAll')}</Link>} data-testid="my-tickets">
+          <Typography.Text type="secondary">{t('dashboard.ticketSummary', { total: data?.myTickets?.total ?? 0, overdue: data?.myTickets?.overdue ?? 0 })}</Typography.Text>
+          <List
+            dataSource={data?.myTickets?.items ?? []}
+            locale={{ emptyText: <Empty description={t('common.empty')} /> }}
+            renderItem={(tk) => (
+              <List.Item>
+                <List.Item.Meta
+                  title={
+                    <Space size={4} wrap>
+                      <Tag color={PRIORITY_COLOR[tk.priority]}>{tEnum('ticketPriority', tk.priority)}</Tag>
+                      <Link href={`/tickets?id=${tk.id}`}>{tk.subject}</Link>
+                      {tk.overdue && <Tag color="red">{t('tickets.overdue')}</Tag>}
+                    </Space>
+                  }
+                  description={`${tk.ticketNumber} · ${tEnum('ticketStatus', tk.status)} · ${tk.account.name}${tk.dueAt ? ` · ${t('tickets.dueAt')}${t('common.colon')}${fmtDateTime(tk.dueAt)}` : ''}`}
+                />
               </List.Item>
             )}
           />

@@ -13,7 +13,7 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 
 /** 全部卡片键（顺序即默认顺序）/ every card key (in default order) */
-export const DASHBOARD_WIDGETS = ['counts', 'dealAmounts', 'myTodos', 'recentActivities', 'closingSoon', 'stages'] as const;
+export const DASHBOARD_WIDGETS = ['counts', 'dealAmounts', 'myTodos', 'myTickets', 'recentActivities', 'closingSoon', 'stages'] as const;
 /** 卡片键 / Card key */
 export type DashboardWidget = (typeof DASHBOARD_WIDGETS)[number];
 /** 默认布局：全部卡片 / default layout: every card */

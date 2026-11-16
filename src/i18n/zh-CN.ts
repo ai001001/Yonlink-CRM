@@ -1078,6 +1078,9 @@ export const zhCN = {
   'ticketChannel.ONSITE': '现场',
   'ticketChannel.OTHER': '其他',
   'auditEntity.ticket': '服务工单',
+  'dashboard.myTickets': '我的待处理工单',
+  'dashboard.ticketSummary': '未解决 {total} 项，已逾期 {overdue} 项',
+  'dashboard.widget.myTickets': '我的待处理工单',
 } as const;
 
 export type MessageKey = keyof typeof zhCN;

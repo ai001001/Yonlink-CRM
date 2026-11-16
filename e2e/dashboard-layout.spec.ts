@@ -14,23 +14,23 @@ test('自定义工作台：隐藏、排序、保存、恢复默认 / customise t
   await page.getByTestId('demo-accounts').getByRole('button', { name: '登录 郑经理' }).click();
   await expect(page.getByTestId('user-menu')).toContainText('郑经理');
   await expect(page.getByTestId('widget-stages')).toBeVisible();
-  expect(await order(page)).toEqual(['widget-counts', 'widget-dealAmounts', 'widget-myTodos', 'widget-recentActivities', 'widget-closingSoon', 'widget-stages']);
+  expect(await order(page)).toEqual(['widget-counts', 'widget-dealAmounts', 'widget-myTodos', 'widget-myTickets', 'widget-recentActivities', 'widget-closingSoon', 'widget-stages']);
 
   // 隐藏最近跟进、把即将成交移到最前 / hide recent activities, move closing soon to the top
   await page.getByRole('button', { name: '自定义工作台' }).click();
   const panel = page.getByRole('dialog', { name: '自定义工作台' });
   await panel.getByRole('checkbox', { name: '最近跟进记录' }).uncheck();
-  for (let i = 0; i < 4; i++) await panel.getByRole('button', { name: '上移 即将成交的商机' }).click();
+  for (let i = 0; i < 5; i++) await panel.getByRole('button', { name: '上移 即将成交的商机' }).click();
   await expect(panel.getByRole('button', { name: '上移 即将成交的商机' })).toBeDisabled();
   await panel.getByRole('button', { name: /保\s*存/ }).click();
   await expect(panel).toBeHidden();
   await expect(page.getByTestId('widget-recentActivities')).toHaveCount(0);
-  expect(await order(page)).toEqual(['widget-closingSoon', 'widget-counts', 'widget-dealAmounts', 'widget-myTodos', 'widget-stages']);
+  expect(await order(page)).toEqual(['widget-closingSoon', 'widget-counts', 'widget-dealAmounts', 'widget-myTodos', 'widget-myTickets', 'widget-stages']);
 
   // 刷新后保持 / persists after reload
   await page.reload();
   await expect(page.getByTestId('widget-closingSoon')).toBeVisible();
-  expect(await order(page)).toEqual(['widget-closingSoon', 'widget-counts', 'widget-dealAmounts', 'widget-myTodos', 'widget-stages']);
+  expect(await order(page)).toEqual(['widget-closingSoon', 'widget-counts', 'widget-dealAmounts', 'widget-myTodos', 'widget-myTickets', 'widget-stages']);
 
   // 即将成交跳转商机详情 / open a deal from closing soon
   const first = page.getByTestId('closing-soon').getByRole('link').first();
@@ -45,5 +45,5 @@ test('自定义工作台：隐藏、排序、保存、恢复默认 / customise t
   await page.locator('.ant-popover:visible').getByRole('button', { name: /确\s*定|OK/ }).click();
   await expect(panel).toBeHidden();
   await expect(page.getByTestId('widget-recentActivities')).toBeVisible();
-  expect(await order(page)).toEqual(['widget-counts', 'widget-dealAmounts', 'widget-myTodos', 'widget-recentActivities', 'widget-closingSoon', 'widget-stages']);
+  expect(await order(page)).toEqual(['widget-counts', 'widget-dealAmounts', 'widget-myTodos', 'widget-myTickets', 'widget-recentActivities', 'widget-closingSoon', 'widget-stages']);
 });

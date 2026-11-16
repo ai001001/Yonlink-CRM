@@ -1085,4 +1085,7 @@ export const enUS: Record<MessageKey, string> = {
   'ticketChannel.ONSITE': 'On site',
   'ticketChannel.OTHER': 'Other',
   'auditEntity.ticket': 'Ticket',
+  'dashboard.myTickets': 'My pending tickets',
+  'dashboard.ticketSummary': '{total} unresolved, {overdue} overdue',
+  'dashboard.widget.myTickets': 'My pending tickets',
 };

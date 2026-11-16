@@ -9,6 +9,7 @@ import { visible } from '../permissions';
 import { containsText } from '../validation';
 import { activityInclude } from './activities';
 import { getLayout, type DashboardWidget } from './dashboard-layout';
+import { OPEN_STATUSES } from './tickets';
 
 const CLOSED = ['CLOSED_WON', 'CLOSED_LOST'] as const;
 
@@ -31,9 +32,9 @@ export const CLOSING_SOON_DAYS = 30;
 
 /**
  * 工作台数据：只计算当前用户布局中显示的卡片（隐藏的卡片对应字段为 null）。
- * 卡片：数量、商机金额（全部、进行中、赢单，按币种）、我的待办、最近跟进、即将成交（30 天内预计成交、含已逾期的进行中商机）、阶段分布。
+ * 卡片：数量、商机金额（全部、进行中、赢单，按币种）、我的待办、我的待处理工单（未解决、紧急在前）、最近跟进、即将成交（30 天内预计成交、含已逾期的进行中商机）、阶段分布。
  * Dashboard data: only the cards in the user's layout are computed (hidden cards come back as null).
- * Cards: counts, deal amounts (all / open / won per currency), my to-dos, recent activities, closing soon
+ * Cards: counts, deal amounts (all / open / won per currency), my to-dos, my pending tickets (unresolved, urgent first), recent activities, closing soon
  * (open deals expected to close within 30 days, overdue included) and the stage breakdown.
  */
 export async function getDashboard(ctx: AuthContext) {
@@ -47,7 +48,10 @@ export async function getDashboard(ctx: AuthContext) {
   const soonWhere = { ...scope, stage: { notIn: [...CLOSED] }, expectedCloseDate: { lte: new Date(today.getTime() + CLOSING_SOON_DAYS * 86_400_000) } };
   const sumBy = (where: object) => prisma.deal.groupBy({ by: ['currency'], where, _sum: { amount: true }, orderBy: { currency: 'asc' } });
 
-  const [counts, dealAmounts, todos, recentActivities, closingSoon, byStage] = await Promise.all([
+  // 我的待处理工单：负责人是我且未解决 / my pending tickets: owned by me and unresolved
+  const ticketWhere = { ...scope, ownerId: ctx.userId, status: { in: OPEN_STATUSES } };
+
+  const [counts, dealAmounts, todos, recentActivities, closingSoon, byStage, tickets] = await Promise.all([
     on('counts') ? Promise.all([prisma.account.count({ where: scope }), prisma.lead.count({ where: scope }), prisma.deal.count({ where: scope })]) : null,
     on('dealAmounts') ? Promise.all([sumBy(scope), sumBy({ ...scope, stage: { notIn: [...CLOSED] } }), sumBy({ ...scope, stage: 'CLOSED_WON' })]) : null,
     on('myTodos')
@@ -72,6 +76,19 @@ export async function getDashboard(ctx: AuthContext) {
     on('stages')
       ? prisma.deal.groupBy({ by: ['stage', 'currency'], where: scope, _count: { _all: true }, _sum: { amount: true }, orderBy: [{ stage: 'asc' }, { currency: 'asc' }] })
       : null,
+    on('myTickets')
+      ? Promise.all([
+          prisma.ticket.findMany({
+            where: ticketWhere,
+            select: { id: true, ticketNumber: true, subject: true, status: true, priority: true, dueAt: true, account: { select: { id: true, name: true } } },
+            // 枚举按声明顺序排序（LOW < … < URGENT），降序即紧急在前 / enums sort in declaration order, so desc puts URGENT first
+            orderBy: [{ priority: 'desc' }, { dueAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }, { id: 'asc' }],
+            take: 10,
+          }),
+          prisma.ticket.count({ where: ticketWhere }),
+          prisma.ticket.count({ where: { ...ticketWhere, dueAt: { lt: now } } }),
+        ])
+      : null,
   ]);
 
   return {
@@ -90,6 +107,7 @@ export async function getDashboard(ctx: AuthContext) {
     myTodoCount: todos?.[1] ?? null,
     myOverdueCount: todos?.[2] ?? null,
     closingSoon: closingSoon && { items: closingSoon[0], total: closingSoon[1], days: CLOSING_SOON_DAYS },
+    myTickets: tickets && { items: tickets[0].map((tk) => ({ ...tk, overdue: !!tk.dueAt && tk.dueAt < now })), total: tickets[1], overdue: tickets[2] },
   };
 }
 

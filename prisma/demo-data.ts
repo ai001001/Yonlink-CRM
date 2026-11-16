@@ -935,13 +935,20 @@ export interface DemoTicket {
   resolution: string | null;
 }
 
+/** 演示工单负责人轮换顺序 / owner rotation for demo tickets */
+const DEMO_TICKET_OWNERS: OwnerKey[] = ['sales1', 'manager', 'sales2'];
+
 /**
- * 演示工单：依次分配给前 10 个客户（负责人同客户负责人），联系人取客户第一位联系人。
- * Demo tickets assigned to the first 10 accounts in turn (owner = account owner; contact = its first contact).
+ * 演示工单：负责人在王芳、郑经理、陈静之间轮换，客户取该负责人名下的客户（负责人能打开客户），
+ * 联系人取客户第一位联系人。
+ * Demo tickets rotate between the three owners; each uses an account owned by that owner (so the owner can open
+ * it); the contact is the account's first contact.
  */
 export function demoTickets(data: ReturnType<typeof buildDemoData>): DemoTicket[] {
   return DEMO_TICKET_PLAN.map((p, i) => {
-    const acc = data.accounts[i % data.accounts.length]!;
+    const owner = DEMO_TICKET_OWNERS[i % DEMO_TICKET_OWNERS.length]!;
+    const mine = data.accounts.filter((a) => a.owner === owner);
+    const acc = mine[Math.floor(i / DEMO_TICKET_OWNERS.length) % mine.length]!;
     const done = p.status === 'RESOLVED' || p.status === 'CLOSED';
     return { ...p, subject: `【演示】${p.subject}`, account: acc.key, owner: acc.owner, resolution: done ? DEMO_RESOLUTIONS[p.type]! : null };
   });
