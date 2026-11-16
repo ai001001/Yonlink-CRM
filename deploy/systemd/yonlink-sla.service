@@ -1,0 +1,18 @@
+# 永联CRM 工单 SLA 超时升级检查，由 yonlink-sla.timer 每 5 分钟触发
+# Yonlink-CRM ticket SLA escalation check, triggered every 5 minutes by yonlink-sla.timer
+[Unit]
+Description=Yonlink-CRM ticket SLA escalation check
+After=yonlink-postgres.service
+Requires=yonlink-postgres.service
+
+[Service]
+Type=oneshot
+# node 路径由 runtime.env 提供 / node path comes from runtime.env
+EnvironmentFile=%h/yonlink-deploy/shared/runtime.env
+EnvironmentFile=%h/yonlink-deploy/shared/app.env
+WorkingDirectory=%h/yonlink-deploy/current
+ExecStart=%h/yonlink-deploy/current/node_modules/.bin/tsx scripts/sla-sweep.ts
+# 超过 2 分钟视为卡住并结束，下次触发会重新检查 / treat over 2 minutes as stuck; the next run checks again
+TimeoutStartSec=120
+Nice=10
+UMask=0077

@@ -1,0 +1,49 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+26 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:316161) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/sla-scheduler/sla-scheduler.r1-functional.test.ts (3 tests | 1 failed) 4959ms
+   ❯ SLA scheduler R1 (3)
+     × 命令行脚本对测试库运行：输出统计并升级；缺少连接串退出码 2 / the CLI script 3928ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/sla-scheduler/sla-scheduler.r1-functional.test.ts > SLA scheduler R1 > 命令行脚本对测试库运行：输出统计并升级；缺少连接串退出码 2 / the CLI script
+AssertionError: expected Error: Command failed: npx tsx scripts/sl… { …(6) } to match object { code: 2 }
+(5 matching properties omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": 2,
++ Error {
++   "code": 1,
+  }
+
+ ❯ tests/sla-scheduler/sla-scheduler.r1-functional.test.ts:62:17
+     60|     const noDb = { ...process.env, DATABASE_URL: '' };
+     61|     const err = await run('npx', ['tsx', 'scripts/sla-sweep.ts'], { en…
+     62|     expect(err).toMatchObject({ code: 2 });
+       |                 ^
+     63|     expect((err as { stderr: string }).stderr).toContain('需要 DATABASE_…
+     64|   }, 120_000);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  22:20:19
+   Duration  7.28s (tests 92%, import 4%, transform 3%)
+

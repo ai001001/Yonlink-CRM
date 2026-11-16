@@ -1,0 +1,12 @@
+# 每 5 分钟检查一次工单 SLA 超时；上一次未结束时不会重复启动；关机期间错过的不补做（下次触发会一并处理）
+# Check ticket SLA every 5 minutes; a run never overlaps the previous one; missed runs are not replayed (the next run covers them)
+[Unit]
+Description=Yonlink-CRM ticket SLA escalation every 5 minutes
+
+[Timer]
+OnCalendar=*:0/5
+AccuracySec=30s
+Persistent=false
+
+[Install]
+WantedBy=timers.target

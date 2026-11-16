@@ -3,14 +3,16 @@
  * - 每个组织一条 SLA 规则：按优先级的处理时限（小时）、升级接收人、是否启用；没有记录即未启用。修改需 sla.manage，写审计。
  * - 启用时，新建工单未填处理期限则按优先级自动计算（dueAuto）；改优先级时自动期限随之重算；手动填写后不再自动。
  * - 超时升级：未解决工单超过处理期限时标记 escalatedAt，通知负责人与升级接收人，写系统审计（操作人为空）。
- *   系统没有定时任务，升级检查在读取通知、工单列表、工单详情、工作台时按需执行；条件更新保证每张工单只升级一次。
+ *   服务器定时任务（scripts/sla-sweep.ts，systemd 每 5 分钟）检查全部组织；读取通知、工单列表、工单详情、工作台时
+ *   也按需检查本组织。条件更新保证两者同时运行时每张工单只升级一次。
  * Ticket SLA and escalation (cf. Zoho escalation rules). One policy per organization: resolution hours per priority,
  * an escalation recipient and an enabled flag (no row = disabled); changing it needs sla.manage and is audited.
  * When enabled, new tickets without a due time get one from their priority (dueAuto) and auto due times follow
  * priority changes; a hand-set due time stays. Unresolved tickets past their due time are marked escalated, the owner
- * and the recipient are notified and a system audit entry (no actor) is written. There is no scheduler: the check
- * runs on demand when notifications, the ticket list or detail, or the dashboard are read; a conditional update
- * escalates each ticket once.
+ * and the recipient are notified and a system audit entry (no actor) is written. A server job (scripts/sla-sweep.ts,
+ * every 5 minutes via systemd) checks every organization, and reading notifications, the ticket list or detail, or
+ * the dashboard checks the reader's organization on demand; a conditional update escalates each ticket once even
+ * when both run at the same time.
  */
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
@@ -126,4 +128,33 @@ export async function sweepEscalations(organizationId: string, now = new Date())
     }
     return rows.length;
   });
+}
+
+/** 全部组织的检查结果 / Result of checking every organization */
+export interface SweepAllResult {
+  /** 已启用 SLA 的组织数 / organizations with an enabled SLA */
+  organizations: number;
+  /** 本次升级的工单数 / tickets escalated now */
+  escalated: number;
+  /** 出错的组织（不影响其他组织）/ organizations that failed (others still run) */
+  failures: { organizationId: string; error: string }[];
+}
+
+/**
+ * 检查全部已启用 SLA 的组织（供服务器定时任务调用）。每个组织独立事务，一个组织出错不影响其他组织。
+ * Check every organization with an enabled SLA (for the server job). Each organization has its own transaction, so
+ * one failure does not stop the others.
+ * @param sweep 单个组织的检查（测试可替换）/ per-organization check (replaceable in tests)
+ */
+export async function sweepAllEscalations(now = new Date(), sweep: (organizationId: string, now: Date) => Promise<number> = sweepEscalations): Promise<SweepAllResult> {
+  const orgs = await prisma.ticketSlaPolicy.findMany({ where: { enabled: true }, select: { organizationId: true }, orderBy: { organizationId: 'asc' } });
+  const result: SweepAllResult = { organizations: orgs.length, escalated: 0, failures: [] };
+  for (const { organizationId } of orgs) {
+    try {
+      result.escalated += await sweep(organizationId, now);
+    } catch (err) {
+      result.failures.push({ organizationId, error: (err as Error).message.slice(0, 300) });
+    }
+  }
+  return result;
 }
