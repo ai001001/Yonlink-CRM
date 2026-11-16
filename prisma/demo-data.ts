@@ -980,3 +980,79 @@ export const DEMO_TICKET_COMMENTS: Record<string, { body: string; isInternal: bo
 
 /** 演示 SLA 时限（小时，与系统默认一致）/ demo SLA limits in hours (same as the system defaults) */
 export const DEMO_SLA_HOURS = { urgentHours: 4, highHours: 24, mediumHours: 72, lowHours: 168 } as const;
+
+/**
+ * 演示知识库文章（虚构内容，标题带“【演示】”）。tickets 为要关联的演示工单主题。
+ * Demo knowledge-base articles (fictional; titles prefixed with 【演示】). `tickets` lists demo ticket subjects to link.
+ */
+export const DEMO_KB_ARTICLES: {
+  title: string;
+  category: string;
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  author: OwnerKey;
+  daysAgo: number;
+  views: number;
+  body: string;
+  tickets: string[];
+}[] = [
+  {
+    title: '【演示】涡轮增压器异响排查步骤',
+    category: '故障排查',
+    status: 'PUBLISHED',
+    author: 'manager',
+    daysAgo: 40,
+    views: 37,
+    body: '适用：怠速或加速时出现尖锐啸叫、金属摩擦声。\n\n1. 冷车怠速听诊，区分进气侧与排气侧。\n2. 检查进气管路与中冷器接头是否漏气。\n3. 拆下进气管，手动转动叶轮，检查轴向与径向间隙。\n4. 间隙超出手册范围时更换中间体总成，不建议单独更换轴承。\n\n注意：异响伴随蓝烟时优先检查机油回油是否通畅。',
+    tickets: ['【演示】涡轮增压器异响，怠速时明显'],
+  },
+  {
+    title: '【演示】增压压力不足的常见原因',
+    category: '故障排查',
+    status: 'PUBLISHED',
+    author: 'manager',
+    daysAgo: 35,
+    views: 21,
+    body: '常见原因（按排查顺序）：\n1. 真空管路老化或脱落。\n2. 执行器膜片破损、行程不足。\n3. 废气旁通阀卡滞在常开位置。\n4. 进气滤清器堵塞。\n\n现场可用手动真空泵检查执行器是否保压。',
+    tickets: ['【演示】增压压力偏低，排查执行器'],
+  },
+  {
+    title: '【演示】常用柴油机型增压器适配速查',
+    category: '选型',
+    status: 'PUBLISHED',
+    author: 'sales1',
+    daysAgo: 20,
+    views: 58,
+    body: '4.0L 及以下：轻型机型系列，注意区分国四、国五接口。\n4.0–8.0L：中型机型系列，部分型号需配套隔热罩。\n8.0L 以上：重型机型系列，建议按发动机铭牌编号核对。\n\n以上为演示用的虚构对照，不代表真实产品参数。',
+    tickets: ['【演示】询问 4.0L 机型适配的增压器型号'],
+  },
+  {
+    title: '【演示】质保政策说明',
+    category: '售后政策',
+    status: 'PUBLISHED',
+    author: 'manager',
+    daysAgo: 60,
+    views: 12,
+    body: '整机质保 12 个月或 10 万公里，以先到者为准。\n再制造件质保 6 个月。\n人为损坏、未按手册安装的不在质保范围内。',
+    tickets: ['【演示】再制造件与新品的质保差异说明'],
+  },
+  {
+    title: '【演示】旧版安装手册（已停用）',
+    category: '安装',
+    status: 'ARCHIVED',
+    author: 'manager',
+    daysAgo: 200,
+    views: 5,
+    body: '本手册适用于已停产的旧型号，新型号请参考最新安装手册。',
+    tickets: [],
+  },
+  {
+    title: '【演示】双语安装手册整理计划',
+    category: '安装',
+    status: 'DRAFT',
+    author: 'sales1',
+    daysAgo: 3,
+    views: 0,
+    body: '草稿：计划先整理销量前 5 的机型，中英文对照，预计两周完成。',
+    tickets: [],
+  },
+];

@@ -146,6 +146,11 @@ const fieldLabel = (field: string, entityType: string): string => {
   if (entityType === 'invoice' && field === 'subject') return t('invoices.subject');
   if (entityType === 'campaign' && field === 'name') return t('campaigns.name');
   if (entityType === 'ticket' && field === 'subject') return t('tickets.subject');
+  if (entityType === 'article' && field === 'title') return t('kb.articleTitle');
+  if (entityType === 'article' && field === 'body') return t('kb.body');
+  if (entityType === 'article' && field === 'category') return t('kb.category');
+  if (entityType === 'article' && field === 'status') return t('kb.status');
+  if (entityType === 'article' && field === 'authorId') return t('kb.author');
   if (entityType === 'ticket' && field === 'status') return t('tickets.status');
   if (entityType === 'ticket' && field === 'type') return t('tickets.type');
   if (entityType === 'ticket' && field === 'dueAt') return t('tickets.dueAt');
@@ -172,6 +177,7 @@ function value(field: string, v: unknown, users: Map<string, string>, entityType
   if (entityType === 'invoice' && field === 'status') return tEnum('invoiceStatus', String(v));
   if (entityType === 'campaign' && field === 'status') return tEnum('campaignStatus', String(v));
   if (entityType === 'ticket' && field === 'status') return tEnum('ticketStatus', String(v));
+  if (entityType === 'article' && field === 'status') return tEnum('kbStatus', String(v));
   if (entityType === 'ticket' && field === 'type') return tEnum('ticketType', String(v));
   if (entityType === 'ticket' && field === 'priority') return tEnum('ticketPriority', String(v));
   if (entityType === 'ticket' && field === 'channel') return tEnum('ticketChannel', String(v));
@@ -209,6 +215,10 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
   if (entry.action === 'ticket.escalate' && typeof c.dueAt === 'string') {
     // 超时升级：原处理期限与通知人数 / escalation: the missed due time and how many were notified
     lines.push(t('sla.auditEscalate', { due: value('dueAt', c.dueAt, users), n: Number(c.notified ?? 0) }));
+  }
+  if (typeof c.article === 'string') {
+    // 工单关联文章 / ticket article link
+    lines.push(t('kb.auditArticle', { title: c.article }));
   }
   if (typeof c.commentId === 'string') {
     // 工单评论：类型与字数（内容不记录）/ ticket comment: kind and length (content is not recorded)

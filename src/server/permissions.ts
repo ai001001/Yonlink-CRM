@@ -22,14 +22,15 @@ export type Permission =
   | 'forecast.manage' // 设定销售目标 / set sales targets
   | 'campaign.manage' // 维护市场活动 / maintain campaigns
   | 'sla.manage' // 维护工单 SLA 规则 / maintain the ticket SLA policy
+  | 'kb.manage' // 发布、归档、修改与删除知识库文章 / publish, archive, edit and delete knowledge-base articles
   | 'rate.manage' // 维护汇率（影响发票快照与本币汇总，仅管理员）/ maintain exchange rates (invoice snapshots and base totals; admins only)
   | 'data.export' // 导出 CSV（批量带走客户数据，仅管理员与经理）/ CSV export (bulk data egress; admins and managers only)
   | 'user.manage';
 
 /** 角色 → 权限 / Role → permissions */
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
-  ADMIN: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'audit.read', 'user.manage', 'data.export', 'product.manage', 'tag.manage', 'recycle.purge', 'view.share', 'forecast.manage', 'rate.manage', 'campaign.manage', 'sla.manage'],
-  MANAGER: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'data.export', 'product.manage', 'tag.manage', 'view.share', 'forecast.manage', 'campaign.manage', 'sla.manage'],
+  ADMIN: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'audit.read', 'user.manage', 'data.export', 'product.manage', 'tag.manage', 'recycle.purge', 'view.share', 'forecast.manage', 'rate.manage', 'campaign.manage', 'sla.manage', 'kb.manage'],
+  MANAGER: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'data.export', 'product.manage', 'tag.manage', 'view.share', 'forecast.manage', 'campaign.manage', 'sla.manage', 'kb.manage'],
   SALES: ['record.create', 'record.update.own'],
   READONLY: ['record.read.all'],
 };

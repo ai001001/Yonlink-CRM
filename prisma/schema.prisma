@@ -42,6 +42,8 @@ model Organization {
   ticketCounters   TicketCounter[]
   ticketComments   TicketComment[]
   ticketSla        TicketSlaPolicy?
+  kbArticles       KbArticle[]
+  ticketArticles   TicketArticle[]
   attachments      Attachment[]
   salesTargets     SalesTarget[]
   notifications    Notification[]
@@ -59,44 +61,46 @@ model Organization {
 }
 
 model User {
-  id                String               @id @default(uuid()) @db.Uuid
-  organizationId    String               @map("organization_id") @db.Uuid
-  email             String               @db.VarChar(254)
-  name              String               @db.VarChar(100)
-  passwordHash      String               @map("password_hash")
-  notifications     Notification[]       @relation("NotificationRecipient")
-  notificationsSent Notification[]       @relation("NotificationActor")
-  createdOrders     SalesOrder[]         @relation("OrderCreator")
-  createdInvoices   Invoice[]            @relation("InvoiceCreator")
-  recordedPayments  InvoicePayment[]     @relation("PaymentRecorder")
-  ratesCreated      ExchangeRate[]       @relation("RateCreator")
-  ownedCampaigns    Campaign[]           @relation("CampaignOwner")
+  id                 String               @id @default(uuid()) @db.Uuid
+  organizationId     String               @map("organization_id") @db.Uuid
+  email              String               @db.VarChar(254)
+  name               String               @db.VarChar(100)
+  passwordHash       String               @map("password_hash")
+  notifications      Notification[]       @relation("NotificationRecipient")
+  notificationsSent  Notification[]       @relation("NotificationActor")
+  createdOrders      SalesOrder[]         @relation("OrderCreator")
+  createdInvoices    Invoice[]            @relation("InvoiceCreator")
+  recordedPayments   InvoicePayment[]     @relation("PaymentRecorder")
+  ratesCreated       ExchangeRate[]       @relation("RateCreator")
+  ownedCampaigns     Campaign[]           @relation("CampaignOwner")
   /// 角色（服务端每个请求从数据库读取）/ role (read from the DB on every request)
-  role              UserRole             @default(SALES)
-  isActive          Boolean              @default(true) @map("is_active")
+  role               UserRole             @default(SALES)
+  isActive           Boolean              @default(true) @map("is_active")
   /// 演示账号：仅在 DEMO_LOGIN_ENABLED=1 时可免密一键登录 / demo account: password-less login only when DEMO_LOGIN_ENABLED=1
-  isDemo            Boolean              @default(false) @map("is_demo")
-  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  sessions          Session[]
-  ownedLeads        Lead[]               @relation("LeadOwner")
-  ownedAccounts     Account[]            @relation("AccountOwner")
-  ownedDeals        Deal[]               @relation("DealOwner")
-  ownedActivities   Activity[]           @relation("ActivityOwner")
-  auditLogs         AuditLog[]           @relation("AuditActor")
-  notes             Note[]               @relation("NoteAuthor")
-  createdQuotes     Quote[]              @relation("QuoteCreator")
-  deletedItems      RecycleBinItem[]     @relation("RecycleDeleter")
-  savedViews        SavedView[]
-  viewDefaults      UserViewDefault[]
-  dashboardLayout   UserDashboardLayout?
-  tickets           Ticket[]             @relation("TicketOwner")
-  slaEscalations    TicketSlaPolicy[]    @relation("SlaEscalateTo")
-  ticketComments    TicketComment[]      @relation("TicketCommentAuthor")
-  uploads           Attachment[]         @relation("AttachmentUploader")
-  salesTargets      SalesTarget[]        @relation("TargetOwner")
-  targetsUpdated    SalesTarget[]        @relation("TargetUpdater")
+  isDemo             Boolean              @default(false) @map("is_demo")
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization       Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sessions           Session[]
+  ownedLeads         Lead[]               @relation("LeadOwner")
+  ownedAccounts      Account[]            @relation("AccountOwner")
+  ownedDeals         Deal[]               @relation("DealOwner")
+  ownedActivities    Activity[]           @relation("ActivityOwner")
+  auditLogs          AuditLog[]           @relation("AuditActor")
+  notes              Note[]               @relation("NoteAuthor")
+  createdQuotes      Quote[]              @relation("QuoteCreator")
+  deletedItems       RecycleBinItem[]     @relation("RecycleDeleter")
+  savedViews         SavedView[]
+  viewDefaults       UserViewDefault[]
+  dashboardLayout    UserDashboardLayout?
+  tickets            Ticket[]             @relation("TicketOwner")
+  slaEscalations     TicketSlaPolicy[]    @relation("SlaEscalateTo")
+  kbArticles         KbArticle[]          @relation("KbArticleAuthor")
+  ticketArticleLinks TicketArticle[]      @relation("TicketArticleLinker")
+  ticketComments     TicketComment[]      @relation("TicketCommentAuthor")
+  uploads            Attachment[]         @relation("AttachmentUploader")
+  salesTargets       SalesTarget[]        @relation("TargetOwner")
+  targetsUpdated     SalesTarget[]        @relation("TargetUpdater")
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -1168,6 +1172,7 @@ model Ticket {
   owner          User?          @relation("TicketOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
   notifications  Notification[]
 
+  articles TicketArticle[]
   comments TicketComment[]
 
   @@unique([organizationId, id])
@@ -1228,4 +1233,56 @@ model TicketSlaPolicy {
   escalateTo     User?        @relation("SlaEscalateTo", fields: [organizationId, escalateToId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("ticket_sla_policies")
+}
+
+/// 知识库文章状态 / knowledge-base article status
+enum KbArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+
+  @@map("kb_article_status")
+}
+
+/// 知识库文章（对标 Zoho Solutions）：纯文本正文；草稿只有作者与知识库管理员可见；已发布、已归档所有人可读。
+/// Knowledge-base article (cf. Zoho Solutions): plain-text body; drafts are visible to the author and KB managers only;
+/// published and archived articles are readable by everyone.
+model KbArticle {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  title          String          @db.VarChar(200)
+  body           String          @db.Text
+  category       String?         @db.VarChar(50)
+  status         KbArticleStatus @default(DRAFT)
+  authorId       String          @map("author_id") @db.Uuid
+  publishedAt    DateTime?       @map("published_at") @db.Timestamptz(6)
+  viewCount      Int             @default(0) @map("view_count")
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author         User            @relation("KbArticleAuthor", fields: [organizationId, authorId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  tickets        TicketArticle[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, status, updatedAt(sort: Desc)])
+  @@index([organizationId, category])
+  @@map("kb_articles")
+}
+
+/// 工单关联的知识库文章（参考或解决依据）；随工单或文章删除。
+/// Knowledge-base article linked to a ticket (reference or basis of the resolution); removed with either side.
+model TicketArticle {
+  organizationId String       @map("organization_id") @db.Uuid
+  ticketId       String       @map("ticket_id") @db.Uuid
+  articleId      String       @map("article_id") @db.Uuid
+  linkedById     String       @map("linked_by_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ticket         Ticket       @relation(fields: [organizationId, ticketId], references: [organizationId, id], onDelete: Cascade)
+  article        KbArticle    @relation(fields: [organizationId, articleId], references: [organizationId, id], onDelete: Cascade)
+  linkedBy       User         @relation("TicketArticleLinker", fields: [organizationId, linkedById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([ticketId, articleId])
+  @@index([organizationId, articleId])
+  @@map("ticket_articles")
 }

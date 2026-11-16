@@ -15,6 +15,7 @@ import { AuditTrail } from '@/components/AuditTrail';
 import { ExportButton } from '@/components/ExportButton';
 import { usePermissions } from '@/components/AuthProvider';
 import { RecordSelect } from '@/components/RecordSelect';
+import { TicketArticles } from '@/components/TicketArticles';
 import { TicketComments } from '@/components/TicketComments';
 import { t, tEnum } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
@@ -393,6 +394,7 @@ export default function TicketsPage() {
                 </span>
               </Descriptions.Item>
             </Descriptions>
+            <TicketArticles key={`articles-${detail.id}`} ticket={detail} />
             <TicketComments key={`comments-${detail.id}`} ticket={detail} />
             <Typography.Title level={5}>{t('audit.trail')}</Typography.Title>
             <AuditTrail entityType="ticket" entityId={detail.id} version={detail.updatedAt} />

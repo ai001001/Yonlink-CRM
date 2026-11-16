@@ -16,7 +16,7 @@ import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
 import { toBase } from '../src/server/modules/exchange-rates';
 import { Prisma } from '../src/generated/prisma/client';
-import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -88,6 +88,8 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.deal.deleteMany({ where: { organizationId: o } });
         // 工单引用客户（RESTRICT）与联系人，须先删除；工单号计数器一并重置 / tickets reference accounts (RESTRICT) and contacts, so they go first; reset the number counter too
         await tx.ticket.deleteMany({ where: { organizationId: o } });
+        // 文章与工单的关联随工单删除，文章随后可删 / article links went with the tickets; articles can go now
+        await tx.kbArticle.deleteMany({ where: { organizationId: o } });
         await tx.ticketCounter.deleteMany({ where: { organizationId: o } });
         await tx.ticketSlaPolicy.deleteMany({ where: { organizationId: o } });
         await tx.contact.deleteMany({ where: { organizationId: o } });
@@ -242,6 +244,28 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
           })),
         });
       }
+      // 知识库文章与工单关联（关联人为工单负责人）/ knowledge-base articles and ticket links (linked by the ticket owner)
+      for (const art of DEMO_KB_ARTICLES) {
+        const when = new Date(Date.now() - art.daysAgo * DAY);
+        const created = await tx.kbArticle.create({
+          data: {
+            organizationId: o,
+            title: art.title,
+            body: art.body,
+            category: art.category,
+            status: art.status,
+            authorId: owner(art.author),
+            publishedAt: art.status === 'DRAFT' ? null : when,
+            viewCount: art.views,
+            createdAt: when,
+          },
+        });
+        for (const subject of art.tickets) {
+          const tk = await tx.ticket.findFirst({ where: { organizationId: o, subject }, select: { id: true, ownerId: true } });
+          if (tk?.ownerId) await tx.ticketArticle.create({ data: { organizationId: o, ticketId: tk.id, articleId: created.id, linkedById: tk.ownerId } });
+        }
+      }
+
       // 演示 SLA：默认时限，升级接收人为郑经理；已逾期的演示工单会在首次查看时升级
       // demo SLA: default limits, escalations go to the manager; overdue demo tickets escalate when first viewed
       await tx.ticketSlaPolicy.create({ data: { organizationId: o, enabled: true, ...DEMO_SLA_HOURS, escalateToId: owner('manager') } });
@@ -610,7 +634,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length + 1} 客户（含 1 条重复）、${data.accounts.reduce((n, a) => n + a.contacts.length, 0) + 2} 联系人、` +
-      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单（${Object.values(DEMO_TICKET_COMMENTS).flat().length} 条处理记录）、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
+      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单（${Object.values(DEMO_TICKET_COMMENTS).flat().length} 条处理记录）、${DEMO_KB_ARTICLES.length} 篇知识库文章、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
   );
 }
 
