@@ -91,6 +91,14 @@ const FIELD_LABELS: Record<string, MessageKey> = {
   isInternal: 'ticketComments.internal',
   body: 'ticketComments.body',
   escalatedAt: 'sla.escalatedAt',
+  contactName: 'vendors.contactName',
+  paymentTerms: 'vendors.paymentTerms',
+  poNumber: 'purchase.number',
+  exchangeRate: 'audit.field.exchangeRate',
+  baseTotal: 'audit.field.baseTotal',
+  vendorId: 'purchase.vendor',
+  expectedDate: 'purchase.expectedDate',
+  deliveryAddress: 'purchase.deliveryAddress',
   enabled: 'sla.enabled',
   urgentHours: 'sla.urgentHours',
   highHours: 'sla.highHours',
@@ -147,6 +155,12 @@ const fieldLabel = (field: string, entityType: string): string => {
   if (entityType === 'campaign' && field === 'name') return t('campaigns.name');
   if (entityType === 'ticket' && field === 'subject') return t('tickets.subject');
   if (entityType === 'article' && field === 'title') return t('kb.articleTitle');
+  if (entityType === 'vendor' && field === 'name') return t('vendors.name');
+  if (entityType === 'vendor' && field === 'isActive') return t('vendors.status');
+  if (entityType === 'purchase' && field === 'subject') return t('purchase.subject');
+  if (entityType === 'purchase' && field === 'status') return t('purchase.status');
+  if (entityType === 'purchase' && field === 'notes') return t('common.description');
+  if (entityType === 'purchase' && field === 'cancelReason') return t('purchase.cancelReason');
   if (entityType === 'article' && field === 'body') return t('kb.body');
   if (entityType === 'article' && field === 'category') return t('kb.category');
   if (entityType === 'article' && field === 'status') return t('kb.status');
@@ -178,6 +192,8 @@ function value(field: string, v: unknown, users: Map<string, string>, entityType
   if (entityType === 'campaign' && field === 'status') return tEnum('campaignStatus', String(v));
   if (entityType === 'ticket' && field === 'status') return tEnum('ticketStatus', String(v));
   if (entityType === 'article' && field === 'status') return tEnum('kbStatus', String(v));
+  if (entityType === 'purchase' && field === 'status') return tEnum('poStatus', String(v));
+  if (field === 'expectedDate') return String(v).slice(0, 10);
   if (entityType === 'ticket' && field === 'type') return tEnum('ticketType', String(v));
   if (entityType === 'ticket' && field === 'priority') return tEnum('ticketPriority', String(v));
   if (entityType === 'ticket' && field === 'channel') return tEnum('ticketChannel', String(v));
@@ -215,6 +231,10 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
   if (entry.action === 'ticket.escalate' && typeof c.dueAt === 'string') {
     // 超时升级：原处理期限与通知人数 / escalation: the missed due time and how many were notified
     lines.push(t('sla.auditEscalate', { due: value('dueAt', c.dueAt, users), n: Number(c.notified ?? 0) }));
+  }
+  if (entry.action === 'purchase.receive' && Array.isArray(c.received)) {
+    // 收货：各行 SKU 与数量 / receipt: SKU and quantity per line
+    lines.push((c.received as { sku: string; quantity: string }[]).map((r) => `${r.sku} × ${r.quantity}`).join(t('common.listSep')));
   }
   if (typeof c.article === 'string') {
     // 工单关联文章 / ticket article link

@@ -16,7 +16,7 @@ export interface RequestMeta {
 }
 
 /** 审计对象类型 / Audited entity types */
-export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'order' | 'invoice' | 'report' | 'rate' | 'campaign' | 'ticket' | 'sla' | 'article' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
+export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'order' | 'invoice' | 'report' | 'rate' | 'campaign' | 'ticket' | 'sla' | 'article' | 'vendor' | 'purchase' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
 
 /** 字段策略 / Field policy */
 type Policy = 'plain' | 'mask' | 'redact';
@@ -59,6 +59,15 @@ export const AUDIT_FIELDS: Record<Exclude<AuditEntity, 'auth'>, Record<string, P
   ticket: {
     ticketNumber: 'plain', subject: 'plain', description: 'redact', accountId: 'plain', contactId: 'plain', ownerId: 'plain', status: 'plain',
     priority: 'plain', type: 'plain', channel: 'plain', dueAt: 'plain', resolution: 'redact', resolvedAt: 'plain', escalatedAt: 'plain',
+  },
+  vendor: {
+    name: 'plain', contactName: 'plain', phone: 'mask', email: 'mask', website: 'plain', address: 'redact', currency: 'plain',
+    paymentTerms: 'plain', notes: 'redact', isActive: 'plain',
+  },
+  purchase: {
+    poNumber: 'plain', subject: 'plain', status: 'plain', vendorId: 'plain', salesOrderId: 'plain', currency: 'plain', taxPercent: 'plain',
+    subtotal: 'plain', taxAmount: 'plain', total: 'plain', exchangeRate: 'plain', baseTotal: 'plain', expectedDate: 'plain',
+    deliveryAddress: 'redact', notes: 'redact', cancelReason: 'redact',
   },
   article: { title: 'plain', body: 'redact', category: 'plain', status: 'plain', authorId: 'plain' },
   // SLA 审计直接记录变化的规则字段 / SLA audits record the changed policy fields directly

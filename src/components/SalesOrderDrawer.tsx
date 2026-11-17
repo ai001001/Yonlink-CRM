@@ -15,6 +15,7 @@ import { api, ClientApiError } from '@/lib/api';
 import { fmtDate, fmtDateTime } from '@/lib/format';
 import type { Quote, SalesOrder, SalesOrderStatus } from '@/lib/types';
 import { usePermissions } from './AuthProvider';
+import { SalesOrderPurchases } from './PurchaseOrderDrawer';
 import { CreateInvoiceModal, INVOICE_STATUS_COLOR } from './InvoiceDrawer';
 import { QuoteLinesTable } from './QuoteDrawer';
 
@@ -241,8 +242,9 @@ export function SalesOrderDrawer({ orderId, onClose, onChanged }: Props) {
               </Descriptions.Item>
             </Descriptions>
           )}
+          <SalesOrderPurchases key={`purchases-${order.id}`} salesOrder={order} />
           {isFinal(order.status) && <Alert type="info" showIcon title={t('orders.finalHint')} style={{ marginBottom: 12 }} />}
-          <Descriptions column={2} bordered size="small" style={{ marginBottom: 16 }}>
+          <Descriptions column={2} bordered size="small" style={{ marginBottom: 16 }} data-testid="order-summary">
             <Descriptions.Item label={t('orders.number')}>{order.orderNumber}</Descriptions.Item>
             <Descriptions.Item label={t('orders.status')}>
               <OrderStatusTag status={order.status} />

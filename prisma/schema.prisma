@@ -14,10 +14,10 @@ datasource db {
 }
 
 model Organization {
-  id               String                @id @default(uuid()) @db.Uuid
-  name             String                @db.VarChar(200)
-  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id               String                  @id @default(uuid()) @db.Uuid
+  name             String                  @db.VarChar(200)
+  createdAt        DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
   users            User[]
   accounts         Account[]
   contacts         Contact[]
@@ -44,6 +44,10 @@ model Organization {
   ticketSla        TicketSlaPolicy?
   kbArticles       KbArticle[]
   ticketArticles   TicketArticle[]
+  vendors          Vendor[]
+  purchaseOrders   PurchaseOrder[]
+  purchaseLines    PurchaseOrderLineItem[]
+  documentCounters DocumentCounter[]
   attachments      Attachment[]
   salesTargets     SalesTarget[]
   notifications    Notification[]
@@ -97,6 +101,7 @@ model User {
   slaEscalations     TicketSlaPolicy[]    @relation("SlaEscalateTo")
   kbArticles         KbArticle[]          @relation("KbArticleAuthor")
   ticketArticleLinks TicketArticle[]      @relation("TicketArticleLinker")
+  purchaseOrders     PurchaseOrder[]      @relation("PurchaseOrderCreator")
   ticketComments     TicketComment[]      @relation("TicketCommentAuthor")
   uploads            Attachment[]         @relation("AttachmentUploader")
   salesTargets       SalesTarget[]        @relation("TargetOwner")
@@ -804,6 +809,7 @@ model SalesOrder {
   deal             Deal                 @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Restrict)
   createdBy        User?                @relation("OrderCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
   lines            SalesOrderLineItem[]
+  purchaseOrders   PurchaseOrder[]
 
   @@unique([organizationId, id])
   @@unique([organizationId, orderNumber])
@@ -1285,4 +1291,124 @@ model TicketArticle {
   @@id([ticketId, articleId])
   @@index([organizationId, articleId])
   @@map("ticket_articles")
+}
+
+/// 单据编号计数器（按组织、单据类型、年份，原子递增，删除的编号不复用）。
+/// Document number counter per organization, kind and year (atomic; numbers of deleted documents are never reused).
+model DocumentCounter {
+  organizationId String       @map("organization_id") @db.Uuid
+  kind           String       @db.VarChar(20)
+  year           Int
+  last           Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, kind, year])
+  @@map("document_counters")
+}
+
+/// 供应商（对标 Zoho Vendors）：组织内名称唯一（不区分大小写）；有采购单的供应商不能删除，可停用。
+/// Vendor (cf. Zoho Vendors): names unique per organization (case-insensitive); vendors with purchase orders cannot be
+/// deleted, only deactivated.
+model Vendor {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  name           String          @db.VarChar(200)
+  contactName    String?         @map("contact_name") @db.VarChar(100)
+  phone          String?         @db.VarChar(50)
+  email          String?         @db.VarChar(254)
+  website        String?         @db.VarChar(200)
+  address        String?         @db.VarChar(500)
+  /// 默认币种 / default currency
+  currency       String          @default("CNY") @db.Char(3)
+  /// 付款条件，如“月结 30 天” / payment terms
+  paymentTerms   String?         @map("payment_terms") @db.VarChar(100)
+  notes          String?         @db.Text
+  isActive       Boolean         @default(true) @map("is_active")
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchaseOrders PurchaseOrder[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, isActive])
+  @@map("vendors")
+}
+
+/// 采购单状态 / purchase order status
+enum PurchaseOrderStatus {
+  DRAFT
+  ORDERED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+
+  @@map("purchase_order_status")
+}
+
+/// 采购单（对标 Zoho Purchase Orders）：草稿可改明细；下单时锁定明细并保存汇率快照；按行收货，全部到货后为已到货。
+/// 可关联一张销售订单（以销定采）；编号 PO-年份-序号。
+/// Purchase order (cf. Zoho Purchase Orders): lines are editable while a draft; ordering locks them and snapshots the
+/// exchange rate; goods are received per line and the order is received once every line is complete. May reference a
+/// sales order (purchase to order); numbered PO-year-sequence.
+model PurchaseOrder {
+  id              String                  @id @default(uuid()) @db.Uuid
+  organizationId  String                  @map("organization_id") @db.Uuid
+  poNumber        String                  @map("po_number") @db.VarChar(30)
+  vendorId        String                  @map("vendor_id") @db.Uuid
+  salesOrderId    String?                 @map("sales_order_id") @db.Uuid
+  subject         String                  @db.VarChar(200)
+  status          PurchaseOrderStatus     @default(DRAFT)
+  currency        String                  @db.Char(3)
+  taxPercent      Decimal                 @default(0) @map("tax_percent") @db.Decimal(5, 2)
+  subtotal        Decimal                 @default(0) @db.Decimal(18, 2)
+  taxAmount       Decimal                 @default(0) @map("tax_amount") @db.Decimal(18, 2)
+  total           Decimal                 @default(0) @db.Decimal(18, 2)
+  /// 下单日汇率快照（1 单位外币折合人民币；缺汇率为空）/ order-day rate snapshot (CNY per unit; null when missing)
+  exchangeRate    Decimal?                @map("exchange_rate") @db.Decimal(18, 8)
+  baseTotal       Decimal?                @map("base_total") @db.Decimal(18, 2)
+  expectedDate    DateTime?               @map("expected_date") @db.Date
+  deliveryAddress String?                 @map("delivery_address") @db.VarChar(500)
+  notes           String?                 @db.Text
+  cancelReason    String?                 @map("cancel_reason") @db.VarChar(500)
+  createdById     String?                 @map("created_by_id") @db.Uuid
+  orderedAt       DateTime?               @map("ordered_at") @db.Timestamptz(6)
+  receivedAt      DateTime?               @map("received_at") @db.Timestamptz(6)
+  cancelledAt     DateTime?               @map("cancelled_at") @db.Timestamptz(6)
+  createdAt       DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization    Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vendor          Vendor                  @relation(fields: [organizationId, vendorId], references: [organizationId, id], onDelete: Restrict)
+  salesOrder      SalesOrder?             @relation(fields: [organizationId, salesOrderId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy       User?                   @relation("PurchaseOrderCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  lines           PurchaseOrderLineItem[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, poNumber])
+  @@index([organizationId, vendorId])
+  @@index([organizationId, status])
+  @@index([organizationId, salesOrderId])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("purchase_orders")
+}
+
+/// 采购单明细（产品信息为快照）；已收数量不超过采购数量。
+/// Purchase order line (product details are a snapshot); received quantity never exceeds the ordered quantity.
+model PurchaseOrderLineItem {
+  id               String        @id @default(uuid()) @db.Uuid
+  organizationId   String        @map("organization_id") @db.Uuid
+  purchaseOrderId  String        @map("purchase_order_id") @db.Uuid
+  position         Int
+  productSku       String        @map("product_sku") @db.VarChar(50)
+  productName      String        @map("product_name") @db.VarChar(200)
+  unit             String        @db.VarChar(20)
+  quantity         Decimal       @db.Decimal(18, 2)
+  receivedQuantity Decimal       @default(0) @map("received_quantity") @db.Decimal(18, 2)
+  unitCost         Decimal       @map("unit_cost") @db.Decimal(18, 2)
+  lineTotal        Decimal       @map("line_total") @db.Decimal(18, 2)
+  organization     Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchaseOrder    PurchaseOrder @relation(fields: [organizationId, purchaseOrderId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([purchaseOrderId, position])
+  @@index([organizationId, purchaseOrderId])
+  @@map("purchase_order_line_items")
 }

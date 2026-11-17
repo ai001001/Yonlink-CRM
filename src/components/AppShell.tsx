@@ -33,6 +33,8 @@ import {
   AccountBookOutlined,
   ScheduleOutlined,
   ShoppingCartOutlined,
+  ShoppingOutlined,
+  ShopOutlined,
   TeamOutlined,
   UserAddOutlined,
   UserOutlined,
@@ -84,7 +86,9 @@ const NAV_GROUPS: { key: string; label: string | null; icon?: React.ReactNode; i
       { key: '/products', icon: <AppstoreOutlined />, label: t('nav.products') },
       { key: '/quotes', icon: <FileTextOutlined />, label: t('nav.quotes') },
       { key: '/sales-orders', icon: <ShoppingCartOutlined />, label: t('nav.salesOrders') },
+      { key: '/purchase-orders', icon: <ShoppingOutlined />, label: t('nav.purchaseOrders'), permission: 'purchase.read' },
       { key: '/invoices', icon: <AccountBookOutlined />, label: t('nav.invoices') },
+      { key: '/vendors', icon: <ShopOutlined />, label: t('nav.vendors'), permission: 'purchase.read' },
     ],
   },
   {

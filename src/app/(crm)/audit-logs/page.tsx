@@ -12,7 +12,7 @@ import { t, tEnum } from '@/i18n';
 import { fmtDateTime } from '@/lib/format';
 import { useOwners, usePagedList } from '@/lib/hooks';
 
-const ENTITIES = ['lead', 'account', 'contact', 'deal', 'activity', 'note', 'product', 'quote', 'order', 'invoice', 'report', 'rate', 'campaign', 'ticket', 'sla', 'article', 'tag', 'view', 'attachment', 'target', 'user', 'auth'];
+const ENTITIES = ['lead', 'account', 'contact', 'deal', 'activity', 'note', 'product', 'quote', 'order', 'invoice', 'report', 'rate', 'campaign', 'ticket', 'sla', 'article', 'vendor', 'purchase', 'tag', 'view', 'attachment', 'target', 'user', 'auth'];
 const ACTIONS: Record<string, string[]> = {
   lead: ['create', 'update', 'delete', 'restore', 'purge', 'expire', 'merge', 'convert', 'tags', 'import', 'export'],
   account: ['create', 'update', 'delete', 'restore', 'purge', 'expire', 'merge', 'tags', 'import', 'export'],
@@ -30,6 +30,8 @@ const ACTIONS: Record<string, string[]> = {
   ticket: ['create', 'update', 'delete', 'comment', 'comment_update', 'comment_delete', 'export', 'escalate', 'link_article', 'unlink_article'],
   sla: ['update'],
   article: ['create', 'update', 'delete'],
+  vendor: ['create', 'update', 'delete'],
+  purchase: ['create', 'update', 'status', 'receive', 'delete'],
   tag: ['create', 'update', 'delete'],
   view: ['create', 'update', 'delete'],
   attachment: ['create', 'delete'],

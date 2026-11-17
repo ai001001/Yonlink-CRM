@@ -1,0 +1,108 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+28 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:470502) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/purchase-orders/purchase-orders.r1-functional.test.ts (7 tests | 3 failed) 3571ms
+   ❯ vendors R1 (1)
+     × 新建、同名、修改审计打码、停用、有采购单不能删除 / vendor lifecycle 720ms
+   ❯ purchase orders R1 drafts (2)
+     × 由销售订单生成：复制明细与收货地址，单价为 0 不能下单 / from a sales order 477ms
+   ❯ purchase orders R1 ordering & receiving (4)
+     × 分批收货、超收、到货状态；收货后不能取消；终态不可改 / receiving 204ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/purchase-orders/purchase-orders.r1-functional.test.ts > vendors R1 > 新建、同名、修改审计打码、停用、有采购单不能删除 / vendor lifecycle
+AssertionError: expected { fields: { …(3) } } to deeply equal { fields: { …(3) } }
+
+- Expected
++ Received
+
+@@ -8,9 +8,9 @@
+        true,
+        false,
+      ],
+      "phone": [
+        null,
+-       "057*******66",
++       "057********66",
+      ],
+    },
+  }
+
+ ❯ tests/purchase-orders/purchase-orders.r1-functional.test.ts:59:25
+     57|     expect(up.json.isActive).toBe(false);
+     58|     const log = await prisma.auditLog.findFirstOrThrow({ where: { acti…
+     59|     expect(log.changes).toEqual({ fields: { phone: [null, '057*******6…
+       |                         ^
+     60|     // 停用后不能用于新采购单 / inactive vendors cannot be used
+     61|     expect((await create({ lines: [manual()] })).json.error.details).t…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/purchase-orders/purchase-orders.r1-functional.test.ts > purchase orders R1 drafts > 由销售订单生成：复制明细与收货地址，单价为 0 不能下单 / from a sales order
+AssertionError: expected { …(29) } to match object { salesOrder: { …(2) }, …(2) }
+(36 matching properties omitted from actual)
+
+- Expected
++ Received
+
+@@ -1,7 +1,7 @@
+  {
+-   "deliveryAddress": "上海演示路 9 号",
++   "deliveryAddress": null,
+    "salesOrder": {
+      "id": "03af2a07-ca78-4fc5-ad52-e34a4d9bb189",
+      "orderNumber": "SO-2026-0001",
+    },
+    "total": "0",
+
+ ❯ tests/purchase-orders/purchase-orders.r1-functional.test.ts:112:20
+    110|     const r = await create({ salesOrderId: so.id });
+    111|     expect(r.status).toBe(201);
+    112|     expect(r.json).toMatchObject({ salesOrder: { id: so.id, orderNumbe…
+       |                    ^
+    113|     expect(r.json.lines).toEqual([expect.objectContaining({ productSku…
+    114|     const order = await status(r.json.id, { status: 'ORDERED' });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/purchase-orders/purchase-orders.r1-functional.test.ts > purchase orders R1 ordering & receiving > 分批收货、超收、到货状态；收货后不能取消；终态不可改 / receiving
+AssertionError: expected { status: [ 'has_receipts' ] } to deeply equal { status: [ 'invalid_transition' ] }
+
+- Expected
++ Received
+
+  {
+    "status": [
+-     "invalid_transition",
++     "has_receipts",
+    ],
+  }
+
+ ❯ tests/purchase-orders/purchase-orders.r1-functional.test.ts:161:79
+    159|     expect((await receive(po.id, [{ lineId: l1!.id, quantity: '1' }, {…
+    160|     expect((await receive(po.id, [{ lineId: '00000000-0000-4000-8000-0…
+    161|     expect((await status(po.id, { status: 'CANCELLED' })).json.error.d…
+       |                                                                               ^
+    162|     r = await receive(po.id, [{ lineId: l1!.id, quantity: '6' }, { lin…
+    163|     expect(r.json).toMatchObject({ status: 'RECEIVED' });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 4 passed (7)
+   Start at  15:40:57
+   Duration  6.27s (tests 82%, transform 10%, import 8%)
+

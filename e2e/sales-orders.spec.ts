@@ -55,7 +55,7 @@ test('报价单生成销售订单并完成发货与取消 / order lifecycle from
   await expect(drawer).toContainText('请附装箱单');
   await drawer.getByRole('button', { name: '标记已发货' }).click();
   await confirm(page);
-  await expect(drawer.locator('.ant-descriptions')).toContainText('已发货');
+  await expect(drawer.getByTestId('order-summary')).toContainText('已发货');
   await expect(drawer.getByRole('button', { name: '确认已交付' })).toBeVisible();
 
   // 取消（填写原因）后为终态 / cancel with a reason, then the order is final
@@ -63,7 +63,7 @@ test('报价单生成销售订单并完成发货与取消 / order lifecycle from
   const cancel = page.getByRole('dialog', { name: '取消销售订单' });
   await cancel.getByLabel('取消原因').fill('客户改期');
   await cancel.getByRole('button', { name: '取消订单' }).click();
-  await expect(drawer.locator('.ant-descriptions')).toContainText('已取消');
+  await expect(drawer.getByTestId('order-summary')).toContainText('已取消');
   await expect(drawer).toContainText('客户改期');
   await expect(drawer).toContainText('订单已交付或已取消，不能再修改。');
   await expect(drawer.getByRole('button', { name: /编\s*辑/ })).toHaveCount(0);

@@ -23,7 +23,9 @@ const PATHS: Record<string, string> = {
   产品: '/products',
   报价单: '/quotes',
   销售订单: '/sales-orders',
+  采购单: '/purchase-orders',
   发票: '/invoices',
+  供应商: '/vendors',
   服务工单: '/tickets',
   知识库: '/kb',
   报表: '/reports',
@@ -35,14 +37,16 @@ const PATHS: Record<string, string> = {
 };
 
 const BUSINESS = ['工作台', '线索', '联系人', '客户', '商机', '销售预测', '市场活动', '跟进', '产品', '报价单', '销售订单', '发票', '服务工单', '知识库', '报表'];
+/** 有 purchase.read 的角色在“库存”组多出采购单（销售订单后）与供应商（发票后）/ roles with purchase.read also see purchase orders and vendors */
+const WITH_PURCHASE = ['工作台', '线索', '联系人', '客户', '商机', '销售预测', '市场活动', '跟进', '产品', '报价单', '销售订单', '采购单', '发票', '供应商', '服务工单', '知识库', '报表'];
 const GROUPS = ['销售', '营销', '活动', '库存', '服务', '分析', '设置'];
 
 /** 各角色应看到的菜单（按顺序）/ entries each role should see, in order */
 const ROLES: { name: string; login: (page: Page) => Promise<void>; items: string[] }[] = [
-  { name: '系统管理员', login: signIn, items: [...BUSINESS, '用户管理', '汇率', '查重合并', '回收站', '审计日志'] },
-  { name: '销售经理', login: (p) => demo(p, '郑经理'), items: [...BUSINESS, '汇率', '查重合并', '回收站'] },
+  { name: '系统管理员', login: signIn, items: [...WITH_PURCHASE, '用户管理', '汇率', '查重合并', '回收站', '审计日志'] },
+  { name: '销售经理', login: (p) => demo(p, '郑经理'), items: [...WITH_PURCHASE, '汇率', '查重合并', '回收站'] },
   { name: '销售代表', login: (p) => demo(p, '王芳'), items: [...BUSINESS, '汇率', '查重合并'] },
-  { name: '只读用户', login: (p) => demo(p, '周会计'), items: [...BUSINESS, '汇率', '查重合并'] },
+  { name: '只读用户', login: (p) => demo(p, '周会计'), items: [...WITH_PURCHASE, '汇率', '查重合并'] },
 ];
 
 /** 演示账号登录 / demo sign-in */
@@ -131,10 +135,15 @@ test('侧栏折叠：全部收起、全部展开、收起侧栏与刷新保持 /
   await expect(toolbar).toHaveCount(0);
   await expect.poll(async () => (await sider.boundingBox())!.width).toBeLessThan(wide / 2);
   await expect(page.getByTestId('contact-icon')).toBeVisible();
-  await menu.locator('.ant-menu-submenu', { has: page.locator('.anticon-customer-service') }).first().hover();
+  // 按结果重试：悬停弹出层的打开动画期间点击可能落空，弹出层随后关闭 / retry by outcome: a click during the pop-out
+  // animation can miss and the pop-out then closes
+  const group = menu.locator('.ant-menu-submenu', { has: page.locator('.anticon-customer-service') }).first();
   const popup = page.locator('.ant-menu-submenu-popup:visible');
-  await popup.getByRole('link', { name: '服务工单', exact: true }).click();
-  await expect(page).toHaveURL(/\/tickets\/?$/);
+  await expect(async () => {
+    await group.hover();
+    await popup.getByRole('link', { name: '服务工单', exact: true }).click({ timeout: 3000 });
+    await expect(page).toHaveURL(/\/tickets\/?$/, { timeout: 3000 });
+  }).toPass({ timeout: 30000 });
 
   // 刷新后仍为图标栏；顶部按钮展开 / still collapsed after reload; the header button expands it
   await page.reload();

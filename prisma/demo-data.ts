@@ -1056,3 +1056,33 @@ export const DEMO_KB_ARTICLES: {
     tickets: [],
   },
 ];
+
+/** 演示供应商（虚构公司，名称带“【演示】”）/ demo vendors (fictional; names prefixed with 【演示】) */
+export const DEMO_VENDORS = [
+  { key: 'casting', name: '【演示】宁波精工铸造有限公司', contactName: '【演示】周工', phone: '0574-80000001', currency: 'CNY', paymentTerms: '月结 30 天', isActive: true },
+  { key: 'bearing', name: '【演示】无锡轴承配套厂', contactName: '【演示】钱经理', phone: '0510-80000002', currency: 'CNY', paymentTerms: '月结 60 天', isActive: true },
+  { key: 'germany', name: '【演示】Stuttgart Turbo Parts GmbH', contactName: '【演示】Klaus Weber', phone: '+49-711-000003', currency: 'EUR', paymentTerms: 'Net 45', isActive: true },
+  { key: 'old', name: '【演示】已停用的备选供应商', contactName: null, phone: null, currency: 'CNY', paymentTerms: null, isActive: false },
+] as const;
+
+/**
+ * 演示采购单：覆盖已到货、部分到货、已下单（欧元，关联第一张销售订单）与草稿。明细取人民币或美元目录产品，
+ * 采购单价约为目录售价的 55%。
+ * Demo purchase orders: received, partially received, ordered (EUR, linked to the first sales order) and a draft.
+ * Lines use catalogue products; unit costs are about 55% of the list price.
+ */
+export const DEMO_PURCHASE_ORDERS: {
+  vendor: (typeof DEMO_VENDORS)[number]['key'];
+  subject: string;
+  status: 'DRAFT' | 'ORDERED' | 'PARTIALLY_RECEIVED' | 'RECEIVED';
+  daysAgo: number;
+  expectedInDays: number;
+  taxPercent: string;
+  linkFirstSalesOrder?: boolean;
+  lines: { sku: string; quantity: number; received: number }[];
+}[] = [
+  { vendor: 'casting', subject: '【演示】涡轮壳体与中间体备货', status: 'RECEIVED', daysAgo: 45, expectedInDays: -30, taxPercent: '13', lines: [{ sku: 'DT-GK-01-CN', quantity: 200, received: 200 }, { sku: 'DT-OP-01-CN', quantity: 150, received: 150 }] },
+  { vendor: 'bearing', subject: '【演示】浮动轴承季度采购', status: 'PARTIALLY_RECEIVED', daysAgo: 20, expectedInDays: 5, taxPercent: '13', lines: [{ sku: 'DT-GK-01-CN', quantity: 500, received: 300 }] },
+  { vendor: 'germany', subject: '【演示】进口动平衡检测工具', status: 'ORDERED', daysAgo: 10, expectedInDays: 25, taxPercent: '0', linkFirstSalesOrder: true, lines: [{ sku: 'DT-TL-BAL', quantity: 2, received: 0 }] },
+  { vendor: 'casting', subject: '【演示】下季度垫片补货（草稿）', status: 'DRAFT', daysAgo: 1, expectedInDays: 40, taxPercent: '13', lines: [{ sku: 'DT-GK-01-CN', quantity: 300, received: 0 }] },
+];

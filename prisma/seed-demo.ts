@@ -16,7 +16,7 @@ import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
 import { toBase } from '../src/server/modules/exchange-rates';
 import { Prisma } from '../src/generated/prisma/client';
-import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PURCHASE_ORDERS, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -81,6 +81,10 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.notification.deleteMany({ where: { organizationId: o } });
         // 发票引用订单，订单引用报价单与商机（RESTRICT），须先删除 / invoices → orders → quotes/deals (RESTRICT) go first
         await tx.invoice.deleteMany({ where: { organizationId: o } });
+        // 采购单引用销售订单与供应商，须先删除；单据编号计数器一并重置 / purchase orders reference sales orders and vendors, so they go first; reset the counters too
+        await tx.purchaseOrder.deleteMany({ where: { organizationId: o } });
+        await tx.vendor.deleteMany({ where: { organizationId: o } });
+        await tx.documentCounter.deleteMany({ where: { organizationId: o } });
         await tx.salesOrder.deleteMany({ where: { organizationId: o } });
         await tx.note.deleteMany({ where: { organizationId: o } });
         await tx.activity.deleteMany({ where: { organizationId: o } });
@@ -487,6 +491,54 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         if (key && l.convertedDeal) await tx.deal.update({ where: { id: dealIds[l.convertedDeal]! }, data: { campaignId: campaignIds[key] } });
       }
 
+      // 供应商与采购单（采购单价约为目录售价的 55%；下单日汇率按演示汇率）/ vendors and purchase orders (costs ~55% of list price; demo rates on the order day)
+      const vendorIds: Record<string, string> = {};
+      for (const v of DEMO_VENDORS) {
+        vendorIds[v.key] = (await tx.vendor.create({ data: { organizationId: o, name: v.name, contactName: v.contactName, phone: v.phone, currency: v.currency, paymentTerms: v.paymentTerms, isActive: v.isActive } })).id;
+      }
+      const firstOrder = await tx.salesOrder.findFirst({ where: { organizationId: o }, orderBy: { orderNumber: 'asc' }, select: { id: true, shippingAddress: true } });
+      const poYear = new Date().getUTCFullYear();
+      for (const [n, po] of DEMO_PURCHASE_ORDERS.entries()) {
+        const vendor = DEMO_VENDORS.find((v) => v.key === po.vendor)!;
+        const created = new Date(Date.now() - po.daysAgo * DAY);
+        const lines = po.lines.map((l, i) => {
+          const p = data.products.find((x) => x.sku === l.sku)!;
+          const unitCost = new Prisma.Decimal(p.unitPrice).mul('0.55').toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+          return { organizationId: o, position: i + 1, productSku: p.sku, productName: p.name, unit: p.unit, quantity: l.quantity, receivedQuantity: l.received, unitCost, lineTotal: unitCost.mul(l.quantity) };
+        });
+        const subtotal = lines.reduce((sum, l) => sum.plus(l.lineTotal), new Prisma.Decimal(0));
+        const taxAmount = subtotal.mul(po.taxPercent).div(100).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+        const total = subtotal.plus(taxAmount);
+        const ordered = po.status !== 'DRAFT';
+        const rate = ordered ? demoRateOn(vendor.currency, po.daysAgo) : null;
+        const createdPo = await tx.purchaseOrder.create({
+          data: {
+            organizationId: o,
+            poNumber: `PO-${poYear}-${String(n + 1).padStart(4, '0')}`,
+            vendorId: vendorIds[po.vendor]!,
+            salesOrderId: po.linkFirstSalesOrder ? (firstOrder?.id ?? null) : null,
+            subject: po.subject,
+            status: po.status,
+            currency: vendor.currency,
+            taxPercent: po.taxPercent,
+            subtotal,
+            taxAmount,
+            total,
+            exchangeRate: rate,
+            baseTotal: rate ? total.mul(rate).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP) : null,
+            expectedDate: dayOffset(po.expectedInDays),
+            deliveryAddress: po.linkFirstSalesOrder ? (firstOrder?.shippingAddress ?? null) : '【演示】宁波市北仑区演示仓库',
+            notes: '【演示】虚构采购单，用于展示采购流程。',
+            createdById: owner('manager'),
+            orderedAt: ordered ? new Date(created.getTime() + 3_600_000) : null,
+            receivedAt: po.status === 'RECEIVED' ? new Date(created.getTime() + 15 * DAY) : null,
+            createdAt: created,
+          },
+        });
+        await tx.purchaseOrderLineItem.createMany({ data: lines.map((l) => ({ ...l, purchaseOrderId: createdPo.id })) });
+      }
+      await tx.documentCounter.create({ data: { organizationId: o, kind: 'PO', year: poYear, last: DEMO_PURCHASE_ORDERS.length } });
+
       // 附件元数据（文件在事务提交后写入）/ attachment metadata (files are written after the commit)
       for (const att of demoAttachments(data)) {
         const id = randomUUID();
@@ -634,7 +686,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length + 1} 客户（含 1 条重复）、${data.accounts.reduce((n, a) => n + a.contacts.length, 0) + 2} 联系人、` +
-      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单（${Object.values(DEMO_TICKET_COMMENTS).flat().length} 条处理记录）、${DEMO_KB_ARTICLES.length} 篇知识库文章、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
+      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单（${Object.values(DEMO_TICKET_COMMENTS).flat().length} 条处理记录）、${DEMO_KB_ARTICLES.length} 篇知识库文章、${DEMO_VENDORS.length} 个供应商、${DEMO_PURCHASE_ORDERS.length} 张采购单、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
   );
 }
 
