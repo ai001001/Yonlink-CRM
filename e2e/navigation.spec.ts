@@ -1,12 +1,14 @@
 /**
  * 导航结构 第三轮：端到端回归（按 Zoho CRM 模块分组的左侧导航）。四种角色分别检查：分组标题与菜单顺序符合权限；
  * 逐个点击每个菜单，地址正确、菜单高亮、页面内容渲染、无未捕获的页面错误或控制台错误；通知中心从铃铛进入。
+ * 另测侧栏折叠：全部收起（保留当前分组）、全部展开、单组折叠、收起侧栏为图标栏（弹出分组）、刷新后保持；
+ * 咨询方式：侧栏底部、顶部栏、登录页显示 QQ 并可复制。
  * Navigation round 3: the Zoho-style grouped side menu. For each of four roles: group headers and entries match the
  * permissions; every entry opens with the right URL, highlight and rendered content and no page or console errors;
  * the notification centre is reached from the bell.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { signIn } from './helpers';
+import { sideMenu, signIn } from './helpers';
 
 /** 菜单项与路径 / menu entries and paths */
 const PATHS: Record<string, string> = {
@@ -63,10 +65,10 @@ for (const role of ROLES) {
       if (m.type() === 'error') errors.push(`console ${m.text()}`);
     });
     await role.login(page);
-    const menu = page.getByRole('menu');
+    const menu = sideMenu(page);
 
-    // 分组标题与菜单顺序 / group headers and entry order
-    await expect(menu.locator('.ant-menu-item-group-title')).toHaveText(GROUPS);
+    // 分组标题与菜单顺序（默认全部展开）/ group headers and entry order (all groups open by default)
+    await expect(menu.locator('.ant-menu-submenu-title')).toHaveText(GROUPS);
     await expect(menu.locator('.ant-menu-item')).toHaveText(role.items);
     // 通知中心不在导航中 / the notification centre is not in the menu
     await expect(menu.getByRole('link', { name: '通知中心' })).toHaveCount(0);
@@ -93,3 +95,77 @@ for (const role of ROLES) {
     expect(errors).toEqual([]);
   });
 }
+
+test('侧栏折叠：全部收起、全部展开、收起侧栏与刷新保持 / sidebar folding', async ({ page }) => {
+  test.setTimeout(60_000);
+  await signIn(page);
+  const menu = sideMenu(page);
+  const toolbar = page.getByTestId('sider-toolbar');
+  const link = (name: string) => menu.getByRole('link', { name, exact: true });
+  await link('线索').click();
+  await expect(page).toHaveURL(/\/leads\/?$/);
+
+  // 全部收起：只保留当前页面所在的“销售”组 / collapse all keeps the current "Sales" group open
+  await toolbar.getByRole('button', { name: '全部收起' }).click();
+  await expect(link('联系人')).toBeVisible();
+  for (const name of ['市场活动', '跟进', '产品', '服务工单', '报表', '汇率']) await expect(link(name)).toBeHidden();
+  await expect(menu.locator('.ant-menu-submenu-open > .ant-menu-submenu-title')).toHaveText(['销售']);
+
+  // 单独展开一组 / open one group
+  await menu.locator('.ant-menu-submenu-title', { hasText: '服务' }).click();
+  await expect(link('知识库')).toBeVisible();
+
+  // 刷新后保持 / persists after reload
+  await page.reload();
+  await expect(link('知识库')).toBeVisible();
+  await expect(link('产品')).toBeHidden();
+
+  // 全部展开 / expand all
+  await toolbar.getByRole('button', { name: '全部展开' }).click();
+  for (const name of ['市场活动', '跟进', '产品', '服务工单', '报表', '汇率']) await expect(link(name)).toBeVisible();
+
+  // 收起侧栏为图标栏：分组以弹出方式显示 / collapse the sidebar to an icon rail; groups pop out
+  const sider = page.getByTestId('sider');
+  const wide = (await sider.boundingBox())!.width;
+  await toolbar.getByRole('button', { name: /收起侧栏/ }).click();
+  await expect(toolbar).toHaveCount(0);
+  await expect.poll(async () => (await sider.boundingBox())!.width).toBeLessThan(wide / 2);
+  await expect(page.getByTestId('contact-icon')).toBeVisible();
+  await menu.locator('.ant-menu-submenu', { has: page.locator('.anticon-customer-service') }).first().hover();
+  const popup = page.locator('.ant-menu-submenu-popup:visible');
+  await popup.getByRole('link', { name: '服务工单', exact: true }).click();
+  await expect(page).toHaveURL(/\/tickets\/?$/);
+
+  // 刷新后仍为图标栏；顶部按钮展开 / still collapsed after reload; the header button expands it
+  await page.reload();
+  await expect(page.getByTestId('contact-icon')).toBeVisible();
+  await page.getByTestId('sider-toggle').click();
+  await expect(toolbar).toBeVisible();
+  await expect(page.getByTestId('contact-block')).toBeVisible();
+});
+
+test('咨询方式：侧栏、顶部栏、登录页显示并可复制 / contact details', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/login');
+  const card = page.getByTestId('contact-card');
+  await expect(card).toContainText('咨询方式：QQ 3313395633（学无止境）');
+  await card.getByRole('button', { name: /复制QQ号/ }).click();
+  await expect(page.getByText('已复制QQ号 3313395633')).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('3313395633');
+
+  await signIn(page);
+  const block = page.getByTestId('contact-block');
+  await expect(block).toContainText('咨询方式');
+  await expect(block).toContainText('QQ：3313395633');
+  await expect(block).toContainText('学无止境');
+  await expect(page.getByTestId('contact-pill')).toHaveText('咨询QQ：3313395633（学无止境）');
+  await page.evaluate(() => navigator.clipboard.writeText(''));
+  await page.getByTestId('contact-pill').click();
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('3313395633');
+
+  // 英文界面 / English
+  await page.getByText('English', { exact: true }).click();
+  await expect(page.getByTestId('contact-block')).toContainText('Xue Wu Zhi Jing');
+  await expect(page.getByTestId('contact-pill')).toHaveText('QQ: 3313395633 (Xue Wu Zhi Jing)');
+  await page.getByText('中文', { exact: true }).click();
+});

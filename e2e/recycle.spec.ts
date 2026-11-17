@@ -4,7 +4,7 @@
  * Recycle bin round 3: end-to-end regression.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { closeDrawer, nav, searchList, signIn } from './helpers';
+import { closeDrawer, nav, searchList, sideMenu, signIn } from './helpers';
 
 /** 用当前登录令牌调用 API / call the API with the current session */
 async function api(page: Page, method: 'POST' | 'DELETE', path: string, data?: object) {
@@ -96,7 +96,7 @@ test('经理可恢复但不能彻底删除 / managers cannot purge', async ({ pa
 
 test('销售代表没有回收站入口 / sales reps have no recycle bin', async ({ page }) => {
   await demoLogin(page, '王芳');
-  await expect(page.getByRole('menu').getByRole('link', { name: '回收站' })).toHaveCount(0);
+  await expect(sideMenu(page).getByRole('link', { name: '回收站' })).toHaveCount(0);
   await page.goto('/recycle-bin');
   await expect(page.getByText('没有权限执行该操作').first()).toBeVisible();
 });

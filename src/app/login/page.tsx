@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, App, Button, Card, Divider, Form, Input, Table, Tag, Typography } from 'antd';
 import { useAuth } from '@/components/AuthProvider';
+import { ContactInfo } from '@/components/ContactInfo';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { t, tEnum } from '@/i18n';
 import { api, STATIC_PREVIEW } from '@/lib/api';
@@ -99,6 +100,9 @@ export default function LoginPage() {
             {t('login.submit')}
           </Button>
         </Form>
+        <div style={{ marginTop: 16 }}>
+          <ContactInfo variant="card" />
+        </div>
 
         {demo.length > 0 && (
           <div data-testid="demo-accounts">

@@ -3,7 +3,7 @@
  * Deduplication round 3: end-to-end regression.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { closeDrawer, nav, signIn } from './helpers';
+import { closeDrawer, nav, sideMenu, signIn } from './helpers';
 
 /** 用当前登录令牌调用 API / call the API with the current session */
 async function apiPost(page: Page, path: string, data: object) {
@@ -58,7 +58,7 @@ test('销售代表只能查看重复记录，不能合并 / sales reps can only 
   await page.goto('/login');
   await page.getByTestId('demo-accounts').getByRole('button', { name: '登录 王芳' }).click();
   await expect(page.getByTestId('current-role')).toHaveText('销售代表');
-  await page.getByRole('menu').getByRole('link', { name: '查重合并', exact: true }).click();
+  await sideMenu(page).getByRole('link', { name: '查重合并', exact: true }).click();
   await expect(page.getByText('只有管理员和销售经理可以合并。', { exact: false })).toBeVisible();
   await expect(page.getByRole('button', { name: /合\s*并/ })).toHaveCount(0);
 });

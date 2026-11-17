@@ -1,13 +1,14 @@
 /**
- * 应用外壳：左侧导航、顶部栏、登录守卫。
- * App shell: side navigation, header and auth guard.
+ * 应用外壳：左侧导航（分组可折叠，支持收起侧栏、全部收起、全部展开，底部显示咨询方式）、顶部栏、登录守卫。
+ * App shell: side navigation (collapsible groups, collapse sidebar / collapse all / expand all, contact details at the
+ * bottom), header and auth guard.
  */
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Avatar, Dropdown, Layout, Menu, Spin, Tag, Typography, type MenuProps } from 'antd';
+import { Avatar, Button, Dropdown, Grid, Layout, Menu, Spin, Tag, Tooltip, Typography, type MenuProps } from 'antd';
 import {
   BankOutlined,
   BarChartOutlined,
@@ -21,6 +22,10 @@ import {
   FileTextOutlined,
   FundOutlined,
   LogoutOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  RiseOutlined,
+  SettingOutlined,
   AimOutlined,
   NotificationOutlined,
   AppstoreOutlined,
@@ -34,6 +39,7 @@ import {
 } from '@ant-design/icons';
 import { t, tEnum } from '@/i18n';
 import { useAuth } from './AuthProvider';
+import { ContactInfo } from './ContactInfo';
 import { GlobalSearch } from './GlobalSearch';
 import { LanguageSwitch } from './LanguageSwitch';
 import { NotificationBell } from './NotificationBell';
@@ -54,11 +60,12 @@ interface NavItem {
  * setup (administration, shown by permission). Notifications live under the bell and the profile under the user
  * menu. A group with no visible entries is hidden.
  */
-const NAV_GROUPS: { key: string; label: string | null; items: NavItem[] }[] = [
+const NAV_GROUPS: { key: string; label: string | null; icon?: React.ReactNode; items: NavItem[] }[] = [
   { key: 'home', label: null, items: [{ key: '/', icon: <DashboardOutlined />, label: t('nav.dashboard') }] },
   {
     key: 'sales',
     label: t('nav.group.sales'),
+    icon: <RiseOutlined />,
     items: [
       { key: '/leads', icon: <UserAddOutlined />, label: t('nav.leads') },
       { key: '/contacts', icon: <ContactsOutlined />, label: t('nav.contacts') },
@@ -67,11 +74,12 @@ const NAV_GROUPS: { key: string; label: string | null; items: NavItem[] }[] = [
       { key: '/forecasts', icon: <AimOutlined />, label: t('nav.forecasts') },
     ],
   },
-  { key: 'marketing', label: t('nav.group.marketing'), items: [{ key: '/campaigns', icon: <NotificationOutlined />, label: t('nav.campaigns') }] },
-  { key: 'activities', label: t('nav.group.activities'), items: [{ key: '/activities', icon: <ScheduleOutlined />, label: t('nav.activities') }] },
+  { key: 'marketing', label: t('nav.group.marketing'), icon: <NotificationOutlined />, items: [{ key: '/campaigns', icon: <NotificationOutlined />, label: t('nav.campaigns') }] },
+  { key: 'activities', label: t('nav.group.activities'), icon: <ScheduleOutlined />, items: [{ key: '/activities', icon: <ScheduleOutlined />, label: t('nav.activities') }] },
   {
     key: 'inventory',
     label: t('nav.group.inventory'),
+    icon: <AppstoreOutlined />,
     items: [
       { key: '/products', icon: <AppstoreOutlined />, label: t('nav.products') },
       { key: '/quotes', icon: <FileTextOutlined />, label: t('nav.quotes') },
@@ -82,15 +90,17 @@ const NAV_GROUPS: { key: string; label: string | null; items: NavItem[] }[] = [
   {
     key: 'support',
     label: t('nav.group.support'),
+    icon: <CustomerServiceOutlined />,
     items: [
       { key: '/tickets', icon: <CustomerServiceOutlined />, label: t('nav.tickets') },
       { key: '/kb', icon: <ReadOutlined />, label: t('nav.kb') },
     ],
   },
-  { key: 'analytics', label: t('nav.group.analytics'), items: [{ key: '/reports', icon: <BarChartOutlined />, label: t('nav.reports') }] },
+  { key: 'analytics', label: t('nav.group.analytics'), icon: <BarChartOutlined />, items: [{ key: '/reports', icon: <BarChartOutlined />, label: t('nav.reports') }] },
   {
     key: 'setup',
     label: t('nav.group.setup'),
+    icon: <SettingOutlined />,
     items: [
       { key: '/users', icon: <TeamOutlined />, label: t('nav.users'), permission: 'user.manage' },
       { key: '/exchange-rates', icon: <DollarOutlined />, label: t('nav.rates') },
@@ -114,9 +124,23 @@ function menuItems(permissions: string[]): MenuProps['items'] {
       .filter((n) => !n.permission || permissions.includes(n.permission))
       .map((n) => ({ key: n.key, icon: n.icon, label: <Link href={n.key}>{n.label}</Link> }));
     if (!items.length) return [];
-    return g.label ? [{ type: 'group' as const, key: `group-${g.key}`, label: g.label, children: items }] : items;
+    return g.label ? [{ key: g.key, icon: g.icon, label: g.label, children: items }] : items;
   });
 }
+
+/** 可折叠分组的键 / keys of the collapsible groups */
+const GROUP_KEYS = NAV_GROUPS.filter((g) => g.label).map((g) => g.key);
+
+/**
+ * 菜单项所属分组。
+ * Group of a menu entry.
+ */
+function groupOf(key: string): string | undefined {
+  return NAV_GROUPS.find((g) => g.label && g.items.some((n) => n.key === key))?.key;
+}
+
+/** 侧栏状态的本地保存键（仅本浏览器）/ local storage key for the sidebar state (this browser only) */
+const NAV_STATE_KEY = 'yonlink.nav.v1';
 
 /**
  * 根据路径计算当前菜单项。
@@ -133,10 +157,60 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { me, loading, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const screens = Grid.useBreakpoint();
+  // 默认全部展开；收起状态与展开的分组保存在本浏览器 / all groups open by default; state kept in this browser
+  const [collapsed, setCollapsed] = useState(false);
+  // 用户自己选择的收起状态（窄屏时会被临时覆盖，回到宽屏时恢复）/ the user's own choice (overridden on narrow screens, restored on wide ones)
+  const [preferCollapsed, setPreferCollapsed] = useState(false);
+  const [openKeys, setOpenKeys] = useState<string[]>(GROUP_KEYS);
+  const current = selectedKey(pathname);
 
   useEffect(() => {
     if (!loading && !me) router.replace('/login');
   }, [loading, me, router]);
+
+  // 读取保存的侧栏状态（读写失败时使用默认值）/ restore the saved sidebar state (defaults when storage fails)
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(NAV_STATE_KEY) ?? 'null') as { collapsed?: boolean; openKeys?: string[] } | null;
+      if (saved) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setPreferCollapsed(!!saved.collapsed);
+        setCollapsed(!!saved.collapsed);
+        if (Array.isArray(saved.openKeys)) setOpenKeys(saved.openKeys.filter((k) => GROUP_KEYS.includes(k)));
+      }
+    } catch {
+      // 存储不可用时忽略 / ignore unavailable storage
+    }
+  }, []);
+
+  const persist = useCallback((next: { collapsed: boolean; openKeys: string[] }) => {
+    try {
+      localStorage.setItem(NAV_STATE_KEY, JSON.stringify(next));
+    } catch {
+      // 存储不可用时忽略 / ignore unavailable storage
+    }
+  }, []);
+
+  // 打开某页时自动展开其所在分组 / opening a page expands its group
+  useEffect(() => {
+    const g = groupOf(current);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (g) setOpenKeys((keys) => (keys.includes(g) ? keys : [...keys, g]));
+  }, [current]);
+
+  const changeOpen = (keys: string[]) => {
+    setOpenKeys(keys);
+    persist({ collapsed, openKeys: keys });
+  };
+  const toggleSider = () => {
+    setPreferCollapsed(!collapsed);
+    setCollapsed(!collapsed);
+    persist({ collapsed: !collapsed, openKeys });
+  };
+  // 全部收起时保留当前页面所在分组 / collapse all keeps the current page's group open
+  const collapseAll = () => changeOpen([groupOf(current)].filter((k): k is string => !!k));
+  const expandAll = () => changeOpen(GROUP_KEYS);
 
   if (loading || !me) {
     return (
@@ -148,23 +222,70 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Layout.Sider width={208} theme="dark" breakpoint="lg">
-        <div style={{ color: '#fff', padding: '18px 20px', fontSize: 18, fontWeight: 600 }}>
-          {t('app.name')}
-          <div style={{ fontSize: 12, fontWeight: 400, opacity: 0.65 }}>{t('app.brand')}</div>
+      <Layout.Sider
+        width={208}
+        collapsedWidth={64}
+        theme="dark"
+        breakpoint="lg"
+        collapsed={collapsed}
+        // 窄屏自动收起；回到宽屏恢复用户自己的选择（加载时也会触发一次）/ narrow screens collapse; wide ones restore the user's choice (also fires on load)
+        onBreakpoint={(broken) => setCollapsed(broken || preferCollapsed)}
+        trigger={null}
+        data-testid="sider"
+        style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'hidden' }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <div style={{ color: '#fff', padding: collapsed ? '18px 0' : '18px 20px 8px', fontSize: 18, fontWeight: 600, textAlign: collapsed ? 'center' : undefined }}>
+            {collapsed ? t('app.name').slice(0, 1) : t('app.name')}
+            {!collapsed && <div style={{ fontSize: 12, fontWeight: 400, opacity: 0.65 }}>{t('app.brand')}</div>}
+          </div>
+          {collapsed ? (
+            <Tooltip placement="right" title={t('nav.expandSider')}>
+              <Button type="text" icon={<MenuUnfoldOutlined />} onClick={toggleSider} aria-label={t('nav.expandSider')} style={{ color: 'rgba(255,255,255,0.75)', margin: '0 auto 8px' }} />
+            </Tooltip>
+          ) : (
+            <div data-testid="sider-toolbar" style={{ display: 'flex', justifyContent: 'space-between', padding: '0 12px 8px' }}>
+              {(
+                [
+                  ['nav.collapseSider', toggleSider],
+                  ['nav.collapseAll', collapseAll],
+                  ['nav.expandAll', expandAll],
+                ] as const
+              ).map(([key, onClick]) => (
+                <Button key={key} type="link" size="small" onClick={onClick} style={{ color: 'rgba(255,255,255,0.75)', padding: '0 4px', fontSize: 12 }}>
+                  {key === 'nav.collapseSider' ? `« ${t(key)}` : t(key)}
+                </Button>
+              ))}
+            </div>
+          )}
+          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+            <Menu
+              theme="dark"
+              mode="inline"
+              selectedKeys={[current]}
+              // 收起侧栏时由菜单自行以弹出方式显示分组 / when collapsed the menu shows groups as pop-ups
+              {...(collapsed ? {} : { openKeys, onOpenChange: changeOpen })}
+              items={menuItems(me.permissions)}
+            />
+          </div>
+          {collapsed ? (
+            <div style={{ textAlign: 'center', padding: '8px 0 12px' }}>
+              <ContactInfo variant="icon" />
+            </div>
+          ) : (
+            <ContactInfo variant="block" />
+          )}
         </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[selectedKey(pathname)]}
-          items={menuItems(me.permissions)}
-        />
       </Layout.Sider>
       <Layout>
         <Layout.Header
           style={{ background: '#fff', padding: '0 24px', display: 'flex', alignItems: 'center', gap: 16, borderBottom: '1px solid #e8ecf2' }}
         >
+          <Tooltip title={t(collapsed ? 'nav.expandSider' : 'nav.collapseSider')}>
+            <Button type="text" icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={toggleSider} aria-label={t(collapsed ? 'nav.expandSider' : 'nav.collapseSider')} data-testid="sider-toggle" />
+          </Tooltip>
           <GlobalSearch />
+          {screens.xl && <ContactInfo variant="pill" />}
           <div style={{ flex: 1 }} />
           <NotificationBell />
           <LanguageSwitch />

@@ -13,9 +13,20 @@ export async function signIn(page: Page): Promise<void> {
   await expect(page.getByTestId('user-menu')).toBeVisible();
 }
 
-/** 点击左侧导航 / Click a side-navigation entry */
+/**
+ * 点击左侧导航。分组可以折叠：目标不可见时先点“全部展开”。菜单含嵌套子菜单，只在最外层菜单中查找。
+ * Click a side-navigation entry. Groups are collapsible, so expand all first when the entry is hidden; submenus
+ * nest menus, so look inside the root menu only.
+ */
 export async function nav(page: Page, name: '工作台' | '线索' | '市场活动' | '客户' | '联系人' | '商机' | '跟进' | '服务工单' | '知识库' | '报价单' | '销售订单' | '发票' | '报表' | '销售预测' | '产品' | '汇率' | '查重合并' | '回收站' | '审计日志' | '用户管理'): Promise<void> {
-  await page.getByRole('menu').getByRole('link', { name, exact: true }).click();
+  const link = sideMenu(page).getByRole('link', { name, exact: true });
+  if (!(await link.isVisible())) await page.getByTestId('sider-toolbar').getByRole('button', { name: '全部展开' }).click();
+  await link.click();
+}
+
+/** 左侧导航的最外层菜单 / the root menu of the side navigation */
+export function sideMenu(page: Page): Locator {
+  return page.getByTestId('sider').locator('ul.ant-menu-root');
 }
 
 /**
@@ -54,18 +65,21 @@ export async function searchList(page: Page, placeholder: string, text: string):
 }
 
 /**
- * 关闭抽屉。先把鼠标移开并等顶部提示条全部消失：提示条可能盖住抽屉的关闭按钮，而鼠标悬停在提示条上会暂停
- * 它自动消失，直接点击会一直被挡住。所有 E2E 关闭抽屉都应使用本函数。
- * Close a drawer. Moves the mouse away and waits for the top toasts to disappear first: they can cover the
- * drawer's close button, and hovering a toast pauses its auto-dismiss, so a direct click could stay blocked.
- * Every E2E test should close drawers through this helper.
+ * 关闭抽屉，按结果确认：先把鼠标移开并等顶部提示条全部消失（提示条可能盖住关闭按钮，鼠标悬停会暂停它自动
+ * 消失）；点击关闭后确认抽屉已隐藏，未隐藏则重试（抽屉打开动画期间的点击可能被忽略）。所有 E2E 关闭抽屉都应使用本函数。
+ * Close a drawer and confirm the outcome: move the mouse away and wait for the top toasts to disappear (they can cover
+ * the close button, and hovering pauses their auto-dismiss); after clicking close, confirm the drawer is hidden and
+ * retry otherwise (a click during the opening animation can be ignored). Every E2E test should use this helper.
  * @param drawer 抽屉 / the drawer
  */
 export async function closeDrawer(page: Page, drawer: Locator): Promise<void> {
   // 先把鼠标移到左上角空白处，避免悬停在提示条上 / move the mouse to the empty top-left corner first
   await page.mouse.move(1, 1);
   await expect(page.locator('.ant-message-notice')).toHaveCount(0, { timeout: 15000 });
-  await drawer.getByRole('button', { name: '关闭' }).first().click();
+  await expect(async () => {
+    if (await drawer.isVisible()) await drawer.getByRole('button', { name: '关闭' }).first().click({ timeout: 2000 });
+    await expect(drawer).toBeHidden({ timeout: 2000 });
+  }).toPass({ timeout: 15000 });
 }
 
 /**

@@ -3,6 +3,7 @@
  * English UI round 3: end-to-end regression.
  */
 import { expect, test } from '@playwright/test';
+import { sideMenu } from './helpers';
 import { E2E_EMAIL, E2E_PASSWORD } from './global-setup';
 
 test('切换英文界面并切回中文 / switch to English and back', async ({ page }) => {
@@ -26,7 +27,7 @@ test('切换英文界面并切回中文 / switch to English and back', async ({ 
   await page.getByLabel('Password').fill(E2E_PASSWORD);
   await page.getByRole('button', { name: /^Sign\s*in$/ }).click();
   await expect(page.getByTestId('user-menu')).toBeVisible();
-  const menu = page.getByRole('menu');
+  const menu = sideMenu(page);
   for (const name of ['Dashboard', 'Leads', 'Accounts', 'Deals', 'Activities', 'Quotes', 'Reports', 'Products', 'Recycle bin', 'Audit log', 'Users']) {
     await expect(menu.getByRole('link', { name, exact: true })).toBeVisible();
   }
@@ -53,11 +54,11 @@ test('切换英文界面并切回中文 / switch to English and back', async ({ 
 
   // 刷新后保持英文 / English survives a reload
   await page.reload();
-  await expect(page.getByRole('menu').getByRole('link', { name: 'Deals', exact: true })).toBeVisible();
+  await expect(sideMenu(page).getByRole('link', { name: 'Deals', exact: true })).toBeVisible();
 
   // 切回中文 / back to Chinese
   await page.getByTestId('language-switch').getByText('中文').click();
-  await expect(page.getByRole('menu').getByRole('link', { name: '商机', exact: true })).toBeVisible();
+  await expect(sideMenu(page).getByRole('link', { name: '商机', exact: true })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
   expect(errors).toEqual([]);
 });

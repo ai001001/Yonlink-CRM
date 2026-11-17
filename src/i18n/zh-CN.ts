@@ -1162,6 +1162,18 @@ export const zhCN = {
   'nav.group.support': '服务',
   'nav.group.analytics': '分析',
   'nav.group.setup': '设置',
+  'contact.title': '咨询方式',
+  'contact.defaultName': '学无止境',
+  'contact.qqLine': 'QQ {qq}（{name}）',
+  'contact.pill': '咨询QQ：{qq}（{name}）',
+  'contact.copyQq': '复制QQ号',
+  'contact.clickToCopy': '点击复制QQ号',
+  'contact.copied': '已复制QQ号 {qq}',
+  'contact.copyFailed': '复制失败，请手动记下QQ号 {qq}',
+  'nav.collapseSider': '收起侧栏',
+  'nav.expandSider': '展开侧栏',
+  'nav.collapseAll': '全部收起',
+  'nav.expandAll': '全部展开',
 } as const;
 
 export type MessageKey = keyof typeof zhCN;

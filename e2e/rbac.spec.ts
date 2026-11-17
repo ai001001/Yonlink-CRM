@@ -4,7 +4,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import { demoSamples } from '../prisma/demo-data';
-import { closeDrawer, nav, selectOption } from './helpers';
+import { closeDrawer, nav, selectOption, sideMenu } from './helpers';
 
 // 演示数据中的样本（由数据集推导，调整数据后测试自动跟随）/ samples derived from the demo dataset
 const S = demoSamples();
@@ -80,8 +80,8 @@ test('演示账号列表与各角色权限 / demo accounts and per-role permissi
   await demoLogin(page, '王芳');
   await expect(page.getByTestId('current-role')).toHaveText('销售代表');
   await expect(page.getByText('演示账号').first()).toBeVisible();
-  await expect(page.getByRole('menu').getByRole('link', { name: '审计日志' })).toHaveCount(0);
-  await expect(page.getByRole('menu').getByRole('link', { name: '用户管理' })).toHaveCount(0);
+  await expect(sideMenu(page).getByRole('link', { name: '审计日志' })).toHaveCount(0);
+  await expect(sideMenu(page).getByRole('link', { name: '用户管理' })).toHaveCount(0);
   await nav(page, '线索');
   await search(page, LEADS, S.sales1Lead);
   await expect(rowOf(page, S.sales1Lead)).toBeVisible();
@@ -141,7 +141,7 @@ test('演示账号列表与各角色权限 / demo accounts and per-role permissi
   await search(page, LEADS, 'E2E 销售自建线索');
   await expect(page.getByRole('row', { name: /E2E 销售自建线索/ })).toBeVisible();
   await expect(page.getByRole('row', { name: /E2E 销售自建线索/ }).getByRole('button', { name: /删\s*除/ })).toBeVisible();
-  await expect(page.getByRole('menu').getByRole('link', { name: '用户管理' })).toHaveCount(0);
+  await expect(sideMenu(page).getByRole('link', { name: '用户管理' })).toHaveCount(0);
   await signOut(page);
 });
 
