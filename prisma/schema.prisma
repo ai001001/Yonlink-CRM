@@ -48,6 +48,9 @@ model Organization {
   purchaseOrders   PurchaseOrder[]
   purchaseLines    PurchaseOrderLineItem[]
   documentCounters DocumentCounter[]
+  priceBooks       PriceBook[]
+  priceBookEntries PriceBookEntry[]
+  priceBookTiers   PriceBookTier[]
   attachments      Attachment[]
   salesTargets     SalesTarget[]
   notifications    Notification[]
@@ -219,8 +222,13 @@ model Account {
 
   tickets Ticket[]
 
+  /// 默认价格表（只能由 product.manage 在价格表中指定）/ default price book (assigned from the price book by product.manage)
+  priceBookId String?    @map("price_book_id") @db.Uuid
+  priceBook   PriceBook? @relation(fields: [organizationId, priceBookId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
   @@unique([organizationId, id])
   @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, priceBookId])
   @@map("accounts")
 }
 
@@ -399,20 +407,21 @@ model Note {
 /// 产品目录（组织内 SKU 唯一；被商机使用的产品不能删除，只能停用）
 /// Product catalog (SKU unique per organization; products in use cannot be deleted, only deactivated)
 model Product {
-  id             String         @id @default(uuid()) @db.Uuid
-  organizationId String         @map("organization_id") @db.Uuid
-  sku            String         @db.VarChar(50)
-  name           String         @db.VarChar(200)
-  category       String?        @db.VarChar(50)
-  unit           String         @default("件") @db.VarChar(20)
-  unitPrice      Decimal        @default(0) @map("unit_price") @db.Decimal(18, 2)
-  currency       String         @default("CNY") @db.Char(3)
-  description    String?        @db.Text
-  isActive       Boolean        @default(true) @map("is_active")
-  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  lineItems      DealLineItem[]
+  id               String           @id @default(uuid()) @db.Uuid
+  organizationId   String           @map("organization_id") @db.Uuid
+  sku              String           @db.VarChar(50)
+  name             String           @db.VarChar(200)
+  category         String?          @db.VarChar(50)
+  unit             String           @default("件") @db.VarChar(20)
+  unitPrice        Decimal          @default(0) @map("unit_price") @db.Decimal(18, 2)
+  currency         String           @default("CNY") @db.Char(3)
+  description      String?          @db.Text
+  isActive         Boolean          @default(true) @map("is_active")
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lineItems        DealLineItem[]
+  priceBookEntries PriceBookEntry[]
 
   @@unique([organizationId, id])
   @@unique([organizationId, sku])
@@ -433,6 +442,8 @@ model DealLineItem {
   unitPrice       Decimal      @map("unit_price") @db.Decimal(18, 2)
   discountPercent Decimal      @default(0) @map("discount_percent") @db.Decimal(5, 2)
   lineTotal       Decimal      @map("line_total") @db.Decimal(18, 2)
+  /// 价格来源价格表名称（快照；手工定价时为空）/ source price book name (snapshot; null for manual prices)
+  priceBookName   String?      @map("price_book_name") @db.VarChar(200)
   createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -1411,4 +1422,71 @@ model PurchaseOrderLineItem {
   @@unique([purchaseOrderId, position])
   @@index([organizationId, purchaseOrderId])
   @@map("purchase_order_line_items")
+}
+
+/// 价格表定价方式：固定价（直接使用价格表价）/ 阶梯价（按数量区间叠加折扣）
+/// Price book pricing model: FLAT (the list price as is) / DIFFERENTIAL (quantity-tier discounts)
+enum PriceBookPricingModel {
+  FLAT
+  DIFFERENTIAL
+
+  @@map("price_book_pricing_model")
+}
+
+/// 价格表（对标 Zoho Price Books）：组织内名称唯一（不区分大小写）；可指定给客户作为默认价格表。
+/// Price book (cf. Zoho Price Books): names unique per organization (case-insensitive); can be assigned to accounts as
+/// their default.
+model PriceBook {
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  name           String                @db.VarChar(200)
+  currency       String                @default("CNY") @db.Char(3)
+  pricingModel   PriceBookPricingModel @default(FLAT) @map("pricing_model")
+  description    String?               @db.Text
+  isActive       Boolean               @default(true) @map("is_active")
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  entries        PriceBookEntry[]
+  tiers          PriceBookTier[]
+  accounts       Account[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, isActive])
+  @@map("price_books")
+}
+
+/// 价格表中的产品价格（每个产品一条）。
+/// A product's list price in a price book (one per product).
+model PriceBookEntry {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  priceBookId    String       @map("price_book_id") @db.Uuid
+  productId      String       @map("product_id") @db.Uuid
+  listPrice      Decimal      @map("list_price") @db.Decimal(18, 2)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  priceBook      PriceBook    @relation(fields: [organizationId, priceBookId], references: [organizationId, id], onDelete: Cascade)
+  product        Product      @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([priceBookId, productId])
+  @@index([organizationId, productId])
+  @@map("price_book_entries")
+}
+
+/// 阶梯价数量区间：数量在 [起始, 截止] 内时折扣生效（截止为空表示不封顶）。
+/// Differential pricing tier: the discount applies for quantities within [from, to] (no upper bound when to is null).
+model PriceBookTier {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  priceBookId     String       @map("price_book_id") @db.Uuid
+  fromQuantity    Decimal      @map("from_quantity") @db.Decimal(18, 2)
+  toQuantity      Decimal?     @map("to_quantity") @db.Decimal(18, 2)
+  discountPercent Decimal      @map("discount_percent") @db.Decimal(5, 2)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  priceBook       PriceBook    @relation(fields: [organizationId, priceBookId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([priceBookId, fromQuantity])
+  @@map("price_book_tiers")
 }

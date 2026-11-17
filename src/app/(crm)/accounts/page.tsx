@@ -4,6 +4,7 @@
  */
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import { App, Button, Card, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tabs, Tag } from 'antd';
 import { PlusOutlined, StarFilled, UploadOutlined } from '@ant-design/icons';
@@ -259,6 +260,15 @@ export default function AccountsPage() {
                     </Descriptions.Item>
                     <Descriptions.Item label={t('common.owner')}>{detail.owner?.name ?? t('common.unassigned')}</Descriptions.Item>
                     <Descriptions.Item label={t('accounts.dealCount')}>{detail._count.deals}</Descriptions.Item>
+                    <Descriptions.Item label={t('priceBooks.accountBook')} span={2}>
+                      {detail.priceBook ? (
+                        <Link href={`/price-books?id=${detail.priceBook.id}`} data-testid="account-price-book">
+                          {detail.priceBook.name}
+                        </Link>
+                      ) : (
+                        t('priceBooks.none')
+                      )}
+                    </Descriptions.Item>
                     <Descriptions.Item label={t('common.createdAt')}>{fmtDateTime(detail.createdAt)}</Descriptions.Item>
                     <Descriptions.Item label={t('tags.title')} span={2}>
                       <TagEditor key={`tags-${detail.id}`} path="/api/accounts" record={detail} onChanged={() => void reload()} />

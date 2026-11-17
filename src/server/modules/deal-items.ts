@@ -4,9 +4,12 @@
  * - 有明细时商机金额 = 明细合计；增删改明细在同一事务内重算商机金额并写审计。
  * - 明细币种必须与商机币种一致；停用的产品不能新增到商机。
  * - 需能编辑所属商机。
+ * - 新增明细时按价格表取价（见 price-books.priceFor）：未填单价、折扣时使用价格表价与阶梯折扣，并保存价格表名称快照。
  * Deal line items: line total = qty × price × (1 − discount%), decimal maths rounded half-up to cents;
  * the deal amount equals the sum of its items and is recalculated in the same transaction; item currency
- * must match the deal; inactive products cannot be added; requires edit rights on the deal.
+ * must match the deal; inactive products cannot be added; requires edit rights on the deal. New items are priced from
+ * price books (see price-books.priceFor): without an explicit price or discount the list price and tier discount are
+ * used and the book name is kept as a snapshot.
  */
 import { z } from 'zod';
 import { Prisma } from '@/generated/prisma/client';
@@ -15,28 +18,20 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
 import { assertCanUpdate, visible } from '../permissions';
+import { discountPercent as discount, positiveQuantity as quantity } from '../validation';
 import { amountSchema } from './deals';
-
-/** 数量：大于 0，最多 10 位整数、2 位小数 / quantity: > 0, ≤ 10 integer digits, ≤ 2 decimals */
-const quantity = z
-  .union([z.string().trim(), z.number().finite()])
-  .transform((v) => String(v))
-  .pipe(z.string().regex(/^\d{1,10}(\.\d{1,2})?$/, 'Invalid quantity'))
-  .refine((v) => Number(v) > 0, 'Quantity must be positive');
-/** 折扣百分比：0–100，最多 2 位小数 / discount percent: 0–100, ≤ 2 decimals */
-const discount = z
-  .union([z.string().trim(), z.number().finite()])
-  .transform((v) => String(v))
-  .pipe(z.string().regex(/^\d{1,3}(\.\d{1,2})?$/, 'Invalid discount'))
-  .refine((v) => Number(v) <= 100, 'Discount must be at most 100');
+import { priceFor, type priceQuerySchema } from './price-books';
 
 /** 新增明细 / Add a line item */
 export const itemCreateSchema = z.strictObject({
   productId: z.uuid(),
   quantity,
-  /** 不填时使用产品当前单价 / defaults to the product's current price */
+  /** 不填时按价格表或产品目录价 / defaults to the price book or catalogue price */
   unitPrice: amountSchema.optional(),
-  discountPercent: discount.default('0'),
+  /** 不填时按价格表阶梯折扣，否则为 0 / defaults to the tier discount, else 0 */
+  discountPercent: discount.optional(),
+  /** 不填时用客户默认价格表；null 表示不用价格表 / default: the account's book; null: no price book */
+  priceBookId: z.uuid().nullable().optional(),
 });
 /** 修改明细 / Update a line item */
 export const itemUpdateSchema = z.strictObject({ quantity, unitPrice: amountSchema, discountPercent: discount }).partial();
@@ -58,7 +53,7 @@ export function lineTotal(qty: string | Prisma.Decimal, price: string | Prisma.D
  * Load a visible deal (owner and currency).
  */
 async function requireDeal(ctx: AuthContext, dealId: string) {
-  const deal = await prisma.deal.findFirst({ where: { id: dealId, ...visible(ctx) }, select: { id: true, ownerId: true, currency: true, amount: true } });
+  const deal = await prisma.deal.findFirst({ where: { id: dealId, ...visible(ctx) }, select: { id: true, ownerId: true, currency: true, amount: true, accountId: true } });
   if (!deal) throw notFound();
   return deal;
 }
@@ -103,7 +98,11 @@ export async function addItem(ctx: AuthContext, dealId: string, input: z.infer<t
   if (!product) throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid product', { productId: ['not_found'] });
   if (!product.isActive) throw new ApiError(400, 'VALIDATION_ERROR', 'Product is inactive', { productId: ['inactive'] });
   if (product.currency !== deal.currency) throw new ApiError(400, 'VALIDATION_ERROR', 'Currency mismatch', { productId: ['currency_mismatch'] });
-  const unitPrice = input.unitPrice ?? product.unitPrice.toFixed(2);
+  const priced = await priceFor(ctx, deal, product, input.quantity, input.priceBookId);
+  const unitPrice = input.unitPrice ?? priced.unitPrice;
+  const discountPercent = input.discountPercent ?? priced.discountPercent;
+  // 手工填写单价时不算价格表价 / a manual price does not come from the book
+  const priceBookName = input.unitPrice === undefined ? (priced.priceBook?.name ?? null) : null;
   return prisma.$transaction(async (tx) => {
     const item = await tx.dealLineItem.create({
       data: {
@@ -114,8 +113,9 @@ export async function addItem(ctx: AuthContext, dealId: string, input: z.infer<t
         productSku: product.sku,
         quantity: input.quantity,
         unitPrice,
-        discountPercent: input.discountPercent,
-        lineTotal: lineTotal(input.quantity, unitPrice, input.discountPercent),
+        discountPercent,
+        lineTotal: lineTotal(input.quantity, unitPrice, discountPercent),
+        priceBookName,
       },
     });
     await audit(tx, {
@@ -123,11 +123,23 @@ export async function addItem(ctx: AuthContext, dealId: string, input: z.infer<t
       action: 'deal.add_item',
       entityType: 'deal',
       entityId: dealId,
-      changes: { sku: item.productSku, quantity: item.quantity.toString(), unitPrice: item.unitPrice.toString(), discountPercent: item.discountPercent.toString(), lineTotal: item.lineTotal.toString() },
+      changes: { sku: item.productSku, quantity: item.quantity.toString(), unitPrice: item.unitPrice.toString(), discountPercent: item.discountPercent.toString(), lineTotal: item.lineTotal.toString(), ...(priceBookName ? { priceBook: priceBookName } : {}) },
     });
     const amount = await recalc(tx, ctx, dealId, deal.amount);
     return { item, dealAmount: amount.toFixed(2) };
   });
+}
+
+/**
+ * 预览新增明细时的取价（与新增明细使用同一规则），供界面在添加前显示价格来源。
+ * Preview the price a new item would get (same rules as adding), so the UI can show the source before adding.
+ */
+export async function previewPrice(ctx: AuthContext, dealId: string, query: z.infer<typeof priceQuerySchema>) {
+  const deal = await requireDeal(ctx, dealId);
+  const product = await prisma.product.findFirst({ where: { id: query.productId, organizationId: ctx.organizationId } });
+  if (!product) throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid product', { productId: ['not_found'] });
+  const priced = await priceFor(ctx, deal, product, query.quantity, query.priceBookId === 'none' ? null : query.priceBookId);
+  return { ...priced, lineTotal: lineTotal(query.quantity, priced.unitPrice, priced.discountPercent).toFixed(2), currency: deal.currency };
 }
 
 /**

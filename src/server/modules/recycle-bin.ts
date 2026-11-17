@@ -270,7 +270,13 @@ export async function restoreItem(ctx: AuthContext, itemId: string) {
       }
       await tx.lead.create({ data: rec });
     } else if (entity === 'account') {
-      await tx.account.create({ data: revive<Prisma.AccountUncheckedCreateInput>(p.record, org) });
+      const rec = revive<Prisma.AccountUncheckedCreateInput>(p.record, org);
+      // 默认价格表已删除时置空 / clear a deleted default price book
+      if (rec.priceBookId && (await tx.priceBook.count({ where: { id: rec.priceBookId, organizationId: org } })) === 0) {
+        rec.priceBookId = null;
+        skipped.push('priceBook');
+      }
+      await tx.account.create({ data: rec });
       await tx.contact.createMany({ data: (p.contacts ?? []).map((c) => revive<Prisma.ContactCreateManyInput>(c, org)) });
     } else {
       const rec = revive<Prisma.DealUncheckedCreateInput>(p.record, org);

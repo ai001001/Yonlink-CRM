@@ -99,6 +99,10 @@ const FIELD_LABELS: Record<string, MessageKey> = {
   vendorId: 'purchase.vendor',
   expectedDate: 'purchase.expectedDate',
   deliveryAddress: 'purchase.deliveryAddress',
+  pricingModel: 'priceBooks.pricingModel',
+  tiers: 'priceBooks.tiers',
+  listPrice: 'priceBooks.listPrice',
+  entries: 'priceBooks.products',
   enabled: 'sla.enabled',
   urgentHours: 'sla.urgentHours',
   highHours: 'sla.highHours',
@@ -156,6 +160,9 @@ const fieldLabel = (field: string, entityType: string): string => {
   if (entityType === 'ticket' && field === 'subject') return t('tickets.subject');
   if (entityType === 'article' && field === 'title') return t('kb.articleTitle');
   if (entityType === 'vendor' && field === 'name') return t('vendors.name');
+  if (entityType === 'pricebook' && field === 'name') return t('priceBooks.name');
+  if (entityType === 'pricebook' && field === 'isActive') return t('priceBooks.status');
+  if (entityType === 'pricebook' && field === 'accounts') return t('priceBooks.accounts');
   if (entityType === 'vendor' && field === 'isActive') return t('vendors.status');
   if (entityType === 'purchase' && field === 'subject') return t('purchase.subject');
   if (entityType === 'purchase' && field === 'status') return t('purchase.status');
@@ -193,6 +200,8 @@ function value(field: string, v: unknown, users: Map<string, string>, entityType
   if (entityType === 'ticket' && field === 'status') return tEnum('ticketStatus', String(v));
   if (entityType === 'article' && field === 'status') return tEnum('kbStatus', String(v));
   if (entityType === 'purchase' && field === 'status') return tEnum('poStatus', String(v));
+  if (field === 'pricingModel') return t(`priceBooks.model.${String(v)}` as MessageKey);
+  if (field === 'tiers' && Array.isArray(v)) return v.length ? v.join(t('common.listSep')) : '—';
   if (field === 'expectedDate') return String(v).slice(0, 10);
   if (entityType === 'ticket' && field === 'type') return tEnum('ticketType', String(v));
   if (entityType === 'ticket' && field === 'priority') return tEnum('ticketPriority', String(v));
@@ -235,6 +244,15 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
   if (entry.action === 'purchase.receive' && Array.isArray(c.received)) {
     // 收货：各行 SKU 与数量 / receipt: SKU and quantity per line
     lines.push((c.received as { sku: string; quantity: string }[]).map((r) => `${r.sku} × ${r.quantity}`).join(t('common.listSep')));
+  }
+  if (entry.entityType === 'pricebook' && typeof c.sku === 'string') {
+    // 价格表产品价格：SKU 与价格（修改时为前后价格）/ price book entry: SKU and price (before → after on change)
+    const price = Array.isArray(c.listPrice) ? `${value('listPrice', c.listPrice[0], users)} → ${value('listPrice', c.listPrice[1], users)}` : String(c.listPrice ?? '');
+    lines.push(`${c.sku}${t('common.colon')}${price}`);
+  }
+  if (entry.entityType === 'pricebook' && typeof c.account === 'string') {
+    // 价格表指定客户 / price book account assignment
+    lines.push(typeof c.replaced === 'string' ? t('priceBooks.auditReplaced', { account: c.account, book: c.replaced }) : t('priceBooks.auditAccount', { account: c.account }));
   }
   if (typeof c.article === 'string') {
     // 工单关联文章 / ticket article link

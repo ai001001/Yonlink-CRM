@@ -37,6 +37,20 @@ export const optionalUuid = z
   .nullish()
   .transform((v) => (v ? v : null));
 
+/** 数量：大于 0，最多 10 位整数、2 位小数 / quantity: > 0, ≤ 10 integer digits, ≤ 2 decimals */
+export const positiveQuantity = z
+  .union([z.string().trim(), z.number().finite()])
+  .transform((v) => String(v))
+  .pipe(z.string().regex(/^\d{1,10}(\.\d{1,2})?$/, 'Invalid quantity'))
+  .refine((v) => Number(v) > 0, 'Quantity must be positive');
+
+/** 折扣百分比：0–100，最多 2 位小数 / discount percent: 0–100, ≤ 2 decimals */
+export const discountPercent = z
+  .union([z.string().trim(), z.number().finite()])
+  .transform((v) => String(v))
+  .pipe(z.string().regex(/^\d{1,3}(\.\d{1,2})?$/, 'Invalid discount'))
+  .refine((v) => Number(v) <= 100, 'Discount must be at most 100');
+
 /** 分页与搜索参数 / Pagination and search query */
 export const listQuery = z.object({
   q: z.string().trim().max(100).optional(),

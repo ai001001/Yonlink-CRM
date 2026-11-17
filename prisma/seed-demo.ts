@@ -16,7 +16,7 @@ import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
 import { toBase } from '../src/server/modules/exchange-rates';
 import { Prisma } from '../src/generated/prisma/client';
-import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PURCHASE_ORDERS, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -85,6 +85,9 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.purchaseOrder.deleteMany({ where: { organizationId: o } });
         await tx.vendor.deleteMany({ where: { organizationId: o } });
         await tx.documentCounter.deleteMany({ where: { organizationId: o } });
+        // 客户引用价格表，先清除再删除价格表（产品价格、阶梯随之删除）/ accounts reference price books: clear, then delete (entries and tiers cascade)
+        await tx.account.updateMany({ where: { organizationId: o }, data: { priceBookId: null } });
+        await tx.priceBook.deleteMany({ where: { organizationId: o } });
         await tx.salesOrder.deleteMany({ where: { organizationId: o } });
         await tx.note.deleteMany({ where: { organizationId: o } });
         await tx.activity.deleteMany({ where: { organizationId: o } });
@@ -539,6 +542,20 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
       }
       await tx.documentCounter.create({ data: { organizationId: o, kind: 'PO', year: poYear, last: DEMO_PURCHASE_ORDERS.length } });
 
+      // 价格表：产品价格按目录价折算，指定给客户 / price books: entries from the catalogue price, assigned to accounts
+      for (const pb of DEMO_PRICE_BOOKS) {
+        const book = await tx.priceBook.create({ data: { organizationId: o, name: pb.name, currency: pb.currency, pricingModel: pb.pricingModel, isActive: pb.isActive, description: pb.description } });
+        if (pb.tiers.length) await tx.priceBookTier.createMany({ data: pb.tiers.map((t) => ({ ...t, organizationId: o, priceBookId: book.id })) });
+        const ratio = pb.ratio;
+        if (ratio) {
+          const products = await tx.product.findMany({ where: { organizationId: o, currency: pb.currency, isActive: true }, select: { id: true, unitPrice: true } });
+          await tx.priceBookEntry.createMany({
+            data: products.map((p) => ({ organizationId: o, priceBookId: book.id, productId: p.id, listPrice: p.unitPrice.mul(ratio).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP) })),
+          });
+        }
+        if (pb.accounts.length) await tx.account.updateMany({ where: { id: { in: pb.accounts.map((k) => accountIds[k]!) } }, data: { priceBookId: book.id } });
+      }
+
       // 附件元数据（文件在事务提交后写入）/ attachment metadata (files are written after the commit)
       for (const att of demoAttachments(data)) {
         const id = randomUUID();
@@ -686,7 +703,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length + 1} 客户（含 1 条重复）、${data.accounts.reduce((n, a) => n + a.contacts.length, 0) + 2} 联系人、` +
-      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单（${Object.values(DEMO_TICKET_COMMENTS).flat().length} 条处理记录）、${DEMO_KB_ARTICLES.length} 篇知识库文章、${DEMO_VENDORS.length} 个供应商、${DEMO_PURCHASE_ORDERS.length} 张采购单、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
+      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单（${Object.values(DEMO_TICKET_COMMENTS).flat().length} 条处理记录）、${DEMO_KB_ARTICLES.length} 篇知识库文章、${DEMO_VENDORS.length} 个供应商、${DEMO_PURCHASE_ORDERS.length} 张采购单、${DEMO_PRICE_BOOKS.length} 张价格表、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
   );
 }
 

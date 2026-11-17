@@ -35,6 +35,7 @@ import {
   ShoppingCartOutlined,
   ShoppingOutlined,
   ShopOutlined,
+  TagsOutlined,
   TeamOutlined,
   UserAddOutlined,
   UserOutlined,
@@ -84,6 +85,7 @@ const NAV_GROUPS: { key: string; label: string | null; icon?: React.ReactNode; i
     icon: <AppstoreOutlined />,
     items: [
       { key: '/products', icon: <AppstoreOutlined />, label: t('nav.products') },
+      { key: '/price-books', icon: <TagsOutlined />, label: t('nav.priceBooks') },
       { key: '/quotes', icon: <FileTextOutlined />, label: t('nav.quotes') },
       { key: '/sales-orders', icon: <ShoppingCartOutlined />, label: t('nav.salesOrders') },
       { key: '/purchase-orders', icon: <ShoppingOutlined />, label: t('nav.purchaseOrders'), permission: 'purchase.read' },

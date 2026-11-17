@@ -60,6 +60,8 @@ export interface Account {
   _count: { contacts: number; deals: number };
   contacts?: Contact[];
   tags?: RecordTags;
+  /** 默认价格表（仅详情返回）/ default price book (detail only) */
+  priceBook?: { id: string; name: string; isActive: boolean } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -114,6 +116,8 @@ export interface DealItem {
   unitPrice: string;
   discountPercent: string;
   lineTotal: string;
+  /** 价格来源价格表（快照）/ source price book (snapshot) */
+  priceBookName: string | null;
   product: { unit: string; isActive: boolean };
 }
 

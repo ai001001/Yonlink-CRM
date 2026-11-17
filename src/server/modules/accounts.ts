@@ -125,7 +125,7 @@ export async function listAccounts(ctx: AuthContext, query: z.infer<typeof accou
 export async function getAccount(ctx: AuthContext, id: string) {
   const account = await prisma.account.findFirst({
     where: { id, ...visible(ctx) },
-    include: { ...listInclude(ctx), contacts: { orderBy: contactOrder } },
+    include: { ...listInclude(ctx), contacts: { orderBy: contactOrder }, priceBook: { select: { id: true, name: true, isActive: true } } },
   });
   if (!account) throw notFound();
   return account;

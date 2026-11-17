@@ -15,7 +15,7 @@ export async function resetDb(): Promise<void> {
   resetLoginLimiter();
   resetPasswordChangeLimiter();
   await prisma.$executeRawUnsafe(
-    'TRUNCATE audit_logs, purchase_order_line_items, purchase_orders, vendors, document_counters, ticket_articles, kb_articles, ticket_sla_policies, ticket_comments, ticket_counters, tickets, user_dashboard_layouts, deal_contact_roles, deal_competitors, exchange_rates, campaigns, notifications, invoice_payments, invoice_line_items, invoices, sales_order_line_items, sales_orders, sales_targets, attachments, user_view_defaults, saved_views, recycle_bin_items, lead_tags, account_tags, deal_tags, tags, quote_line_items, quotes, deal_line_items, products, notes, activities, deals, contacts, accounts, leads, sessions, users, organizations RESTART IDENTITY CASCADE',
+    'TRUNCATE audit_logs, price_book_tiers, price_book_entries, price_books, purchase_order_line_items, purchase_orders, vendors, document_counters, ticket_articles, kb_articles, ticket_sla_policies, ticket_comments, ticket_counters, tickets, user_dashboard_layouts, deal_contact_roles, deal_competitors, exchange_rates, campaigns, notifications, invoice_payments, invoice_line_items, invoices, sales_order_line_items, sales_orders, sales_targets, attachments, user_view_defaults, saved_views, recycle_bin_items, lead_tags, account_tags, deal_tags, tags, quote_line_items, quotes, deal_line_items, products, notes, activities, deals, contacts, accounts, leads, sessions, users, organizations RESTART IDENTITY CASCADE',
   );
 }
 

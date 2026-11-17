@@ -1057,6 +1057,41 @@ export const DEMO_KB_ARTICLES: {
   },
 ];
 
+/**
+ * 演示价格表：北美经销商固定价（美元目录价的 88%，指定给王芳的两个客户）、国内批量阶梯价（人民币目录价，
+ * 10 件起 5%、50 件起 10% 折扣，指定给经理的两个客户），以及一张已停用的旧欧洲价格表。
+ * Demo price books: a flat North-America dealer book (88% of the USD catalogue, assigned to two of 王芳's accounts), a
+ * differential domestic volume book (CNY catalogue prices, 5% off from 10 and 10% off from 50, assigned to two of the
+ * manager's accounts) and an inactive legacy Europe book.
+ */
+export const DEMO_PRICE_BOOKS: {
+  name: string;
+  currency: 'CNY' | 'USD' | 'EUR';
+  pricingModel: 'FLAT' | 'DIFFERENTIAL';
+  isActive: boolean;
+  description: string;
+  /** 目录价折算比例；为空时不含产品 / ratio to the catalogue price; no entries when null */
+  ratio: string | null;
+  tiers: { fromQuantity: string; toQuantity: string | null; discountPercent: string }[];
+  accounts: string[];
+}[] = [
+  { name: '【演示】北美经销商价格表', currency: 'USD', pricingModel: 'FLAT', isActive: true, description: '【演示】北美签约经销商统一价：目录价的 88%。', ratio: '0.88', tiers: [], accounts: ['northlake', 'pacific'] },
+  {
+    name: '【演示】国内批量阶梯价',
+    currency: 'CNY',
+    pricingModel: 'DIFFERENTIAL',
+    isActive: true,
+    description: '【演示】国内大客户按数量享受阶梯折扣。',
+    ratio: '1',
+    tiers: [
+      { fromQuantity: '10', toQuantity: '49.99', discountPercent: '5' },
+      { fromQuantity: '50', toQuantity: null, discountPercent: '10' },
+    ],
+    accounts: ['huadong', 'beifang'],
+  },
+  { name: '【演示】旧版欧洲价格表（已停用）', currency: 'EUR', pricingModel: 'FLAT', isActive: false, description: '【演示】已停用，保留作历史参考。', ratio: null, tiers: [], accounts: [] },
+];
+
 /** 演示供应商（虚构公司，名称带“【演示】”）/ demo vendors (fictional; names prefixed with 【演示】) */
 export const DEMO_VENDORS = [
   { key: 'casting', name: '【演示】宁波精工铸造有限公司', contactName: '【演示】周工', phone: '0574-80000001', currency: 'CNY', paymentTerms: '月结 30 天', isActive: true },
