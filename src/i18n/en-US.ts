@@ -1162,4 +1162,11 @@ export const enUS: Record<MessageKey, string> = {
   'auditEntity.article': 'Knowledge-base article',
   'auditAction.link_article': 'Link article',
   'auditAction.unlink_article': 'Unlink article',
+  'nav.group.sales': 'Sales',
+  'nav.group.marketing': 'Marketing',
+  'nav.group.activities': 'Activities',
+  'nav.group.inventory': 'Inventory',
+  'nav.group.support': 'Support',
+  'nav.group.analytics': 'Analytics',
+  'nav.group.setup': 'Setup',
 };

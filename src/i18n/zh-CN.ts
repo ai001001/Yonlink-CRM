@@ -1155,6 +1155,13 @@ export const zhCN = {
   'auditEntity.article': '知识库文章',
   'auditAction.link_article': '关联知识库文章',
   'auditAction.unlink_article': '取消关联知识库文章',
+  'nav.group.sales': '销售',
+  'nav.group.marketing': '营销',
+  'nav.group.activities': '活动',
+  'nav.group.inventory': '库存',
+  'nav.group.support': '服务',
+  'nav.group.analytics': '分析',
+  'nav.group.setup': '设置',
 } as const;
 
 export type MessageKey = keyof typeof zhCN;

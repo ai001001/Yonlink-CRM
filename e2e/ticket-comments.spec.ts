@@ -45,8 +45,12 @@ test.describe.serial('工单评论往来 / ticket comments', () => {
 
   test('负责人收到通知并回复、修改、删除 / owner is notified and replies', async ({ page }) => {
     await demoSignIn(page, '王芳');
-    await nav(page, '通知中心');
-    const note = page.getByRole('link', { name: /郑经理 评论了工单 CS-\d{4}-\d{4} 【演示】涡轮增压器异响/ });
+    // 通知中心从顶部铃铛进入 / the notification centre is opened from the bell
+    await page.getByTestId('notification-bell').click();
+    await page.getByTestId('notification-popover').getByRole('link', { name: '查看全部通知' }).click();
+    await expect(page).toHaveURL(/\/notifications\/?$/);
+    // 只在页面主体中查找：铃铛弹窗关闭动画期间其中的同名链接仍在页面上 / search the page body only: the bell popover still holds the same link while it fades out
+    const note = page.getByRole('main').getByRole('link', { name: /郑经理 评论了工单 CS-\d{4}-\d{4} 【演示】涡轮增压器异响/ });
     await expect(note).toBeVisible();
     await note.click();
     const drawer = page.getByRole('dialog', { name: /工单详情/ });

@@ -7,11 +7,10 @@
 import { useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Avatar, Dropdown, Layout, Menu, Spin, Tag, Typography } from 'antd';
+import { Avatar, Dropdown, Layout, Menu, Spin, Tag, Typography, type MenuProps } from 'antd';
 import {
   BankOutlined,
   BarChartOutlined,
-  BellOutlined,
   BlockOutlined,
   ContactsOutlined,
   CustomerServiceOutlined,
@@ -39,29 +38,85 @@ import { GlobalSearch } from './GlobalSearch';
 import { LanguageSwitch } from './LanguageSwitch';
 import { NotificationBell } from './NotificationBell';
 
-const NAV: { key: string; icon: React.ReactNode; label: string; permission?: string }[] = [
-  { key: '/', icon: <DashboardOutlined />, label: t('nav.dashboard') },
-  { key: '/leads', icon: <UserAddOutlined />, label: t('nav.leads') },
-  { key: '/campaigns', icon: <NotificationOutlined />, label: t('nav.campaigns') },
-  { key: '/accounts', icon: <BankOutlined />, label: t('nav.accounts') },
-  { key: '/contacts', icon: <ContactsOutlined />, label: t('nav.contacts') },
-  { key: '/deals', icon: <FundOutlined />, label: t('nav.deals') },
-  { key: '/activities', icon: <ScheduleOutlined />, label: t('nav.activities') },
-  { key: '/tickets', icon: <CustomerServiceOutlined />, label: t('nav.tickets') },
-  { key: '/kb', icon: <ReadOutlined />, label: t('nav.kb') },
-  { key: '/quotes', icon: <FileTextOutlined />, label: t('nav.quotes') },
-  { key: '/sales-orders', icon: <ShoppingCartOutlined />, label: t('nav.salesOrders') },
-  { key: '/invoices', icon: <AccountBookOutlined />, label: t('nav.invoices') },
-  { key: '/reports', icon: <BarChartOutlined />, label: t('nav.reports') },
-  { key: '/forecasts', icon: <AimOutlined />, label: t('nav.forecasts') },
-  { key: '/products', icon: <AppstoreOutlined />, label: t('nav.products') },
-  { key: '/exchange-rates', icon: <DollarOutlined />, label: t('nav.rates') },
-  { key: '/duplicates', icon: <BlockOutlined />, label: t('nav.duplicates') },
-  { key: '/notifications', icon: <BellOutlined />, label: t('nav.notifications') },
-  { key: '/recycle-bin', icon: <DeleteOutlined />, label: t('nav.recycleBin'), permission: 'record.delete' },
-  { key: '/audit-logs', icon: <AuditOutlined />, label: t('nav.audit'), permission: 'audit.read' },
-  { key: '/users', icon: <TeamOutlined />, label: t('nav.users'), permission: 'user.manage' },
+/** 菜单项 / Menu entry */
+interface NavItem {
+  key: string;
+  icon: React.ReactNode;
+  label: string;
+  /** 需要的权限（缺省所有人可见）/ permission required (everyone when absent) */
+  permission?: string;
+}
+
+/**
+ * 导航结构（参考 Zoho CRM 的模块分组）：首页；销售、营销、活动、库存、服务、分析；设置（系统管理，按权限显示）。
+ * 通知不占导航位置，从顶部铃铛进入；个人设置在右上角用户菜单中。分组下没有可见项时整组隐藏。
+ * Navigation grouped like Zoho CRM modules: home; sales, marketing, activities, inventory, support, analytics;
+ * setup (administration, shown by permission). Notifications live under the bell and the profile under the user
+ * menu. A group with no visible entries is hidden.
+ */
+const NAV_GROUPS: { key: string; label: string | null; items: NavItem[] }[] = [
+  { key: 'home', label: null, items: [{ key: '/', icon: <DashboardOutlined />, label: t('nav.dashboard') }] },
+  {
+    key: 'sales',
+    label: t('nav.group.sales'),
+    items: [
+      { key: '/leads', icon: <UserAddOutlined />, label: t('nav.leads') },
+      { key: '/contacts', icon: <ContactsOutlined />, label: t('nav.contacts') },
+      { key: '/accounts', icon: <BankOutlined />, label: t('nav.accounts') },
+      { key: '/deals', icon: <FundOutlined />, label: t('nav.deals') },
+      { key: '/forecasts', icon: <AimOutlined />, label: t('nav.forecasts') },
+    ],
+  },
+  { key: 'marketing', label: t('nav.group.marketing'), items: [{ key: '/campaigns', icon: <NotificationOutlined />, label: t('nav.campaigns') }] },
+  { key: 'activities', label: t('nav.group.activities'), items: [{ key: '/activities', icon: <ScheduleOutlined />, label: t('nav.activities') }] },
+  {
+    key: 'inventory',
+    label: t('nav.group.inventory'),
+    items: [
+      { key: '/products', icon: <AppstoreOutlined />, label: t('nav.products') },
+      { key: '/quotes', icon: <FileTextOutlined />, label: t('nav.quotes') },
+      { key: '/sales-orders', icon: <ShoppingCartOutlined />, label: t('nav.salesOrders') },
+      { key: '/invoices', icon: <AccountBookOutlined />, label: t('nav.invoices') },
+    ],
+  },
+  {
+    key: 'support',
+    label: t('nav.group.support'),
+    items: [
+      { key: '/tickets', icon: <CustomerServiceOutlined />, label: t('nav.tickets') },
+      { key: '/kb', icon: <ReadOutlined />, label: t('nav.kb') },
+    ],
+  },
+  { key: 'analytics', label: t('nav.group.analytics'), items: [{ key: '/reports', icon: <BarChartOutlined />, label: t('nav.reports') }] },
+  {
+    key: 'setup',
+    label: t('nav.group.setup'),
+    items: [
+      { key: '/users', icon: <TeamOutlined />, label: t('nav.users'), permission: 'user.manage' },
+      { key: '/exchange-rates', icon: <DollarOutlined />, label: t('nav.rates') },
+      { key: '/duplicates', icon: <BlockOutlined />, label: t('nav.duplicates') },
+      { key: '/recycle-bin', icon: <DeleteOutlined />, label: t('nav.recycleBin'), permission: 'record.delete' },
+      { key: '/audit-logs', icon: <AuditOutlined />, label: t('nav.audit'), permission: 'audit.read' },
+    ],
+  },
 ];
+
+/** 全部菜单项（用于高亮判断）/ every entry (for highlighting) */
+const NAV = NAV_GROUPS.flatMap((g) => g.items);
+
+/**
+ * 当前用户可见的菜单（antd 分组格式）。
+ * Menu items visible to the user (antd group format).
+ */
+function menuItems(permissions: string[]): MenuProps['items'] {
+  return NAV_GROUPS.flatMap((g): NonNullable<MenuProps['items']> => {
+    const items = g.items
+      .filter((n) => !n.permission || permissions.includes(n.permission))
+      .map((n) => ({ key: n.key, icon: n.icon, label: <Link href={n.key}>{n.label}</Link> }));
+    if (!items.length) return [];
+    return g.label ? [{ type: 'group' as const, key: `group-${g.key}`, label: g.label, children: items }] : items;
+  });
+}
 
 /**
  * 根据路径计算当前菜单项。
@@ -102,11 +157,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           theme="dark"
           mode="inline"
           selectedKeys={[selectedKey(pathname)]}
-          items={NAV.filter((n) => !n.permission || me.permissions.includes(n.permission)).map((n) => ({
-            key: n.key,
-            icon: n.icon,
-            label: <Link href={n.key}>{n.label}</Link>,
-          }))}
+          items={menuItems(me.permissions)}
         />
       </Layout.Sider>
       <Layout>

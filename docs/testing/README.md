@@ -59,6 +59,7 @@
 | 工单 SLA 超时升级 | ✅ | ✅ | ✅ | [ticket-sla.md](ticket-sla.md) |
 | SLA 定时任务 | ✅ | ✅ | ✅ | [sla-scheduler.md](sla-scheduler.md) |
 | 知识库 | ✅ | ✅ | ✅ | [kb.md](kb.md) |
+| 导航结构（Zoho 分组） | ✅ | ✅ | ✅ | [navigation.md](navigation.md) |
 
 ## 整体回归（全部模块完成后）
 命令：`scripts/regression.sh final-mvp` → **PASS**（lint、typecheck、11 文件 181/181、静态导出、生产构建、E2E 6/6）。原始输出：[results/final-mvp-r3-regression.txt](results/final-mvp-r3-regression.txt)
