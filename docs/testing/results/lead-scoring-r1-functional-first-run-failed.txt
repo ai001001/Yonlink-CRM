@@ -1,0 +1,167 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+31 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:633815) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+stderr | tests/lead-scoring/lead-scoring.r1-functional.test.ts > lead scoring R1 rules > 默认设置、保存与顺序、校验、审计 / defaults, save, validation, audit
+[api] unexpected error Duplicate discriminator value "FIELD_EQUALS"
+
+stderr | tests/lead-scoring/lead-scoring.r1-functional.test.ts > lead scoring R1 rules > 线索写入时计分：负分、停用规则、空白值、分数不可写入 / scoring on writes
+[api] unexpected error Duplicate discriminator value "FIELD_EQUALS"
+
+stderr | tests/lead-scoring/lead-scoring.r1-functional.test.ts > lead scoring R1 rules > 已完成跟进计分、上限、完成与撤销、删除、换关联 / completed activities
+[api] unexpected error Duplicate discriminator value "FIELD_EQUALS"
+
+stderr | tests/lead-scoring/lead-scoring.r1-functional.test.ts > lead scoring R1 rules > 市场活动与保存规则后重算；得分明细与分级 / campaign field, rescoring, breakdown
+[api] unexpected error Duplicate discriminator value "FIELD_EQUALS"
+
+stderr | tests/lead-scoring/lead-scoring.r1-functional.test.ts > lead scoring R1 lists and other write paths > 按评分排序、按分级筛选、导出按分级筛选 / sort, grade filter, export
+[api] unexpected error Duplicate discriminator value "FIELD_EQUALS"
+
+stderr | tests/lead-scoring/lead-scoring.r1-functional.test.ts > lead scoring R1 lists and other write paths > 导入、批量改状态、回收站恢复后分数正确 / import, bulk status, restore
+[api] unexpected error Duplicate discriminator value "FIELD_EQUALS"
+
+ ❯ tests/lead-scoring/lead-scoring.r1-functional.test.ts (7 tests | 6 failed) 3637ms
+   ❯ lead scoring R1 rules (4)
+     × 默认设置、保存与顺序、校验、审计 / defaults, save, validation, audit 638ms
+     × 线索写入时计分：负分、停用规则、空白值、分数不可写入 / scoring on writes 148ms
+     × 已完成跟进计分、上限、完成与撤销、删除、换关联 / completed activities 199ms
+     × 市场活动与保存规则后重算；得分明细与分级 / campaign field, rescoring, breakdown 240ms
+   ❯ lead scoring R1 lists and other write paths (3)
+     × 按评分排序、按分级筛选、导出按分级筛选 / sort, grade filter, export 176ms
+     × 导入、批量改状态、回收站恢复后分数正确 / import, bulk status, restore 142ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/lead-scoring/lead-scoring.r1-functional.test.ts > lead scoring R1 rules > 默认设置、保存与顺序、校验、审计 / defaults, save, validation, audit
+AssertionError: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ tests/lead-scoring/lead-scoring.r1-functional.test.ts:49:22
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  tests/lead-scoring/lead-scoring.r1-functional.test.ts > lead scoring R1 rules > 线索写入时计分：负分、停用规则、空白值、分数不可写入 / scoring on writes
+AssertionError: expected +0 to be 30 // Object.is equality
+
+- Expected
++ Received
+
+- 30
++ 0
+
+ ❯ tests/lead-scoring/lead-scoring.r1-functional.test.ts:92:21
+     90|     const l = await newLead({ source: 'WEBSITE', email: 'x@example.com…
+     91|     // 来源 20 + 邮箱 10；公司为空白不计；电话规则已停用 / source 20 + email 10; blank com…
+     92|     expect(l.score).toBe(30);
+       |                     ^
+     93|     await call(leadItem.PATCH, { token: a.token, params: { id: l.id },…
+     94|     expect(await scoreOf(l.id)).toBe(-5);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  tests/lead-scoring/lead-scoring.r1-functional.test.ts > lead scoring R1 rules > 已完成跟进计分、上限、完成与撤销、删除、换关联 / completed activities
+AssertionError: expected +0 to be 7 // Object.is equality
+
+- Expected
++ Received
+
+- 7
++ 0
+
+ ❯ tests/lead-scoring/lead-scoring.r1-functional.test.ts:112:33
+    110|     expect(await scoreOf(l.id)).toBe(0);
+    111|     const done1 = await addActivity(l.id, true);
+    112|     expect(await scoreOf(l.id)).toBe(7);
+       |                                 ^
+    113|     // 完成未完成的跟进 / completing an open activity
+    114|     await call(activityItem.PATCH, { token: a.token, params: { id: ope…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  tests/lead-scoring/lead-scoring.r1-functional.test.ts > lead scoring R1 rules > 市场活动与保存规则后重算；得分明细与分级 / campaign field, rescoring, breakdown
+AssertionError: expected +0 to be 38 // Object.is equality
+
+- Expected
++ Received
+
+- 38
++ 0
+
+ ❯ tests/lead-scoring/lead-scoring.r1-functional.test.ts:135:33
+    133|     expect(l.score).toBe(0);
+    134|     await save({ rules: [...RULES, { kind: 'FIELD_FILLED', field: 'cam…
+    135|     expect(await scoreOf(l.id)).toBe(38);
+       |                                 ^
+    136|     await addActivity(l.id, true);
+    137|     const detail = (await call(leadScore.GET, { token: a.token, params…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  tests/lead-scoring/lead-scoring.r1-functional.test.ts > lead scoring R1 lists and other write paths > 按评分排序、按分级筛选、导出按分级筛选 / sort, grade filter, export
+AssertionError: expected [ +0, +0, +0 ] to deeply equal [ 35, 20, +0 ]
+
+- Expected
++ Received
+
+  [
+-   35,
+-   20,
++   0,
++   0,
+    0,
+  ]
+
+ ❯ tests/lead-scoring/lead-scoring.r1-functional.test.ts:160:49
+    158|     const warm = await newLead({ name: '温和', source: 'WEBSITE' });
+    159|     const cold = await newLead({ name: '冷淡' });
+    160|     expect([hot.score, warm.score, cold.score]).toEqual([35, 20, 0]);
+       |                                                 ^
+    161|     const names = async (query: Record<string, string>) => (await call…
+    162|     expect(await names({ sort: 'score' })).toEqual(['热门', '温和', '冷淡']);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  tests/lead-scoring/lead-scoring.r1-functional.test.ts > lead scoring R1 lists and other write paths > 导入、批量改状态、回收站恢复后分数正确 / import, bulk status, restore
+AssertionError: expected [ '导入一:0', '导入二:0' ] to deeply equal [ '导入一:10', '导入二:0' ]
+
+- Expected
++ Received
+
+  [
+-   "导入一:10",
++   "导入一:0",
+    "导入二:0",
+  ]
+
+ ❯ tests/lead-scoring/lead-scoring.r1-functional.test.ts:183:53
+    181|     expect(imported.status).toBe(200);
+    182|     const rows = await prisma.lead.findMany({ orderBy: { name: 'asc' }…
+    183|     expect(rows.map((r) => `${r.name}:${r.score}`)).toEqual(['导入一:10',…
+       |                                                     ^
+    184|     await call(leadBulk.POST, { token: a.token, body: { action: 'statu…
+    185|     expect((await prisma.lead.findMany({ orderBy: { name: 'asc' } })).…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 1 passed (7)
+   Start at  13:08:45
+   Duration  6.35s (tests 82%, transform 10%, import 7%)
+

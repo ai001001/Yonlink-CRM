@@ -1,0 +1,45 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+31 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:634714) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/lead-scoring/lead-scoring.r2-integration.test.ts (5 tests | 1 failed) 2284ms
+   ❯ lead scoring R2 write paths & scale (2)
+     × 线索转化与网页表单提交后的分数 / conversion and web form submissions 215ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/lead-scoring/lead-scoring.r2-integration.test.ts > lead scoring R2 write paths & scale > 线索转化与网页表单提交后的分数 / conversion and web form submissions
+AssertionError: expected 400 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 400
+
+ ❯ tests/lead-scoring/lead-scoring.r2-integration.test.ts:98:25
+     96|     expect(l.score).toBe(10);
+     97|     const conv = await call(convert.POST, { token: admin.token, params…
+     98|     expect(conv.status).toBe(200);
+       |                         ^
+     99|     expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } …
+    100|     // 网页表单提交 / web form submission
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  13:09:49
+   Duration  4.54s (tests 85%, import 9%, transform 6%)
+

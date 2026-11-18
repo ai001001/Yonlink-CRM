@@ -1058,6 +1058,28 @@ export const DEMO_KB_ARTICLES: {
 ];
 
 /**
+ * 演示线索评分规则（来源、资料完整度、跟进状态、网页表单、已完成跟进），热门 ≥ 50，温和 ≥ 25。
+ * Demo lead scoring rules (source, completeness, status, web form, completed activities); hot >= 50, warm >= 25.
+ */
+export const DEMO_SCORING = {
+  hotScore: 50,
+  warmScore: 25,
+  rules: [
+    { kind: 'FIELD_EQUALS', field: 'source', value: 'REFERRAL', points: 20 },
+    { kind: 'FIELD_EQUALS', field: 'source', value: 'WEBSITE', points: 15 },
+    { kind: 'FIELD_EQUALS', field: 'source', value: 'EXHIBITION', points: 10 },
+    { kind: 'FIELD_FILLED', field: 'company', points: 10 },
+    { kind: 'FIELD_FILLED', field: 'email', points: 10 },
+    { kind: 'FIELD_FILLED', field: 'phone', points: 5 },
+    { kind: 'FIELD_FILLED', field: 'web_form', points: 10 },
+    { kind: 'FIELD_EQUALS', field: 'status', value: 'CONTACTED', points: 10 },
+    { kind: 'FIELD_EQUALS', field: 'status', value: 'QUALIFIED', points: 25 },
+    { kind: 'FIELD_EQUALS', field: 'status', value: 'UNQUALIFIED', points: -30 },
+    { kind: 'ACTIVITY_COUNT', maxCount: 3, points: 5 },
+  ] as { kind: 'FIELD_EQUALS' | 'FIELD_FILLED' | 'ACTIVITY_COUNT'; field?: string; value?: string; maxCount?: number; points: number }[],
+};
+
+/**
  * 演示网页表单：官网产品咨询（关联最多 3 条来源为网站的演示线索）、研讨会报名（关联研讨会活动）、已停用的展会登记表。
  * Demo web forms: a website enquiry form (linked to up to 3 website demo leads), a webinar sign-up (linked to the webinar
  * campaign) and an inactive expo registration form.

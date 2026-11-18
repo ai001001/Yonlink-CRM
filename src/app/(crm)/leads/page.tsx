@@ -7,7 +7,7 @@
 import { useCallback, useState } from 'react';
 import { App, Button, Card, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import Link from 'next/link';
-import { PlusOutlined, SwapOutlined, UploadOutlined } from '@ant-design/icons';
+import { PlusOutlined, StarOutlined, SwapOutlined, UploadOutlined } from '@ant-design/icons';
 import { t, tEnum, type MessageKey } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
@@ -20,6 +20,7 @@ import { SavedViews } from '@/components/SavedViews';
 import { TagEditor, TagFilter, TagList, tagsOf } from '@/components/Tags';
 import { ExportButton } from '@/components/ExportButton';
 import { ImportModal } from '@/components/ImportModal';
+import { LeadScoreDetail, ScoreTag, ScoringRulesModal, useScoring } from '@/components/LeadScoring';
 import { NotesPanel } from '@/components/NotesPanel';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { ConvertLeadModal } from '@/components/ConvertLeadModal';
@@ -47,6 +48,8 @@ interface Lead {
   tags?: RecordTags;
   createdAt: string;
   updatedAt: string;
+  /** 评分（服务端计算）/ score (computed server-side) */
+  score: number;
   /** 来源市场活动 / source campaign */
   campaignId?: string | null;
   campaign?: { id: string; name: string } | null;
@@ -74,7 +77,11 @@ export default function LeadsPage() {
   const [tagId, setTagId] = useState<string>();
   const [status, setStatus] = useState<string>();
   const [source, setSource] = useState<string>();
-  const { data, loading, reload, pagination } = usePagedList<Lead>('/api/leads', { q, status, source, tagId, campaignId });
+  const [grade, setGrade] = useState<string>();
+  const [sort, setSort] = useState<string>();
+  const { data, loading, reload, pagination } = usePagedList<Lead>('/api/leads', { q, status, source, tagId, campaignId, grade, sort });
+  const scoring = useScoring();
+  const [scoringOpen, setScoringOpen] = useState(false);
   /** 套用视图（null 恢复列表默认筛选）/ apply a saved view (null resets the list filters) */
   const applyView = (f: Record<string, string> | null) => {
     search.set(f?.q ?? '');
@@ -151,7 +158,10 @@ export default function LeadsPage() {
               {t('import.button')}
             </Button>
           )}
-          <ExportButton resource="leads" filters={{ q, status, source, campaignId }} />
+          <Button icon={<StarOutlined />} onClick={() => setScoringOpen(true)}>
+            {t('scoring.title')}
+          </Button>
+          <ExportButton resource="leads" filters={{ q, status, source, campaignId, grade }} />
           {perm.canCreate && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
               {t('leads.new')}
@@ -166,6 +176,25 @@ export default function LeadsPage() {
         <TagFilter value={tagId} onChange={setTagId} onManaged={() => void reload()} />
         <Select allowClear aria-label={t('leads.status')} placeholder={t('leads.status')} style={{ width: 140 }} options={statusOptions} value={status} onChange={setStatus} />
         <Select allowClear aria-label={t('leads.source')} placeholder={t('leads.source')} style={{ width: 140 }} options={sourceOptions} value={source} onChange={setSource} />
+        <Select
+          allowClear
+          aria-label={t('scoring.gradeFilter')}
+          placeholder={t('scoring.gradeFilter')}
+          style={{ width: 120 }}
+          value={grade}
+          onChange={setGrade}
+          options={(['hot', 'warm', 'cold'] as const).map((g) => ({ value: g, label: t(`scoring.grade.${g}`) }))}
+        />
+        <Select
+          aria-label={t('scoring.sort')}
+          style={{ width: 150 }}
+          value={sort ?? 'newest'}
+          onChange={(v: string) => setSort(v === 'newest' ? undefined : v)}
+          options={[
+            { value: 'newest', label: t('scoring.sortNewest') },
+            { value: 'score', label: t('scoring.sortScore') },
+          ]}
+        />
         <CampaignSelect aria-label={t('campaigns.filter')} placeholder={t('campaigns.filter')} style={{ width: 180 }} value={campaignId} onChange={(v) => setCampaignId(v ?? undefined)} />
       </Space>
       <BulkBar
@@ -196,6 +225,7 @@ export default function LeadsPage() {
           { title: t('leads.contact'), render: (_, r) => r.mobile ?? r.phone ?? r.email },
           { title: t('leads.source'), dataIndex: 'source', render: (v: string | null) => tEnum('leadSource', v) },
           { title: t('leads.status'), dataIndex: 'status', render: (v: string) => <Tag color={STATUS_COLOR[v]}>{tEnum('leadStatus', v)}</Tag> },
+          { title: t('scoring.score'), dataIndex: 'score', render: (v: number) => <ScoreTag score={v} config={scoring.config} /> },
           { title: t('tags.title'), render: (_, r) => <TagList tags={tagsOf(r)} /> },
           { title: t('common.owner'), render: (_, r) => r.owner?.name ?? t('common.unassigned') },
           { title: t('common.createdAt'), dataIndex: 'createdAt', render: fmtDateTime },
@@ -323,6 +353,12 @@ export default function LeadsPage() {
                 </Descriptions.Item>
               )}
               <Descriptions.Item label={t('leads.status')}>{tEnum('leadStatus', detail.status)}</Descriptions.Item>
+              <Descriptions.Item label={t('scoring.score')} span={2}>
+                <Space orientation="vertical" size={4}>
+                  <ScoreTag score={detail.score} config={scoring.config} />
+                  <LeadScoreDetail leadId={detail.id} version={`${detail.updatedAt}:${detail.score}`} />
+                </Space>
+              </Descriptions.Item>
               <Descriptions.Item label={t('common.owner')}>{detail.owner?.name ?? t('common.unassigned')}</Descriptions.Item>
               <Descriptions.Item label={t('common.createdAt')}>{fmtDateTime(detail.createdAt)}</Descriptions.Item>
               <Descriptions.Item label={t('tags.title')} span={2}>
@@ -373,6 +409,7 @@ export default function LeadsPage() {
           if (id && detail?.id === id) setDetail(await api<Lead>(`/api/leads/${id}`));
         }}
       />
+      <ScoringRulesModal open={scoringOpen} onClose={() => setScoringOpen(false)} config={scoring.config} canManage={perm.can('scoring.manage')} onSaved={() => { scoring.reload(); void reload(); }} />
       <ImportModal resource="leads" open={importing} onClose={() => setImporting(false)} onImported={() => { setImporting(false); void reload(); }} />
     </Card>
   );

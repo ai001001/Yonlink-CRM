@@ -52,6 +52,8 @@ model Organization {
   priceBookEntries PriceBookEntry[]
   priceBookTiers   PriceBookTier[]
   webForms         WebForm[]
+  leadScoringRules LeadScoringRule[]
+  leadScoring      LeadScoringSettings?
   attachments      Attachment[]
   salesTargets     SalesTarget[]
   notifications    Notification[]
@@ -190,6 +192,9 @@ model Lead {
   // 来源市场活动；有关联记录的活动不能删除 / source campaign; campaigns with linked records cannot be deleted
   campaign Campaign? @relation(fields: [organizationId, campaignId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
 
+  /// 线索评分（由数据库触发器按评分规则计算，客户端不能写入）/ lead score (computed by a database trigger from the scoring rules; never written by clients)
+  score Int @default(0)
+
   /// 来源网页表单（只由公开提交写入；表单删除时置空）/ source web form (written by public submissions only; cleared when the form is deleted)
   webFormId String?  @map("web_form_id") @db.Uuid
   webForm   WebForm? @relation(fields: [webFormId], references: [id], onDelete: SetNull)
@@ -197,6 +202,7 @@ model Lead {
   @@unique([organizationId, id])
   @@index([organizationId, campaignId])
   @@index([webFormId])
+  @@index([organizationId, score(sort: Desc)])
   @@index([organizationId, createdAt(sort: Desc)])
   @@index([organizationId, status])
   @@index([convertedAccountId])
@@ -1536,4 +1542,51 @@ model WebForm {
   @@unique([organizationId, id])
   @@index([organizationId, isActive])
   @@map("web_forms")
+}
+
+/// 线索评分规则类型：字段等于某值、字段已填写、已完成跟进数（每条加分，有上限）
+/// Lead scoring rule kind: field equals a value, field is filled, completed activities (points each, capped)
+enum LeadScoringRuleKind {
+  FIELD_EQUALS
+  FIELD_FILLED
+  ACTIVITY_COUNT
+
+  @@map("lead_scoring_rule_kind")
+}
+
+/// 线索评分规则（对标 Zoho Scoring Rules）：启用的规则命中即加（或减）分；分数由数据库函数 lead_score_items 计算。
+/// Lead scoring rule (cf. Zoho Scoring Rules): active rules add (or subtract) points when matched; scores are computed by
+/// the database function lead_score_items.
+model LeadScoringRule {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  kind           LeadScoringRuleKind
+  /// 字段（FIELD_EQUALS：source、status；FIELD_FILLED：company、title、email、phone、mobile、description、campaign、web_form）
+  /// field (FIELD_EQUALS: source, status; FIELD_FILLED: company, title, email, phone, mobile, description, campaign, web_form)
+  field          String?             @db.VarChar(30)
+  value          String?             @db.VarChar(50)
+  points         Int
+  /// 跟进数规则最多计入的条数 / max activities counted by an ACTIVITY_COUNT rule
+  maxCount       Int?                @map("max_count")
+  position       Int
+  isActive       Boolean             @default(true) @map("is_active")
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, id])
+  @@index([organizationId, position])
+  @@map("lead_scoring_rules")
+}
+
+/// 线索评分分级阈值：分数 ≥ 热门阈值为热门，≥ 温和阈值为温和，其余为冷淡。
+/// Lead score grade thresholds: hot at or above hotScore, warm at or above warmScore, cold otherwise.
+model LeadScoringSettings {
+  organizationId String       @id @map("organization_id") @db.Uuid
+  hotScore       Int          @default(60) @map("hot_score")
+  warmScore      Int          @default(30) @map("warm_score")
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("lead_scoring_settings")
 }

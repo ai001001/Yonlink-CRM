@@ -19,7 +19,7 @@ import { can, requirePermission } from '../permissions';
 import { accountCreateSchema, accountListSchema, accountWhere, contactCreateSchema, contactListSchema, contactWhere } from './accounts';
 import { activityListSchema, activityWhere } from './activities';
 import { dealListSchema, dealWhere } from './deals';
-import { leadCreateSchema, leadListSchema, leadWhere } from './leads';
+import { gradeRange, leadCreateSchema, leadListSchema, leadWhere } from './leads';
 import { OPEN_STATUSES, ticketListSchema, ticketWhere } from './tickets';
 
 /** 单次导出上限 / Export row cap */
@@ -82,7 +82,7 @@ export async function exportCsv(ctx: AuthContext, entity: ExportEntity, input: R
 
   if (entity === 'leads') {
     const query = leadListSchema.parse(params);
-    const rows = await prisma.lead.findMany({ where: leadWhere(ctx, query), include: { owner: { select: { name: true, email: true } } }, orderBy, take });
+    const rows = await prisma.lead.findMany({ where: leadWhere(ctx, query, await gradeRange(ctx.organizationId, query.grade)), include: { owner: { select: { name: true, email: true } } }, orderBy, take });
     const truncated = rows.length > EXPORT_MAX;
     const data = rows.slice(0, EXPORT_MAX);
     const csv = toCsv(

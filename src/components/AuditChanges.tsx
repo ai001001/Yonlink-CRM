@@ -256,6 +256,16 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     // 收货：各行 SKU 与数量 / receipt: SKU and quantity per line
     lines.push((c.received as { sku: string; quantity: string }[]).map((r) => `${r.sku} × ${r.quantity}`).join(t('common.listSep')));
   }
+  if (entry.entityType === 'scoring') {
+    // 评分规则：规则文本前后对比、阈值变化、重算条数 / scoring: rules before → after, thresholds, rescored count
+    const list = (v: unknown) => (Array.isArray(v) && v.length ? v.join(t('common.listSep')) : '—');
+    if (Array.isArray(c.rules)) lines.push(`${t('scoring.rules')}${t('common.colon')}${list(c.rules[0])} → ${list(c.rules[1])}`);
+    for (const k of ['hotScore', 'warmScore'] as const) {
+      const v = c[k];
+      if (Array.isArray(v)) lines.push(`${t(`scoring.${k}`)}${t('common.colon')}${String(v[0])} → ${String(v[1])}`);
+    }
+    if (typeof c.rescored === 'number') lines.push(t('scoring.auditRescored', { n: c.rescored }));
+  }
   if (typeof c.webForm === 'string') {
     // 网页表单生成的线索 / a lead created by a web form
     lines.push(t('webForms.auditFrom', { form: c.webForm }));

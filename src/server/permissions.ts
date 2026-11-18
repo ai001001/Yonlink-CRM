@@ -22,6 +22,7 @@ export type Permission =
   | 'forecast.manage' // 设定销售目标 / set sales targets
   | 'campaign.manage' // 维护市场活动 / maintain campaigns
   | 'sla.manage' // 维护工单 SLA 规则 / maintain the ticket SLA policy
+  | 'scoring.manage' // 维护线索评分规则 / maintain lead scoring rules
   | 'purchase.read' // 查看供应商与采购单（含采购成本）/ view vendors and purchase orders (purchase costs included)
   | 'purchase.manage' // 维护供应商、新建与处理采购单 / maintain vendors, create and process purchase orders
   | 'kb.manage' // 发布、归档、修改与删除知识库文章 / publish, archive, edit and delete knowledge-base articles
@@ -31,8 +32,8 @@ export type Permission =
 
 /** 角色 → 权限 / Role → permissions */
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
-  ADMIN: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'audit.read', 'user.manage', 'data.export', 'product.manage', 'tag.manage', 'recycle.purge', 'view.share', 'forecast.manage', 'rate.manage', 'campaign.manage', 'sla.manage', 'kb.manage', 'purchase.read', 'purchase.manage'],
-  MANAGER: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'data.export', 'product.manage', 'tag.manage', 'view.share', 'forecast.manage', 'campaign.manage', 'sla.manage', 'kb.manage', 'purchase.read', 'purchase.manage'],
+  ADMIN: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'audit.read', 'user.manage', 'data.export', 'product.manage', 'tag.manage', 'recycle.purge', 'view.share', 'forecast.manage', 'rate.manage', 'campaign.manage', 'sla.manage', 'scoring.manage', 'kb.manage', 'purchase.read', 'purchase.manage'],
+  MANAGER: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'data.export', 'product.manage', 'tag.manage', 'view.share', 'forecast.manage', 'campaign.manage', 'sla.manage', 'scoring.manage', 'kb.manage', 'purchase.read', 'purchase.manage'],
   SALES: ['record.create', 'record.update.own'],
   READONLY: ['record.read.all', 'purchase.read'],
 };
