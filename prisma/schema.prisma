@@ -51,6 +51,7 @@ model Organization {
   priceBooks       PriceBook[]
   priceBookEntries PriceBookEntry[]
   priceBookTiers   PriceBookTier[]
+  webForms         WebForm[]
   attachments      Attachment[]
   salesTargets     SalesTarget[]
   notifications    Notification[]
@@ -105,6 +106,8 @@ model User {
   kbArticles         KbArticle[]          @relation("KbArticleAuthor")
   ticketArticleLinks TicketArticle[]      @relation("TicketArticleLinker")
   purchaseOrders     PurchaseOrder[]      @relation("PurchaseOrderCreator")
+  webFormsOwned      WebForm[]            @relation("WebFormOwner")
+  webFormsCreated    WebForm[]            @relation("WebFormCreator")
   ticketComments     TicketComment[]      @relation("TicketCommentAuthor")
   uploads            Attachment[]         @relation("AttachmentUploader")
   salesTargets       SalesTarget[]        @relation("TargetOwner")
@@ -187,8 +190,13 @@ model Lead {
   // 来源市场活动；有关联记录的活动不能删除 / source campaign; campaigns with linked records cannot be deleted
   campaign Campaign? @relation(fields: [organizationId, campaignId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
 
+  /// 来源网页表单（只由公开提交写入；表单删除时置空）/ source web form (written by public submissions only; cleared when the form is deleted)
+  webFormId String?  @map("web_form_id") @db.Uuid
+  webForm   WebForm? @relation(fields: [webFormId], references: [id], onDelete: SetNull)
+
   @@unique([organizationId, id])
   @@index([organizationId, campaignId])
+  @@index([webFormId])
   @@index([organizationId, createdAt(sort: Desc)])
   @@index([organizationId, status])
   @@index([convertedAccountId])
@@ -732,6 +740,8 @@ enum NotificationType {
   TICKET_COMMENT
   /// 工单超过处理期限已升级 / a ticket passed its due time and was escalated
   TICKET_ESCALATED
+  /// 网页表单生成了分配给我的线索 / a web form created a lead assigned to me
+  WEB_FORM_LEAD
 
   @@map("notification_type")
 }
@@ -1029,6 +1039,7 @@ model Campaign {
   owner          User?          @relation("CampaignOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
   leads          Lead[]
   deals          Deal[]
+  webForms       WebForm[]
 
   @@unique([organizationId, id])
   @@unique([organizationId, name])
@@ -1489,4 +1500,40 @@ model PriceBookTier {
 
   @@unique([priceBookId, fromQuantity])
   @@map("price_book_tiers")
+}
+
+/// 网页表单（对标 Zoho Webforms）：公开页面收集访客信息并自动生成线索。publicKey 是表单地址中的随机标识，可重新生成。
+/// Web form (cf. Zoho Webforms): a public page that collects visitor details and creates leads. publicKey is the random
+/// identifier in the form URL and can be regenerated.
+model WebForm {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  name            String       @db.VarChar(200)
+  publicKey       String       @unique @map("public_key") @db.VarChar(64)
+  isActive        Boolean      @default(true) @map("is_active")
+  /// 表单页标题与说明 / heading and intro on the public page
+  title           String       @db.VarChar(200)
+  intro           String?      @db.VarChar(1000)
+  /// 启用的可选字段与其中必填的字段（姓名始终显示且必填）/ enabled optional fields and the required subset (name is always shown and required)
+  fields          String[]     @db.VarChar(30)
+  requiredFields  String[]     @map("required_fields") @db.VarChar(30)
+  /// 生成线索的来源、负责人、市场活动 / source, owner and campaign of created leads
+  source          String       @default("WEBSITE") @db.VarChar(50)
+  ownerId         String?      @map("owner_id") @db.Uuid
+  campaignId      String?      @map("campaign_id") @db.Uuid
+  successMessage  String?      @map("success_message") @db.VarChar(500)
+  submissionCount Int          @default(0) @map("submission_count")
+  lastSubmittedAt DateTime?    @map("last_submitted_at") @db.Timestamptz(6)
+  createdById     String?      @map("created_by_id") @db.Uuid
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner           User?        @relation("WebFormOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy       User?        @relation("WebFormCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  campaign        Campaign?    @relation(fields: [organizationId, campaignId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  leads           Lead[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, isActive])
+  @@map("web_forms")
 }

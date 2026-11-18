@@ -50,6 +50,8 @@ interface Lead {
   /** 来源市场活动 / source campaign */
   campaignId?: string | null;
   campaign?: { id: string; name: string } | null;
+  /** 来源网页表单（仅详情返回）/ source web form (detail only) */
+  webForm?: { id: string; name: string } | null;
 }
 
 const STATUSES = ['NEW', 'CONTACTED', 'QUALIFIED', 'UNQUALIFIED', 'CONVERTED'] as const;
@@ -313,6 +315,13 @@ export default function LeadsPage() {
               <Descriptions.Item label={t('campaigns.source')}>
                 {detail.campaign ? <Link href={`/campaigns?id=${detail.campaign.id}`}>{detail.campaign.name}</Link> : null}
               </Descriptions.Item>
+              {detail.webForm && (
+                <Descriptions.Item label={t('webForms.sourceForm')}>
+                  <Link href={`/web-forms?id=${detail.webForm.id}`} data-testid="lead-web-form">
+                    {detail.webForm.name}
+                  </Link>
+                </Descriptions.Item>
+              )}
               <Descriptions.Item label={t('leads.status')}>{tEnum('leadStatus', detail.status)}</Descriptions.Item>
               <Descriptions.Item label={t('common.owner')}>{detail.owner?.name ?? t('common.unassigned')}</Descriptions.Item>
               <Descriptions.Item label={t('common.createdAt')}>{fmtDateTime(detail.createdAt)}</Descriptions.Item>

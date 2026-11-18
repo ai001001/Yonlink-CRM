@@ -1058,6 +1058,62 @@ export const DEMO_KB_ARTICLES: {
 ];
 
 /**
+ * 演示网页表单：官网产品咨询（关联最多 3 条来源为网站的演示线索）、研讨会报名（关联研讨会活动）、已停用的展会登记表。
+ * Demo web forms: a website enquiry form (linked to up to 3 website demo leads), a webinar sign-up (linked to the webinar
+ * campaign) and an inactive expo registration form.
+ */
+export const DEMO_WEB_FORMS: {
+  name: string;
+  title: string;
+  intro: string;
+  isActive: boolean;
+  fields: string[];
+  requiredFields: string[];
+  source: string;
+  campaign: (typeof DEMO_CAMPAIGNS)[number]['key'] | null;
+  successMessage: string;
+  /** 关联的网站来源演示线索数 / number of website demo leads linked to it */
+  linkLeads: number;
+}[] = [
+  {
+    name: '【演示】官网产品咨询',
+    title: '产品与报价咨询',
+    intro: '【演示】请留下您的联系方式与需求，我们的销售工程师会尽快联系您。',
+    isActive: true,
+    fields: ['company', 'email', 'phone', 'description'],
+    requiredFields: ['email'],
+    source: 'WEBSITE',
+    campaign: null,
+    successMessage: '【演示】感谢咨询，我们将在 1 个工作日内与您联系。',
+    linkLeads: 3,
+  },
+  {
+    name: '【演示】技术研讨会报名',
+    title: '年度客户技术研讨会报名',
+    intro: '【演示】名额有限，报名后我们会发送会议邀请。',
+    isActive: true,
+    fields: ['company', 'title', 'email', 'mobile'],
+    requiredFields: ['company', 'email'],
+    source: 'OTHER',
+    campaign: 'webinar',
+    successMessage: '【演示】报名成功，会议邀请将发送到您的邮箱。',
+    linkLeads: 0,
+  },
+  {
+    name: '【演示】上海汽配展现场登记（已结束）',
+    title: '展会现场登记',
+    intro: '【演示】展会已结束，表单已停用。',
+    isActive: false,
+    fields: ['company', 'mobile'],
+    requiredFields: [],
+    source: 'EXHIBITION',
+    campaign: 'expo',
+    successMessage: '【演示】登记成功。',
+    linkLeads: 0,
+  },
+];
+
+/**
  * 演示价格表：北美经销商固定价（美元目录价的 88%，指定给王芳的两个客户）、国内批量阶梯价（人民币目录价，
  * 10 件起 5%、50 件起 10% 折扣，指定给经理的两个客户），以及一张已停用的旧欧洲价格表。
  * Demo price books: a flat North-America dealer book (88% of the USD catalogue, assigned to two of 王芳's accounts), a

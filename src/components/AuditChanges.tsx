@@ -103,6 +103,9 @@ const FIELD_LABELS: Record<string, MessageKey> = {
   tiers: 'priceBooks.tiers',
   listPrice: 'priceBooks.listPrice',
   entries: 'priceBooks.products',
+  requiredFields: 'webForms.requiredFields',
+  successMessage: 'webForms.successMessage',
+  submissionCount: 'webForms.submissions',
   enabled: 'sla.enabled',
   urgentHours: 'sla.urgentHours',
   highHours: 'sla.highHours',
@@ -161,6 +164,11 @@ const fieldLabel = (field: string, entityType: string): string => {
   if (entityType === 'article' && field === 'title') return t('kb.articleTitle');
   if (entityType === 'vendor' && field === 'name') return t('vendors.name');
   if (entityType === 'pricebook' && field === 'name') return t('priceBooks.name');
+  if (entityType === 'webform' && field === 'name') return t('webForms.name');
+  if (entityType === 'webform' && field === 'title') return t('webForms.formTitle');
+  if (entityType === 'webform' && field === 'intro') return t('webForms.intro');
+  if (entityType === 'webform' && field === 'fields') return t('webForms.fields');
+  if (entityType === 'webform' && field === 'isActive') return t('webForms.status');
   if (entityType === 'pricebook' && field === 'isActive') return t('priceBooks.status');
   if (entityType === 'pricebook' && field === 'accounts') return t('priceBooks.accounts');
   if (entityType === 'vendor' && field === 'isActive') return t('vendors.status');
@@ -200,6 +208,9 @@ function value(field: string, v: unknown, users: Map<string, string>, entityType
   if (entityType === 'ticket' && field === 'status') return tEnum('ticketStatus', String(v));
   if (entityType === 'article' && field === 'status') return tEnum('kbStatus', String(v));
   if (entityType === 'purchase' && field === 'status') return tEnum('poStatus', String(v));
+  if (entityType === 'webform' && (field === 'fields' || field === 'requiredFields') && Array.isArray(v)) {
+    return v.length ? v.map((f) => t(`webForms.field.${String(f)}` as MessageKey)).join(t('common.listSep')) : '—';
+  }
   if (field === 'pricingModel') return t(`priceBooks.model.${String(v)}` as MessageKey);
   if (field === 'tiers' && Array.isArray(v)) return v.length ? v.join(t('common.listSep')) : '—';
   if (field === 'expectedDate') return String(v).slice(0, 10);
@@ -244,6 +255,10 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
   if (entry.action === 'purchase.receive' && Array.isArray(c.received)) {
     // 收货：各行 SKU 与数量 / receipt: SKU and quantity per line
     lines.push((c.received as { sku: string; quantity: string }[]).map((r) => `${r.sku} × ${r.quantity}`).join(t('common.listSep')));
+  }
+  if (typeof c.webForm === 'string') {
+    // 网页表单生成的线索 / a lead created by a web form
+    lines.push(t('webForms.auditFrom', { form: c.webForm }));
   }
   if (entry.entityType === 'pricebook' && typeof c.sku === 'string') {
     // 价格表产品价格：SKU 与价格（修改时为前后价格）/ price book entry: SKU and price (before → after on change)

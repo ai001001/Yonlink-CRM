@@ -20,6 +20,7 @@ import {
   DollarOutlined,
   DeleteOutlined,
   FileTextOutlined,
+  FormOutlined,
   FundOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
@@ -77,7 +78,15 @@ const NAV_GROUPS: { key: string; label: string | null; icon?: React.ReactNode; i
       { key: '/forecasts', icon: <AimOutlined />, label: t('nav.forecasts') },
     ],
   },
-  { key: 'marketing', label: t('nav.group.marketing'), icon: <NotificationOutlined />, items: [{ key: '/campaigns', icon: <NotificationOutlined />, label: t('nav.campaigns') }] },
+  {
+    key: 'marketing',
+    label: t('nav.group.marketing'),
+    icon: <NotificationOutlined />,
+    items: [
+      { key: '/campaigns', icon: <NotificationOutlined />, label: t('nav.campaigns') },
+      { key: '/web-forms', icon: <FormOutlined />, label: t('nav.webForms') },
+    ],
+  },
   { key: 'activities', label: t('nav.group.activities'), icon: <ScheduleOutlined />, items: [{ key: '/activities', icon: <ScheduleOutlined />, label: t('nav.activities') }] },
   {
     key: 'inventory',

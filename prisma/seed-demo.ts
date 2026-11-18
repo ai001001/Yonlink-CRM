@@ -16,7 +16,7 @@ import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
 import { toBase } from '../src/server/modules/exchange-rates';
 import { Prisma } from '../src/generated/prisma/client';
-import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_WEB_FORMS, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -110,6 +110,8 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.recycleBinItem.deleteMany({ where: { organizationId: o } });
         await tx.salesTarget.deleteMany({ where: { organizationId: o } });
         await tx.exchangeRate.deleteMany({ where: { organizationId: o } });
+        // 网页表单引用市场活动，先删除 / web forms reference campaigns, so they go first
+        await tx.webForm.deleteMany({ where: { organizationId: o } });
         // 线索、商机已删除，活动可删 / leads and deals are gone, so campaigns can go
         await tx.campaign.deleteMany({ where: { organizationId: o } });
         // 演示账号的工作台布局恢复默认 / demo users' dashboard layouts back to default
@@ -488,6 +490,35 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         });
         leadIds.push(created.id);
       }
+      // 网页表单：关联来源为网站的演示线索，提交次数与最近提交时间与之一致 / web forms linked to website demo leads with matching counters
+      const websiteLeads = data.leads.map((l, i) => ({ l, id: leadIds[i]! })).filter((x) => x.l.source === 'WEBSITE');
+      let linked = 0;
+      for (const f of DEMO_WEB_FORMS) {
+        const leads = websiteLeads.slice(linked, linked + f.linkLeads);
+        linked += leads.length;
+        const last = leads.length ? Math.min(...leads.map((x) => x.l.daysAgo)) : null;
+        const form = await tx.webForm.create({
+          data: {
+            organizationId: o,
+            name: f.name,
+            publicKey: randomBytes(32).toString('base64url'),
+            isActive: f.isActive,
+            title: f.title,
+            intro: f.intro,
+            fields: f.fields,
+            requiredFields: f.requiredFields,
+            source: f.source,
+            ownerId: owner('manager'),
+            campaignId: f.campaign ? campaignIds[f.campaign] : null,
+            successMessage: f.successMessage,
+            submissionCount: leads.length,
+            lastSubmittedAt: last === null ? null : new Date(Date.now() - last * DAY),
+            createdById: ids.admin,
+          },
+        });
+        if (leads.length) await tx.lead.updateMany({ where: { id: { in: leads.map((x) => x.id) } }, data: { webFormId: form.id } });
+      }
+
       // 转化生成的商机沿用线索的来源活动 / deals converted from campaign leads keep the campaign
       for (const l of data.leads) {
         const key = demoCampaignFor(l.source);
@@ -703,7 +734,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length + 1} 客户（含 1 条重复）、${data.accounts.reduce((n, a) => n + a.contacts.length, 0) + 2} 联系人、` +
-      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单（${Object.values(DEMO_TICKET_COMMENTS).flat().length} 条处理记录）、${DEMO_KB_ARTICLES.length} 篇知识库文章、${DEMO_VENDORS.length} 个供应商、${DEMO_PURCHASE_ORDERS.length} 张采购单、${DEMO_PRICE_BOOKS.length} 张价格表、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
+      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单（${Object.values(DEMO_TICKET_COMMENTS).flat().length} 条处理记录）、${DEMO_KB_ARTICLES.length} 篇知识库文章、${DEMO_VENDORS.length} 个供应商、${DEMO_PURCHASE_ORDERS.length} 张采购单、${DEMO_PRICE_BOOKS.length} 张价格表、${DEMO_WEB_FORMS.length} 个网页表单、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
   );
 }
 

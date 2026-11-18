@@ -16,7 +16,7 @@ export interface RequestMeta {
 }
 
 /** 审计对象类型 / Audited entity types */
-export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'order' | 'invoice' | 'report' | 'rate' | 'campaign' | 'ticket' | 'sla' | 'article' | 'vendor' | 'purchase' | 'pricebook' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
+export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'order' | 'invoice' | 'report' | 'rate' | 'campaign' | 'ticket' | 'sla' | 'article' | 'vendor' | 'purchase' | 'pricebook' | 'webform' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
 
 /** 字段策略 / Field policy */
 type Policy = 'plain' | 'mask' | 'redact';
@@ -59,6 +59,9 @@ export const AUDIT_FIELDS: Record<Exclude<AuditEntity, 'auth'>, Record<string, P
   ticket: {
     ticketNumber: 'plain', subject: 'plain', description: 'redact', accountId: 'plain', contactId: 'plain', ownerId: 'plain', status: 'plain',
     priority: 'plain', type: 'plain', channel: 'plain', dueAt: 'plain', resolution: 'redact', resolvedAt: 'plain', escalatedAt: 'plain',
+  },
+  webform: {
+    name: 'plain', title: 'plain', intro: 'redact', isActive: 'plain', fields: 'plain', requiredFields: 'plain', source: 'plain', ownerId: 'plain', campaignId: 'plain', successMessage: 'redact',
   },
   pricebook: { name: 'plain', currency: 'plain', pricingModel: 'plain', isActive: 'plain', description: 'redact' },
   vendor: {

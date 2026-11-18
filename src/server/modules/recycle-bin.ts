@@ -268,6 +268,11 @@ export async function restoreItem(ctx: AuthContext, itemId: string) {
         rec.campaignId = null;
         skipped.push('campaign');
       }
+      // 来源网页表单已删除时置空 / clear a deleted source web form
+      if (rec.webFormId && (await tx.webForm.count({ where: { id: rec.webFormId, organizationId: org } })) === 0) {
+        rec.webFormId = null;
+        skipped.push('webForm');
+      }
       await tx.lead.create({ data: rec });
     } else if (entity === 'account') {
       const rec = revive<Prisma.AccountUncheckedCreateInput>(p.record, org);

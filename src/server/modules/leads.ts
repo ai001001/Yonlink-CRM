@@ -97,7 +97,7 @@ export async function listLeads(ctx: AuthContext, query: z.infer<typeof leadList
  * Get a lead; cross-organization access yields 404.
  */
 export async function getLead(ctx: AuthContext, id: string) {
-  const lead = await prisma.lead.findFirst({ where: { id, ...visible(ctx) }, include });
+  const lead = await prisma.lead.findFirst({ where: { id, ...visible(ctx) }, include: { ...include, webForm: { select: { id: true, name: true } } } });
   if (!lead) throw notFound();
   return lead;
 }

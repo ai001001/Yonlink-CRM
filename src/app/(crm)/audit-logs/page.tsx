@@ -12,7 +12,7 @@ import { t, tEnum } from '@/i18n';
 import { fmtDateTime } from '@/lib/format';
 import { useOwners, usePagedList } from '@/lib/hooks';
 
-const ENTITIES = ['lead', 'account', 'contact', 'deal', 'activity', 'note', 'product', 'quote', 'order', 'invoice', 'report', 'rate', 'campaign', 'ticket', 'sla', 'article', 'vendor', 'purchase', 'pricebook', 'tag', 'view', 'attachment', 'target', 'user', 'auth'];
+const ENTITIES = ['lead', 'account', 'contact', 'deal', 'activity', 'note', 'product', 'quote', 'order', 'invoice', 'report', 'rate', 'campaign', 'ticket', 'sla', 'article', 'vendor', 'purchase', 'pricebook', 'webform', 'tag', 'view', 'attachment', 'target', 'user', 'auth'];
 const ACTIONS: Record<string, string[]> = {
   lead: ['create', 'update', 'delete', 'restore', 'purge', 'expire', 'merge', 'convert', 'tags', 'import', 'export'],
   account: ['create', 'update', 'delete', 'restore', 'purge', 'expire', 'merge', 'tags', 'import', 'export'],
@@ -33,6 +33,7 @@ const ACTIONS: Record<string, string[]> = {
   vendor: ['create', 'update', 'delete'],
   purchase: ['create', 'update', 'status', 'receive', 'delete'],
   pricebook: ['create', 'update', 'delete', 'set_price', 'remove_price', 'assign', 'unassign'],
+  webform: ['create', 'update', 'delete', 'regenerate_key'],
   tag: ['create', 'update', 'delete'],
   view: ['create', 'update', 'delete'],
   attachment: ['create', 'delete'],
