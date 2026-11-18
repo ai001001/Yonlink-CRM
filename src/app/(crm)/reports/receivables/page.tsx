@@ -91,7 +91,7 @@ export default function ReceivablesPage() {
             options={owners.map((u) => ({ value: u.id, label: u.name }))}
           />
         )}
-        <ExportButton resource="reports/receivables" fileName={`receivables-${currency}`} filters={{ currency, ownerId }} />
+        <ExportButton excel resource="reports/receivables" fileName={`receivables-${currency}`} filters={{ currency, ownerId }} />
       </Space>
       <Alert
         type="info"

@@ -141,7 +141,7 @@ export default function ForecastsPage() {
         />
         <DatePicker aria-label={t('forecasts.period')} picker={kind} allowClear={false} value={date} onChange={(d) => d && setDate(d)} />
         <Select aria-label={t('forecasts.currency')} style={{ width: 100 }} value={currency} onChange={setCurrency} options={CURRENCIES.map((c) => ({ value: c, label: c }))} />
-        <ExportButton resource="forecasts" fileName={`forecast-${currency}-${periodOf(kind, date)}`} filters={{ period: periodOf(kind, date), currency }} />
+        <ExportButton excel resource="forecasts" fileName={`forecast-${currency}-${periodOf(kind, date)}`} filters={{ period: periodOf(kind, date), currency }} />
       </Space>
       <Alert type="info" showIcon title={`${t('forecasts.hint', { probs })}${perm.can('record.read.all') ? '' : t('forecasts.salesScope')}`} style={{ marginBottom: 12 }} />
       {data?.kind === 'quarter' && perm.can('forecast.manage') && <Alert type="warning" showIcon title={t('forecasts.quarterHint')} style={{ marginBottom: 12 }} />}

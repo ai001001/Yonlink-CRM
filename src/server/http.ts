@@ -166,6 +166,23 @@ export async function routeId(route: RouteParams, name = 'id'): Promise<string> 
  * CSV 文件响应（附件下载）。
  * CSV attachment response.
  */
+/**
+ * Excel（.xlsx）下载响应。
+ * Excel (.xlsx) download response.
+ */
+export function xlsxResponse(filename: string, data: Buffer, extra: Record<string, string> = {}): Response {
+  return new Response(new Uint8Array(data), {
+    headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': `attachment; filename="${filename}"`, ...extra },
+  });
+}
+
+/** 导出格式参数：csv（默认）或 xlsx / export format parameter: csv (default) or xlsx */
+export function exportFormat(params: Record<string, string>): { format: 'csv' | 'xlsx'; rest: Record<string, string> } {
+  const { format, ...rest } = params;
+  if (format !== undefined && format !== 'csv' && format !== 'xlsx') throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid format', { format: ['invalid'] });
+  return { format: format === 'xlsx' ? 'xlsx' : 'csv', rest };
+}
+
 export function csvResponse(filename: string, csv: string, extra: Record<string, string> = {}): Response {
   return new Response(csv, {
     headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${filename}"`, ...extra },

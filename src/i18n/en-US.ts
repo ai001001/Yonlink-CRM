@@ -1477,4 +1477,6 @@ export const enUS: Record<MessageKey, string> = {
   'scoring.entity.LEAD': 'Leads',
   'scoring.entity.ACCOUNT': 'Accounts',
   'scoring.entity.CONTACT': 'Contacts',
+  'export.excel': 'Download Excel',
+  'xlsx.asOf': 'As of',
 };

@@ -1470,6 +1470,8 @@ export const zhCN = {
   'scoring.entity.LEAD': '线索',
   'scoring.entity.ACCOUNT': '客户',
   'scoring.entity.CONTACT': '联系人',
+  'export.excel': '下载 Excel',
+  'xlsx.asOf': '统计日期',
 } as const;
 
 export type MessageKey = keyof typeof zhCN;

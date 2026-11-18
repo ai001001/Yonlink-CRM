@@ -112,6 +112,7 @@ export default function ReportsPage() {
           />
         )}
         <ExportButton
+          excel
           resource="reports/sales"
           fileName={`sales-report-${currency}`}
           filters={{ currency, from: range[0].format('YYYY-MM-DD'), to: range[1].format('YYYY-MM-DD'), ownerId }}

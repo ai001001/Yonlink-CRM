@@ -25,7 +25,7 @@ export type ReportName = 'sales' | 'forecast';
  * 记录报表导出审计（只记报表名、筛选与行数）。
  * Audit a report export (report name, filters and row count only).
  */
-async function auditReport(ctx: AuthContext, report: ReportName, filters: Record<string, unknown>, rows: number) {
+export async function auditReport(ctx: AuthContext, report: ReportName, filters: Record<string, unknown>, rows: number) {
   const clean = Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== undefined));
   await prisma.$transaction((tx) => audit(tx, { ...by(ctx), action: 'report.export', entityType: 'report', changes: { report, filters: clean, rows } }));
 }
@@ -34,7 +34,7 @@ async function auditReport(ctx: AuthContext, report: ReportName, filters: Record
 const pct = (v: number | null) => (v === null ? '' : v);
 
 /** 语言工具 / locale helpers */
-function localeTools(lang: string | undefined) {
+export function localeTools(lang: string | undefined) {
   const locale = parseLang(lang);
   const t = (key: MessageKey, vars?: Record<string, string | number>) => translate(locale, key, vars);
   const tEnum = (prefix: string, value: string | null | undefined) => tEnumIn(locale, prefix, value);
