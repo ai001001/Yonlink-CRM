@@ -15,6 +15,7 @@ import { assertCampaign } from './campaign-links';
 import { amountSchema, CURRENCIES, dateOnly } from './deals';
 import { notifyAssigned } from './notifications';
 import { recycle } from './recycle-bin';
+import { gradeRange, scoreListFields, scoreOrder } from './scoring-grades';
 import { tagFilter, tagsInclude } from './tags';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
@@ -48,35 +49,8 @@ export const leadListSchema = listQuery.extend({
   ownerId: z.uuid().optional(),
   tagId: z.uuid().optional(),
   campaignId: z.uuid().optional(),
-  /** 评分分级 / score grade */
-  grade: z.enum(['hot', 'warm', 'cold']).optional(),
-  /** 排序：默认按创建时间倒序，score 为按评分从高到低 / sort: newest first by default, score = highest score first */
-  sort: z.enum(['score']).optional(),
+  ...scoreListFields,
 });
-
-/** 评分分级阈值的默认值（组织未设置时使用）/ default grade thresholds when an organization has none */
-export const DEFAULT_SCORE_THRESHOLDS = { hotScore: 60, warmScore: 30 } as const;
-
-/**
- * 读取组织的评分分级阈值。
- * Read the organization's score grade thresholds.
- */
-export async function scoreThresholds(organizationId: string): Promise<{ hotScore: number; warmScore: number }> {
-  const s = await prisma.leadScoringSettings.findUnique({ where: { organizationId }, select: { hotScore: true, warmScore: true } });
-  return s ?? { ...DEFAULT_SCORE_THRESHOLDS };
-}
-
-/**
- * 分级对应的分数区间：热门 ≥ 热门阈值；温和在两个阈值之间；冷淡 < 温和阈值。
- * The score range of a grade: hot >= hot threshold; warm between the thresholds; cold below the warm threshold.
- */
-export async function gradeRange(organizationId: string, grade: 'hot' | 'warm' | 'cold' | undefined): Promise<Prisma.IntFilter | undefined> {
-  if (!grade) return undefined;
-  const t = await scoreThresholds(organizationId);
-  if (grade === 'hot') return { gte: t.hotScore };
-  if (grade === 'warm') return { gte: t.warmScore, lt: t.hotScore };
-  return { lt: t.warmScore };
-}
 
 const include = {
   owner: { select: { id: true, name: true } },
@@ -106,12 +80,12 @@ export function leadWhere(ctx: AuthContext, query: Omit<z.infer<typeof leadListS
  * Search leads with pagination.
  */
 export async function listLeads(ctx: AuthContext, query: z.infer<typeof leadListSchema>): Promise<Page<unknown>> {
-  const where = leadWhere(ctx, query, await gradeRange(ctx.organizationId, query.grade));
+  const where = leadWhere(ctx, query, await gradeRange(ctx.organizationId, 'LEAD', query.grade));
   const [items, total] = await prisma.$transaction([
     prisma.lead.findMany({
       where,
       include,
-      orderBy: query.sort === 'score' ? [{ score: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }] : [{ createdAt: 'desc' }, { id: 'asc' }],
+      orderBy: scoreOrder<Prisma.LeadOrderByWithRelationInput>(query.sort, [{ createdAt: 'desc' }, { id: 'asc' }]),
       skip: (query.page - 1) * query.pageSize,
       take: query.pageSize,
     }),

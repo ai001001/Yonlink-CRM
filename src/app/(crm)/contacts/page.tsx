@@ -9,9 +9,10 @@
 import { useCallback, useState } from 'react';
 import Link from 'next/link';
 import { App, Button, Card, Checkbox, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
-import { PlusOutlined, StarFilled } from '@ant-design/icons';
+import { PlusOutlined, StarFilled, StarOutlined } from '@ant-design/icons';
 import { usePermissions } from '@/components/AuthProvider';
 import { ExportButton } from '@/components/ExportButton';
+import { ScoreDetail, ScoreFilters, ScoreTag, ScoringRulesModal, useScoring } from '@/components/Scoring';
 import { RecordSelect } from '@/components/RecordSelect';
 import { t } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
@@ -29,8 +30,12 @@ export default function ContactsPage() {
   const [accountId, setAccountId] = useState<string | null>(null);
   const [ownerId, setOwnerId] = useState<string>();
   const [primary, setPrimary] = useState<Primary>();
-  const filters = { q: search.q || undefined, accountId: accountId ?? undefined, ownerId, isPrimary: primary };
-  const { data, loading, reload, pagination } = usePagedList<ContactRow>('/api/contacts', filters);
+  const [grade, setGrade] = useState<string>();
+  const [sort, setSort] = useState<string>();
+  const filters = { q: search.q || undefined, accountId: accountId ?? undefined, ownerId, isPrimary: primary, grade };
+  const { data, loading, reload, pagination } = usePagedList<ContactRow>('/api/contacts', { ...filters, sort });
+  const scoring = useScoring('contact');
+  const [scoringOpen, setScoringOpen] = useState(false);
   const [detail, setDetail] = useState<ContactRow | null>(null);
   const [editing, setEditing] = useState<ContactRow | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
@@ -92,6 +97,9 @@ export default function ContactsPage() {
       title={t('contacts.pageTitle')}
       extra={
         <Space>
+          <Button icon={<StarOutlined />} onClick={() => setScoringOpen(true)}>
+            {t('scoring.title')}
+          </Button>
           <ExportButton resource="contacts" filters={filters} />
           {perm.canCreate && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
@@ -130,6 +138,7 @@ export default function ContactsPage() {
             { value: 'false', label: t('contacts.nonPrimary') },
           ]}
         />
+        <ScoreFilters grade={grade} onGrade={setGrade} sort={sort} onSort={setSort} />
       </Space>
       <Table<ContactRow>
         rowKey="id"
@@ -155,6 +164,7 @@ export default function ContactsPage() {
           { title: t('contacts.email'), dataIndex: 'email' },
           { title: t('contacts.account'), render: (_, r) => <Link href={`/accounts?id=${r.account.id}`}>{r.account.name}</Link> },
           { title: t('common.owner'), render: (_, r) => r.account.owner?.name ?? t('common.unassigned') },
+          { title: t('scoring.score'), dataIndex: 'score', render: (v: number) => <ScoreTag score={v} config={scoring.config} /> },
           { title: t('common.createdAt'), dataIndex: 'createdAt', render: fmtDateTime },
           {
             title: t('common.actions'),
@@ -198,10 +208,17 @@ export default function ContactsPage() {
               </Descriptions.Item>
               <Descriptions.Item label={t('common.owner')}>{detail.account.owner?.name ?? t('common.unassigned')}</Descriptions.Item>
               <Descriptions.Item label={t('common.createdAt')}>{fmtDateTime(detail.createdAt)}</Descriptions.Item>
+              <Descriptions.Item label={t('scoring.score')}>
+                <Space orientation="vertical" size={4}>
+                  <ScoreTag score={detail.score} config={scoring.config} />
+                  <ScoreDetail entity="contact" id={detail.id} version={`${detail.updatedAt ?? ''}:${detail.score}`} />
+                </Space>
+              </Descriptions.Item>
             </Descriptions>
           </div>
         )}
       </Drawer>
+      <ScoringRulesModal entity="contact" open={scoringOpen} onClose={() => setScoringOpen(false)} config={scoring.config} canManage={perm.can('scoring.manage')} onSaved={() => { scoring.reload(); void reload(); }} />
 
       <Modal
         title={editing === 'new' ? t('contacts.new') : t('contacts.edit')}

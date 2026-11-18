@@ -7,10 +7,11 @@
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import { App, Button, Card, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tabs, Tag } from 'antd';
-import { PlusOutlined, StarFilled, UploadOutlined } from '@ant-design/icons';
+import { PlusOutlined, StarFilled, StarOutlined, UploadOutlined } from '@ant-design/icons';
 import { AccountDeals } from '@/components/AccountDeals';
 import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
+import { ScoreDetail, ScoreFilters, ScoreTag, ScoringRulesModal, useScoring } from '@/components/Scoring';
 import { SavedViews } from '@/components/SavedViews';
 import { TagEditor, TagFilter, TagList, tagsOf } from '@/components/Tags';
 import { ExportButton } from '@/components/ExportButton';
@@ -37,7 +38,11 @@ export default function AccountsPage() {
   const q = search.q;
   const [tagId, setTagId] = useState<string>();
   const [industry, setIndustry] = useState<string>();
-  const { data, loading, reload, pagination } = usePagedList<Account>('/api/accounts', { q, industry, tagId });
+  const [grade, setGrade] = useState<string>();
+  const [sort, setSort] = useState<string>();
+  const { data, loading, reload, pagination } = usePagedList<Account>('/api/accounts', { q, industry, tagId, grade, sort });
+  const scoring = useScoring('account');
+  const [scoringOpen, setScoringOpen] = useState(false);
   /** 套用视图（null 恢复列表默认筛选）/ apply a saved view (null resets the list filters) */
   const applyView = (f: Record<string, string> | null) => {
     search.set(f?.q ?? '');
@@ -114,7 +119,10 @@ export default function AccountsPage() {
               {t('import.button')}
             </Button>
           )}
-          <ExportButton resource="accounts" filters={{ q, industry }} />
+          <Button icon={<StarOutlined />} onClick={() => setScoringOpen(true)}>
+            {t('scoring.title')}
+          </Button>
+          <ExportButton resource="accounts" filters={{ q, industry, grade }} />
           {perm.canCreate && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
               {t('accounts.new')}
@@ -128,6 +136,7 @@ export default function AccountsPage() {
         <Input.Search allowClear placeholder={t('accounts.searchPlaceholder')} style={{ width: 320 }} {...search.inputProps} />
         <TagFilter value={tagId} onChange={setTagId} onManaged={() => void reload()} />
         <Select allowClear aria-label={t('accounts.industry')} placeholder={t('accounts.industry')} style={{ width: 140 }} options={industryOptions} value={industry} onChange={setIndustry} />
+        <ScoreFilters grade={grade} onGrade={setGrade} sort={sort} onSort={setSort} />
       </Space>
       <BulkBar
         path="/api/accounts"
@@ -160,6 +169,7 @@ export default function AccountsPage() {
           { title: t('accounts.phone'), dataIndex: 'phone' },
           { title: t('accounts.contactCount'), render: (_, r) => r._count.contacts },
           { title: t('accounts.dealCount'), render: (_, r) => r._count.deals },
+          { title: t('scoring.score'), dataIndex: 'score', render: (v: number) => <ScoreTag score={v} config={scoring.config} /> },
           { title: t('tags.title'), render: (_, r) => <TagList tags={tagsOf(r)} /> },
           { title: t('common.owner'), render: (_, r) => r.owner?.name ?? t('common.unassigned') },
           { title: t('common.createdAt'), dataIndex: 'createdAt', render: fmtDateTime },
@@ -260,6 +270,12 @@ export default function AccountsPage() {
                     </Descriptions.Item>
                     <Descriptions.Item label={t('common.owner')}>{detail.owner?.name ?? t('common.unassigned')}</Descriptions.Item>
                     <Descriptions.Item label={t('accounts.dealCount')}>{detail._count.deals}</Descriptions.Item>
+                    <Descriptions.Item label={t('scoring.score')} span={2}>
+                      <Space orientation="vertical" size={4}>
+                        <ScoreTag score={detail.score} config={scoring.config} />
+                        <ScoreDetail entity="account" id={detail.id} version={`${detail.updatedAt}:${detail.score}`} />
+                      </Space>
+                    </Descriptions.Item>
                     <Descriptions.Item label={t('priceBooks.accountBook')} span={2}>
                       {detail.priceBook ? (
                         <Link href={`/price-books?id=${detail.priceBook.id}`} data-testid="account-price-book">
@@ -311,6 +327,7 @@ export default function AccountsPage() {
           />
         )}
       </Drawer>
+      <ScoringRulesModal entity="account" open={scoringOpen} onClose={() => setScoringOpen(false)} config={scoring.config} canManage={perm.can('scoring.manage')} onSaved={() => { scoring.reload(); void reload(); }} />
       <ImportModal resource="accounts" open={importing} onClose={() => setImporting(false)} onImported={() => { setImporting(false); void reload(); }} />
     </Card>
   );

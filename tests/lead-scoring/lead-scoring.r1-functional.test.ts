@@ -42,7 +42,7 @@ beforeEach(async () => {
 
 describe('lead scoring R1 rules', () => {
   it('默认设置、保存与顺序、校验、审计 / defaults, save, validation, audit', async () => {
-    expect((await call(scoring.GET, { token: a.token })).json).toEqual({ rules: [], hotScore: 60, warmScore: 30 });
+    expect((await call(scoring.GET, { token: a.token })).json).toEqual({ entity: 'LEAD', rules: [], hotScore: 60, warmScore: 30 });
     const l = await newLead({ source: 'WEBSITE', email: 'x@example.com' });
     expect(l.score).toBe(0);
     const r = await save({});
@@ -74,6 +74,7 @@ describe('lead scoring R1 rules', () => {
     // 审计：规则文本、阈值、重算条数 / audit: rule texts, thresholds, rescored count
     const log = await prisma.auditLog.findFirstOrThrow({ where: { action: 'scoring.update' } });
     expect(log.changes).toEqual({
+      entity: 'LEAD',
       rescored: 1,
       rules: [[], ['source=WEBSITE:+20', 'filled:email:+10', 'filled:company:+5', 'status=UNQUALIFIED:-40', 'activities×2:+7']],
       hotScore: [60, 30],
@@ -82,7 +83,7 @@ describe('lead scoring R1 rules', () => {
     // 只改阈值：审计只含阈值与重算条数 / thresholds only
     await save({ hotScore: 40 });
     const log2 = await prisma.auditLog.findFirstOrThrow({ where: { action: 'scoring.update' }, orderBy: { createdAt: 'desc' } });
-    expect(log2.changes).toEqual({ rescored: 1, hotScore: [30, 40] });
+    expect(log2.changes).toEqual({ entity: 'LEAD', rescored: 1, hotScore: [30, 40] });
   });
 
   it('线索写入时计分：负分、停用规则、空白值、分数不可写入 / scoring on writes', async () => {
@@ -195,8 +196,8 @@ describe('lead scoring R1 lists and other write paths', () => {
   it('演示评分规则 / demo data', async () => {
     await seedDemo({ reset: true });
     const org = await prisma.organization.findFirstOrThrow({ where: { name: DEMO_ORG_NAME } });
-    expect(await prisma.leadScoringRule.count({ where: { organizationId: org.id } })).toBe(DEMO_SCORING.rules.length);
-    expect(await prisma.leadScoringSettings.findUniqueOrThrow({ where: { organizationId: org.id } })).toMatchObject({ hotScore: DEMO_SCORING.hotScore, warmScore: DEMO_SCORING.warmScore });
+    expect(await prisma.scoringRule.count({ where: { organizationId: org.id, entity: 'LEAD' } })).toBe(DEMO_SCORING.rules.length);
+    expect(await prisma.scoringSettings.findUniqueOrThrow({ where: { organizationId_entity: { organizationId: org.id, entity: 'LEAD' } } })).toMatchObject({ hotScore: DEMO_SCORING.hotScore, warmScore: DEMO_SCORING.warmScore });
     // 每条演示线索的分数等于其明细之和，且三个分级都有线索 / every score equals its breakdown and all grades occur
     const rows = await prisma.$queryRaw<{ id: string; score: number; total: number }[]>`
       SELECT l.id, l.score, coalesce((SELECT sum(i.points) FROM lead_score_items(l) i), 0)::int AS total FROM leads l WHERE l.organization_id = ${org.id}::uuid`;
@@ -205,6 +206,6 @@ describe('lead scoring R1 lists and other write paths', () => {
     const grades = new Set(rows.map((r) => (r.score >= DEMO_SCORING.hotScore ? 'hot' : r.score >= DEMO_SCORING.warmScore ? 'warm' : 'cold')));
     expect([...grades].sort()).toEqual(['cold', 'hot', 'warm']);
     await seedDemo({ reset: true });
-    expect(await prisma.leadScoringRule.count({ where: { organizationId: org.id } })).toBe(DEMO_SCORING.rules.length);
+    expect(await prisma.scoringRule.count({ where: { organizationId: org.id, entity: 'LEAD' } })).toBe(DEMO_SCORING.rules.length);
   });
 });

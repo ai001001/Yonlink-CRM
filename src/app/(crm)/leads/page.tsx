@@ -20,7 +20,7 @@ import { SavedViews } from '@/components/SavedViews';
 import { TagEditor, TagFilter, TagList, tagsOf } from '@/components/Tags';
 import { ExportButton } from '@/components/ExportButton';
 import { ImportModal } from '@/components/ImportModal';
-import { LeadScoreDetail, ScoreTag, ScoringRulesModal, useScoring } from '@/components/LeadScoring';
+import { ScoreDetail, ScoreFilters, ScoreTag, ScoringRulesModal, useScoring } from '@/components/Scoring';
 import { NotesPanel } from '@/components/NotesPanel';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { ConvertLeadModal } from '@/components/ConvertLeadModal';
@@ -80,7 +80,7 @@ export default function LeadsPage() {
   const [grade, setGrade] = useState<string>();
   const [sort, setSort] = useState<string>();
   const { data, loading, reload, pagination } = usePagedList<Lead>('/api/leads', { q, status, source, tagId, campaignId, grade, sort });
-  const scoring = useScoring();
+  const scoring = useScoring('lead');
   const [scoringOpen, setScoringOpen] = useState(false);
   /** 套用视图（null 恢复列表默认筛选）/ apply a saved view (null resets the list filters) */
   const applyView = (f: Record<string, string> | null) => {
@@ -176,25 +176,7 @@ export default function LeadsPage() {
         <TagFilter value={tagId} onChange={setTagId} onManaged={() => void reload()} />
         <Select allowClear aria-label={t('leads.status')} placeholder={t('leads.status')} style={{ width: 140 }} options={statusOptions} value={status} onChange={setStatus} />
         <Select allowClear aria-label={t('leads.source')} placeholder={t('leads.source')} style={{ width: 140 }} options={sourceOptions} value={source} onChange={setSource} />
-        <Select
-          allowClear
-          aria-label={t('scoring.gradeFilter')}
-          placeholder={t('scoring.gradeFilter')}
-          style={{ width: 120 }}
-          value={grade}
-          onChange={setGrade}
-          options={(['hot', 'warm', 'cold'] as const).map((g) => ({ value: g, label: t(`scoring.grade.${g}`) }))}
-        />
-        <Select
-          aria-label={t('scoring.sort')}
-          style={{ width: 150 }}
-          value={sort ?? 'newest'}
-          onChange={(v: string) => setSort(v === 'newest' ? undefined : v)}
-          options={[
-            { value: 'newest', label: t('scoring.sortNewest') },
-            { value: 'score', label: t('scoring.sortScore') },
-          ]}
-        />
+        <ScoreFilters grade={grade} onGrade={setGrade} sort={sort} onSort={setSort} />
         <CampaignSelect aria-label={t('campaigns.filter')} placeholder={t('campaigns.filter')} style={{ width: 180 }} value={campaignId} onChange={(v) => setCampaignId(v ?? undefined)} />
       </Space>
       <BulkBar
@@ -356,7 +338,7 @@ export default function LeadsPage() {
               <Descriptions.Item label={t('scoring.score')} span={2}>
                 <Space orientation="vertical" size={4}>
                   <ScoreTag score={detail.score} config={scoring.config} />
-                  <LeadScoreDetail leadId={detail.id} version={`${detail.updatedAt}:${detail.score}`} />
+                  <ScoreDetail entity="lead" id={detail.id} version={`${detail.updatedAt}:${detail.score}`} />
                 </Space>
               </Descriptions.Item>
               <Descriptions.Item label={t('common.owner')}>{detail.owner?.name ?? t('common.unassigned')}</Descriptions.Item>
@@ -409,7 +391,7 @@ export default function LeadsPage() {
           if (id && detail?.id === id) setDetail(await api<Lead>(`/api/leads/${id}`));
         }}
       />
-      <ScoringRulesModal open={scoringOpen} onClose={() => setScoringOpen(false)} config={scoring.config} canManage={perm.can('scoring.manage')} onSaved={() => { scoring.reload(); void reload(); }} />
+      <ScoringRulesModal entity="lead" open={scoringOpen} onClose={() => setScoringOpen(false)} config={scoring.config} canManage={perm.can('scoring.manage')} onSaved={() => { scoring.reload(); void reload(); }} />
       <ImportModal resource="leads" open={importing} onClose={() => setImporting(false)} onImported={() => { setImporting(false); void reload(); }} />
     </Card>
   );

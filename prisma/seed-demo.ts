@@ -16,7 +16,7 @@ import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
 import { toBase } from '../src/server/modules/exchange-rates';
 import { Prisma } from '../src/generated/prisma/client';
-import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_WEB_FORMS, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_ACCOUNT_SCORING, DEMO_CONTACT_SCORING, DEMO_WEB_FORMS, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -110,8 +110,8 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.recycleBinItem.deleteMany({ where: { organizationId: o } });
         await tx.salesTarget.deleteMany({ where: { organizationId: o } });
         await tx.exchangeRate.deleteMany({ where: { organizationId: o } });
-        await tx.leadScoringRule.deleteMany({ where: { organizationId: o } });
-        await tx.leadScoringSettings.deleteMany({ where: { organizationId: o } });
+        await tx.scoringRule.deleteMany({ where: { organizationId: o } });
+        await tx.scoringSettings.deleteMany({ where: { organizationId: o } });
         // 网页表单引用市场活动，先删除 / web forms reference campaigns, so they go first
         await tx.webForm.deleteMany({ where: { organizationId: o } });
         // 线索、商机已删除，活动可删 / leads and deals are gone, so campaigns can go
@@ -120,11 +120,18 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.userDashboardLayout.deleteMany({ where: { organizationId: o } });
       }
 
-      // 线索评分规则先于线索写入：线索与跟进写入时由触发器计算分数 / scoring rules before leads: triggers score leads and activities as they are written
-      await tx.leadScoringRule.createMany({
-        data: DEMO_SCORING.rules.map((r, position) => ({ organizationId: o, kind: r.kind, field: r.field ?? null, value: r.value ?? null, maxCount: r.maxCount ?? null, points: r.points, position })),
-      });
-      await tx.leadScoringSettings.create({ data: { organizationId: o, hotScore: DEMO_SCORING.hotScore, warmScore: DEMO_SCORING.warmScore } });
+      // 评分规则先于业务数据写入：线索、客户、联系人及其关联记录写入时由触发器计算分数
+      // scoring rules before business data: triggers score leads, accounts and contacts as they and related records are written
+      for (const [entity, setup] of [
+        ['LEAD', DEMO_SCORING],
+        ['ACCOUNT', DEMO_ACCOUNT_SCORING],
+        ['CONTACT', DEMO_CONTACT_SCORING],
+      ] as const) {
+        await tx.scoringRule.createMany({
+          data: setup.rules.map((r, position) => ({ organizationId: o, entity, kind: r.kind, field: r.field ?? null, value: r.value ?? null, maxCount: r.maxCount ?? null, points: r.points, position })),
+        });
+        await tx.scoringSettings.create({ data: { organizationId: o, entity, hotScore: setup.hotScore, warmScore: setup.warmScore } });
+      }
 
       // 市场活动（线索与商机引用，先写入）/ campaigns first (leads and deals reference them)
       const campaignIds: Record<string, string> = {};
@@ -742,7 +749,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length + 1} 客户（含 1 条重复）、${data.accounts.reduce((n, a) => n + a.contacts.length, 0) + 2} 联系人、` +
-      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单（${Object.values(DEMO_TICKET_COMMENTS).flat().length} 条处理记录）、${DEMO_KB_ARTICLES.length} 篇知识库文章、${DEMO_VENDORS.length} 个供应商、${DEMO_PURCHASE_ORDERS.length} 张采购单、${DEMO_PRICE_BOOKS.length} 张价格表、${DEMO_WEB_FORMS.length} 个网页表单、${DEMO_SCORING.rules.length} 条评分规则、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
+      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单（${Object.values(DEMO_TICKET_COMMENTS).flat().length} 条处理记录）、${DEMO_KB_ARTICLES.length} 篇知识库文章、${DEMO_VENDORS.length} 个供应商、${DEMO_PURCHASE_ORDERS.length} 张采购单、${DEMO_PRICE_BOOKS.length} 张价格表、${DEMO_WEB_FORMS.length} 个网页表单、${DEMO_SCORING.rules.length + DEMO_ACCOUNT_SCORING.rules.length + DEMO_CONTACT_SCORING.rules.length} 条评分规则、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
   );
 }
 

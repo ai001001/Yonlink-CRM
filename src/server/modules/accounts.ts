@@ -12,6 +12,7 @@ import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
 import { notifyAssigned } from './notifications';
 import { recycle } from './recycle-bin';
+import { gradeRange, scoreListFields, scoreOrder } from './scoring-grades';
 import { tagFilter, tagsInclude } from './tags';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
@@ -48,6 +49,7 @@ export const accountListSchema = listQuery.extend({
   industry: z.enum(INDUSTRIES).optional(),
   ownerId: z.uuid().optional(),
   tagId: z.uuid().optional(),
+  ...scoreListFields,
 });
 
 const contactFields = {
@@ -66,6 +68,7 @@ export const contactListSchema = listQuery.extend({
   accountId: z.uuid().optional(),
   ownerId: z.uuid().optional(),
   isPrimary: z.enum(['true', 'false']).optional(),
+  ...scoreListFields,
 });
 
 /** 联系人返回时附带的所属客户 / account included with contacts */
@@ -90,8 +93,8 @@ const contactOrder: Prisma.ContactOrderByWithRelationInput[] = [{ isPrimary: 'de
  * 列表与导出共用的查询条件（可见范围 + 筛选 + 搜索）。
  * Query conditions shared by the list and the export (visibility + filters + search).
  */
-export function accountWhere(ctx: AuthContext, query: Omit<z.infer<typeof accountListSchema>, 'page' | 'pageSize'>): Prisma.AccountWhereInput {
-  const where: Prisma.AccountWhereInput = { AND: [visible(ctx), { industry: query.industry, ownerId: query.ownerId }, tagFilter(query.tagId)] };
+export function accountWhere(ctx: AuthContext, query: Omit<z.infer<typeof accountListSchema>, 'page' | 'pageSize'>, score?: Prisma.IntFilter): Prisma.AccountWhereInput {
+  const where: Prisma.AccountWhereInput = { AND: [visible(ctx), { industry: query.industry, ownerId: query.ownerId, score }, tagFilter(query.tagId)] };
   if (query.q) {
     const c = containsText(query.q);
     where.OR = [{ name: c }, { phone: c }, { website: c }, { address: c }, { contacts: { some: { name: c } } }];
@@ -104,12 +107,12 @@ export function accountWhere(ctx: AuthContext, query: Omit<z.infer<typeof accoun
  * Search accounts with pagination (name, phone, website, address, contact name).
  */
 export async function listAccounts(ctx: AuthContext, query: z.infer<typeof accountListSchema>): Promise<Page<unknown>> {
-  const where = accountWhere(ctx, query);
+  const where = accountWhere(ctx, query, await gradeRange(ctx.organizationId, 'ACCOUNT', query.grade));
   const [items, total] = await prisma.$transaction([
     prisma.account.findMany({
       where,
       include: listInclude(ctx),
-      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+      orderBy: scoreOrder<Prisma.AccountOrderByWithRelationInput>(query.sort, [{ createdAt: 'desc' }, { id: 'asc' }]),
       skip: (query.page - 1) * query.pageSize,
       take: query.pageSize,
     }),
@@ -234,9 +237,10 @@ async function requireContact(ctx: AuthContext, id: string) {
  * Query conditions shared by the contact list and export: visible account (sales reps see contacts of their own
  * accounts) + filters + search (name, title, phone, email, account name).
  */
-export function contactWhere(ctx: AuthContext, query: Omit<z.infer<typeof contactListSchema>, 'page' | 'pageSize'>): Prisma.ContactWhereInput {
+export function contactWhere(ctx: AuthContext, query: Omit<z.infer<typeof contactListSchema>, 'page' | 'pageSize'>, score?: Prisma.IntFilter): Prisma.ContactWhereInput {
   const where: Prisma.ContactWhereInput = {
     organizationId: ctx.organizationId,
+    score,
     account: { AND: [visible(ctx), query.ownerId ? { ownerId: query.ownerId } : {}] },
     accountId: query.accountId,
     isPrimary: query.isPrimary === undefined ? undefined : query.isPrimary === 'true',
@@ -253,9 +257,9 @@ export function contactWhere(ctx: AuthContext, query: Omit<z.infer<typeof contac
  * Search all visible contacts, newest first, paginated.
  */
 export async function listAllContacts(ctx: AuthContext, query: z.infer<typeof contactListSchema>): Promise<Page<unknown>> {
-  const where = contactWhere(ctx, query);
+  const where = contactWhere(ctx, query, await gradeRange(ctx.organizationId, 'CONTACT', query.grade));
   const [items, total] = await prisma.$transaction([
-    prisma.contact.findMany({ where, include: contactInclude, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }], skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
+    prisma.contact.findMany({ where, include: contactInclude, orderBy: scoreOrder<Prisma.ContactOrderByWithRelationInput>(query.sort, [{ createdAt: 'desc' }, { id: 'asc' }]), skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
     prisma.contact.count({ where }),
   ]);
   return { items, total, page: query.page, pageSize: query.pageSize };

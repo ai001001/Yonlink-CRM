@@ -1,10 +1,11 @@
 /**
- * GET/PUT /api/lead-scoring — 线索评分规则与分级阈值（查看：所有用户；保存：需 scoring.manage，整体替换并重算）。
- * Lead scoring rules and grade thresholds (read: everyone; save: scoring.manage, replaces all and rescores).
+ * GET/PUT /api/lead-scoring — 线索评分规则（兼容旧地址，等同 /api/scoring/lead）。
+ * Lead scoring rules (kept for compatibility; same as /api/scoring/lead).
  */
+import { ScoringEntity } from '@/generated/prisma/enums';
 import { authedRoute, parseBody, preflight } from '@/server/http';
-import { getScoring, saveScoring, scoringSaveSchema } from '@/server/modules/lead-scoring';
+import { getScoring, saveScoring, scoringSaveSchema } from '@/server/modules/scoring';
 
-export const GET = authedRoute(async (_req, ctx) => Response.json(await getScoring(ctx)));
-export const PUT = authedRoute(async (req, ctx) => Response.json(await saveScoring(ctx, await parseBody(req, scoringSaveSchema))));
+export const GET = authedRoute(async (_req, ctx) => Response.json(await getScoring(ctx, ScoringEntity.LEAD)));
+export const PUT = authedRoute(async (req, ctx) => Response.json(await saveScoring(ctx, ScoringEntity.LEAD, await parseBody(req, scoringSaveSchema(ScoringEntity.LEAD)))));
 export const OPTIONS = preflight;

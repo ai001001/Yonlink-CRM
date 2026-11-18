@@ -95,7 +95,7 @@ test('标签：添加、筛选、移除、批量、管理 / tags: add, filter, r
   await page.locator('.ant-popover:visible').getByRole('button', { name: /确\s*定|OK/ }).click();
   await expect(manager).toContainText('暂无标签');
   await manager.getByRole('button', { name: 'Close' }).or(manager.locator('.ant-modal-close')).first().click();
-  for (const n of ['甲', '乙']) await expect(page.getByRole('row', { name: new RegExp(`E2E 标签客户${n}`) }).locator('.ant-tag')).toHaveCount(0);
+  for (const n of ['甲', '乙']) await expect(page.getByRole('row', { name: new RegExp(`E2E 标签客户${n}`) }).getByTestId('tag-list').locator('.ant-tag')).toHaveCount(0);
 
   // 审计 / audit
   await nav(page, '审计日志');

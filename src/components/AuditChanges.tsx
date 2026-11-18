@@ -259,6 +259,7 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
   if (entry.entityType === 'scoring') {
     // 评分规则：规则文本前后对比、阈值变化、重算条数 / scoring: rules before → after, thresholds, rescored count
     const list = (v: unknown) => (Array.isArray(v) && v.length ? v.join(t('common.listSep')) : '—');
+    if (typeof c.entity === 'string') lines.push(t('scoring.auditEntity', { entity: t(`scoring.entity.${c.entity}` as MessageKey) }));
     if (Array.isArray(c.rules)) lines.push(`${t('scoring.rules')}${t('common.colon')}${list(c.rules[0])} → ${list(c.rules[1])}`);
     for (const k of ['hotScore', 'warmScore'] as const) {
       const v = c[k];

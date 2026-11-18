@@ -65,6 +65,7 @@
 | 价格表 | ✅ | ✅ | ✅ | [price-books.md](price-books.md) |
 | 网页表单收集线索 | ✅ | ✅ | ✅ | [web-forms.md](web-forms.md) |
 | 线索评分 | ✅ | ✅ | ✅ | [lead-scoring.md](lead-scoring.md) |
+| 客户与联系人评分 | ✅ | ✅ | ✅ | [account-contact-scoring.md](account-contact-scoring.md) |
 
 ## 整体回归（全部模块完成后）
 命令：`scripts/regression.sh final-mvp` → **PASS**（lint、typecheck、11 文件 181/181、静态导出、生产构建、E2E 6/6）。原始输出：[results/final-mvp-r3-regression.txt](results/final-mvp-r3-regression.txt)

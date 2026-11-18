@@ -1,8 +1,9 @@
 /**
- * 线索评分界面：评分设置读取、评分标签（分数 + 分级颜色）、得分明细、评分规则编辑弹窗。
- * 所有用户可查看规则；有 scoring.manage 时可编辑并保存（保存后服务端重算全部线索）。
- * Lead scoring UI: loading the setup, the score tag (score + grade colour), the breakdown and the rules editor. Everyone
- * can view the rules; users with scoring.manage can edit and save them (the server then rescores every lead).
+ * 评分界面（线索、客户、联系人共用）：评分设置读取、评分标签（分数 + 分级颜色）、分级筛选与排序、得分明细、
+ * 评分规则编辑弹窗。所有用户可查看规则；有 scoring.manage 时可编辑并保存（保存后服务端重算该对象的全部记录）。
+ * Scoring UI shared by leads, accounts and contacts: loading the setup, the score tag (score + grade colour), grade filter
+ * and sort, the breakdown and the rules editor. Everyone can view the rules; users with scoring.manage can edit and save
+ * them (the server then rescores every record of that entity).
  */
 'use client';
 
@@ -12,8 +13,11 @@ import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { t, tEnum, type MessageKey } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 
+/** 评分对象 / scored entity */
+export type ScoreEntity = 'lead' | 'account' | 'contact';
+
 /** 规则类型 / rule kind */
-export type RuleKind = 'FIELD_EQUALS' | 'FIELD_FILLED' | 'ACTIVITY_COUNT';
+export type RuleKind = 'FIELD_EQUALS' | 'FIELD_FILLED' | 'ACTIVITY_COUNT' | 'RELATED_COUNT';
 
 /** 评分规则 / scoring rule */
 export interface ScoringRule {
@@ -39,7 +43,43 @@ export type Grade = 'hot' | 'warm' | 'cold';
 const GRADE_COLOR: Record<Grade, string> = { hot: 'red', warm: 'orange', cold: 'blue' };
 const SOURCES = ['WEBSITE', 'REFERRAL', 'EXHIBITION', 'COLD_CALL', 'ADVERTISEMENT', 'SOCIAL_MEDIA', 'OTHER'];
 const STATUSES = ['NEW', 'CONTACTED', 'QUALIFIED', 'UNQUALIFIED', 'CONVERTED'];
-const FILLED = ['company', 'title', 'email', 'phone', 'mobile', 'description', 'campaign', 'web_form'];
+const INDUSTRIES = ['MANUFACTURING', 'IT', 'FINANCE', 'RETAIL', 'EDUCATION', 'HEALTHCARE', 'CONSTRUCTION', 'LOGISTICS', 'GOVERNMENT', 'OTHER'];
+
+/**
+ * 各对象可用的规则：类型 → 字段；“字段等于”的取值另见 valueOptions。须与服务端校验及数据库约束一致。
+ * Rules available per entity: kind → fields; FIELD_EQUALS values are in valueOptions. Must match the server and database.
+ */
+const SCHEMA: Record<ScoreEntity, Partial<Record<RuleKind, string[]>>> = {
+  lead: {
+    FIELD_EQUALS: ['source', 'status'],
+    FIELD_FILLED: ['company', 'title', 'email', 'phone', 'mobile', 'description', 'campaign', 'web_form'],
+    ACTIVITY_COUNT: [],
+  },
+  account: {
+    FIELD_EQUALS: ['industry'],
+    FIELD_FILLED: ['phone', 'website', 'address', 'description', 'price_book'],
+    ACTIVITY_COUNT: [],
+    RELATED_COUNT: ['contacts', 'won_deals', 'open_deals'],
+  },
+  contact: {
+    FIELD_EQUALS: ['is_primary'],
+    FIELD_FILLED: ['title', 'phone', 'email'],
+    RELATED_COUNT: ['deal_roles', 'decision_roles'],
+  },
+};
+
+/** “字段等于”的取值选项 / value options of a FIELD_EQUALS rule */
+function valueOptions(field: string | null | undefined): { value: string; label: string }[] {
+  if (field === 'status') return STATUSES.map((v) => ({ value: v, label: tEnum('leadStatus', v) }));
+  if (field === 'industry') return INDUSTRIES.map((v) => ({ value: v, label: tEnum('industry', v) }));
+  if (field === 'is_primary') return [{ value: 'true', label: t('common.yes') }];
+  return SOURCES.map((v) => ({ value: v, label: tEnum('leadSource', v) }));
+}
+
+/** 字段名称 / field label */
+function fieldLabel(field: string | null | undefined): string {
+  return t(`scoring.field.${field}` as MessageKey);
+}
 
 /**
  * 按阈值分级。
@@ -50,16 +90,16 @@ export function gradeOf(score: number, c: { hotScore: number; warmScore: number 
 }
 
 /**
- * 读取评分设置。
- * Load the scoring setup.
+ * 读取某对象的评分设置。
+ * Load an entity's scoring setup.
  */
-export function useScoring(): { config: ScoringConfig | null; reload: () => void } {
+export function useScoring(entity: ScoreEntity): { config: ScoringConfig | null; reload: () => void } {
   const [config, setConfig] = useState<ScoringConfig | null>(null);
   const reload = useCallback(() => {
-    api<ScoringConfig>('/api/lead-scoring')
+    api<ScoringConfig>(`/api/scoring/${entity}`)
       .then(setConfig)
       .catch(() => setConfig(null));
-  }, []);
+  }, [entity]);
   useEffect(() => {
     reload();
   }, [reload]);
@@ -67,15 +107,17 @@ export function useScoring(): { config: ScoringConfig | null; reload: () => void
 }
 
 /**
- * 规则的说明文字，如“来源为 网站”“已填写 邮箱”“每条已完成跟进（最多 3 条）”。
- * Describe a rule, e.g. "Source is Website", "Email filled", "Each completed activity (up to 3)".
+ * 规则的说明文字，如“来源为网站”“已填写邮箱”“每条已完成跟进（最多 3 条）”“每个赢单商机（最多 5 个）”。
+ * Describe a rule, e.g. "Source is Website", "Email filled", "Each completed activity (up to 3)", "Each won deal (up to 5)".
  */
 export function ruleLabel(r: ScoringRule): string {
   if (r.kind === 'FIELD_EQUALS') {
-    const value = r.field === 'source' ? tEnum('leadSource', r.value ?? '') : tEnum('leadStatus', r.value ?? '');
-    return t(r.field === 'source' ? 'scoring.rule.sourceIs' : 'scoring.rule.statusIs', { value });
+    if (r.field === 'is_primary') return t('scoring.rule.isPrimary');
+    const value = valueOptions(r.field).find((o) => o.value === r.value)?.label ?? r.value ?? '';
+    return t('scoring.rule.equals', { field: fieldLabel(r.field), value });
   }
-  if (r.kind === 'FIELD_FILLED') return t('scoring.rule.filled', { field: t(`scoring.field.${r.field}` as MessageKey) });
+  if (r.kind === 'FIELD_FILLED') return t('scoring.rule.filled', { field: fieldLabel(r.field) });
+  if (r.kind === 'RELATED_COUNT') return t(`scoring.rule.related.${r.field}` as MessageKey, { n: r.maxCount ?? 0 });
   return t('scoring.rule.activities', { n: r.maxCount ?? 0 });
 }
 
@@ -99,16 +141,46 @@ export function ScoreTag({ score, config }: { score: number; config: ScoringConf
 }
 
 /**
- * 线索得分明细（命中的规则与分值）。
- * A lead's score breakdown (matched rules and points).
+ * 分级筛选与排序选择（列表页工具栏）。
+ * Grade filter and sort selects for list toolbars.
  */
-export function LeadScoreDetail({ leadId, version }: { leadId: string; version: string }) {
+export function ScoreFilters({ grade, onGrade, sort, onSort }: { grade?: string; onGrade: (v: string | undefined) => void; sort?: string; onSort: (v: string | undefined) => void }) {
+  return (
+    <>
+      <Select
+        allowClear
+        aria-label={t('scoring.gradeFilter')}
+        placeholder={t('scoring.gradeFilter')}
+        style={{ width: 120 }}
+        value={grade}
+        onChange={onGrade}
+        options={(['hot', 'warm', 'cold'] as const).map((g) => ({ value: g, label: t(`scoring.grade.${g}`) }))}
+      />
+      <Select
+        aria-label={t('scoring.sort')}
+        style={{ width: 150 }}
+        value={sort ?? 'newest'}
+        onChange={(v: string) => onSort(v === 'newest' ? undefined : v)}
+        options={[
+          { value: 'newest', label: t('scoring.sortNewest') },
+          { value: 'score', label: t('scoring.sortScore') },
+        ]}
+      />
+    </>
+  );
+}
+
+/**
+ * 记录的得分明细（命中的规则与分值）。
+ * A record's score breakdown (matched rules and points).
+ */
+export function ScoreDetail({ entity, id, version }: { entity: ScoreEntity; id: string; version: string }) {
   const [data, setData] = useState<{ score: number; items: (ScoringRule & { ruleId: string })[] } | null>(null);
   useEffect(() => {
-    api<{ score: number; items: (ScoringRule & { ruleId: string })[] }>(`/api/leads/${leadId}/score`)
+    api<{ score: number; items: (ScoringRule & { ruleId: string })[] }>(`/api/${entity}s/${id}/score`)
       .then(setData)
       .catch(() => setData(null));
-  }, [leadId, version]);
+  }, [entity, id, version]);
   if (!data) return null;
   if (!data.items.length) return <Typography.Text type="secondary">{t('scoring.noMatch')}</Typography.Text>;
   return (
@@ -135,7 +207,21 @@ interface RuleForm {
  * 评分规则弹窗：查看或编辑规则与分级阈值。
  * Scoring rules modal: view or edit the rules and grade thresholds.
  */
-export function ScoringRulesModal({ open, onClose, config, canManage, onSaved }: { open: boolean; onClose: () => void; config: ScoringConfig | null; canManage: boolean; onSaved: () => void }) {
+export function ScoringRulesModal({
+  entity,
+  open,
+  onClose,
+  config,
+  canManage,
+  onSaved,
+}: {
+  entity: ScoreEntity;
+  open: boolean;
+  onClose: () => void;
+  config: ScoringConfig | null;
+  canManage: boolean;
+  onSaved: () => void;
+}) {
   const { message } = App.useApp();
   const [form] = Form.useForm<{ hotScore: number; warmScore: number; rules: RuleForm[] }>();
   const [saving, setSaving] = useState(false);
@@ -150,17 +236,18 @@ export function ScoringRulesModal({ open, onClose, config, canManage, onSaved }:
     const body = {
       hotScore: v.hotScore,
       warmScore: v.warmScore,
-      rules: (v.rules ?? []).map((r) =>
-        r.kind === 'ACTIVITY_COUNT'
-          ? { kind: r.kind, maxCount: r.maxCount, points: r.points, isActive: r.isActive ?? true }
-          : r.kind === 'FIELD_FILLED'
-            ? { kind: r.kind, field: r.field, points: r.points, isActive: r.isActive ?? true }
-            : { kind: r.kind, field: r.field, value: r.value, points: r.points, isActive: r.isActive ?? true },
-      ),
+      // 按类型只提交对应字段 / send only the fields of each kind
+      rules: (v.rules ?? []).map((r) => {
+        const common = { kind: r.kind, points: r.points, isActive: r.isActive ?? true };
+        if (r.kind === 'ACTIVITY_COUNT') return { ...common, maxCount: r.maxCount };
+        if (r.kind === 'RELATED_COUNT') return { ...common, field: r.field, maxCount: r.maxCount };
+        if (r.kind === 'FIELD_FILLED') return { ...common, field: r.field };
+        return { ...common, field: r.field, value: r.value };
+      }),
     };
     setSaving(true);
     try {
-      const r = await api<{ rescored: number }>('/api/lead-scoring', { method: 'PUT', body });
+      const r = await api<{ rescored: number }>(`/api/scoring/${entity}`, { method: 'PUT', body });
       message.success(t('scoring.saved', { n: r.rescored }));
       onSaved();
       onClose();
@@ -171,13 +258,8 @@ export function ScoringRulesModal({ open, onClose, config, canManage, onSaved }:
     }
   };
 
-  const fieldOptions = (kind: RuleKind) =>
-    kind === 'FIELD_EQUALS'
-      ? [
-          { value: 'source', label: t('leads.source') },
-          { value: 'status', label: t('leads.status') },
-        ]
-      : FILLED.map((f) => ({ value: f, label: t(`scoring.field.${f}` as MessageKey) }));
+  const kinds = Object.keys(SCHEMA[entity]) as RuleKind[];
+  const fieldOptions = (kind: RuleKind) => (SCHEMA[entity][kind] ?? []).map((f) => ({ value: f, label: fieldLabel(f) }));
 
   return (
     <Modal
@@ -204,7 +286,7 @@ export function ScoringRulesModal({ open, onClose, config, canManage, onSaved }:
             ]
       }
     >
-      <Alert type="info" showIcon title={t('scoring.hint')} style={{ marginBottom: 16 }} />
+      <Alert type="info" showIcon title={t(entity === 'lead' ? 'scoring.hint' : entity === 'account' ? 'scoring.hint.account' : 'scoring.hint.contact')} style={{ marginBottom: 16 }} />
       <Form form={form} name="scoring" layout="vertical" disabled={!canManage}>
         <Space wrap>
           <Form.Item name="hotScore" label={t('scoring.hotScore')} rules={[{ required: true, message: t('common.required', { field: t('scoring.hotScore') }) }]}>
@@ -220,17 +302,18 @@ export function ScoringRulesModal({ open, onClose, config, canManage, onSaved }:
             <div data-testid="scoring-rules">
               {!rows.length && <Typography.Paragraph type="secondary">{t('scoring.noRules')}</Typography.Paragraph>}
               {rows.map((row, i) => {
-                const kind = rules[row.name]?.kind ?? 'FIELD_EQUALS';
+                const kind = rules[row.name]?.kind ?? kinds[0]!;
                 const field = rules[row.name]?.field;
                 return (
                   <Space key={row.key} align="start" wrap style={{ display: 'flex' }}>
                     <Form.Item name={[row.name, 'kind']} style={{ width: 150 }}>
                       <Select
                         aria-label={`${t('scoring.kind')} ${i + 1}`}
-                        options={(['FIELD_EQUALS', 'FIELD_FILLED', 'ACTIVITY_COUNT'] as const).map((k) => ({ value: k, label: t(`scoring.kind.${k}`) }))}
+                        options={kinds.map((k) => ({ value: k, label: t(`scoring.kind.${k}`) }))}
                         onChange={(k: RuleKind) => {
                           const next = [...(form.getFieldValue('rules') as RuleForm[])];
-                          next[row.name] = { kind: k, points: next[row.name]?.points ?? 10, isActive: next[row.name]?.isActive ?? true, ...(k === 'ACTIVITY_COUNT' ? { maxCount: 3 } : {}) };
+                          const counted = k === 'ACTIVITY_COUNT' || k === 'RELATED_COUNT';
+                          next[row.name] = { kind: k, points: next[row.name]?.points ?? 10, isActive: next[row.name]?.isActive ?? true, ...(counted ? { maxCount: 3 } : {}) };
                           form.setFieldsValue({ rules: next });
                         }}
                       />
@@ -245,11 +328,11 @@ export function ScoringRulesModal({ open, onClose, config, canManage, onSaved }:
                         <Select
                           aria-label={`${t('scoring.value')} ${i + 1}`}
                           placeholder={t('scoring.value')}
-                          options={(field === 'status' ? STATUSES : SOURCES).map((v) => ({ value: v, label: field === 'status' ? tEnum('leadStatus', v) : tEnum('leadSource', v) }))}
+                          options={valueOptions(field)}
                         />
                       </Form.Item>
                     )}
-                    {kind === 'ACTIVITY_COUNT' && (
+                    {(kind === 'ACTIVITY_COUNT' || kind === 'RELATED_COUNT') && (
                       <Form.Item name={[row.name, 'maxCount']} rules={[{ required: true, message: t('common.required', { field: t('scoring.maxCount') }) }]}>
                         <InputNumber min={1} max={50} precision={0} prefix={t('scoring.maxCountPrefix')} aria-label={`${t('scoring.maxCount')} ${i + 1}`} />
                       </Form.Item>
@@ -271,7 +354,7 @@ export function ScoringRulesModal({ open, onClose, config, canManage, onSaved }:
                 );
               })}
               {canManage && rows.length < 50 && (
-                <Button type="dashed" icon={<PlusOutlined />} onClick={() => add({ kind: 'FIELD_FILLED', points: 10, isActive: true })}>
+                <Button type="dashed" icon={<PlusOutlined />} onClick={() => add({ kind: 'FIELD_FILLED', points: 10, isActive: true })} data-testid="scoring-add">
                   {t('scoring.add')}
                 </Button>
               )}

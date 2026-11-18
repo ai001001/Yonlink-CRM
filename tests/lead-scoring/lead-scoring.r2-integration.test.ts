@@ -46,7 +46,7 @@ describe('lead scoring R2 permissions & isolation', () => {
       expect((await call(scoring.GET, { token: who.token })).json.rules).toHaveLength(3);
       expect((await save(who, { rules: [] })).status).toBe(403);
     }
-    expect(await prisma.leadScoringRule.count()).toBe(3);
+    expect(await prisma.scoringRule.count()).toBe(3);
     expect((await save(manager, { hotScore: 70 })).status).toBe(200);
     expect((await call(scoring.PUT, { body: { hotScore: 1, warmScore: 0, rules: [] }, method: 'PUT' })).status).toBe(401);
     // 销售只能查看自己线索的明细 / sales see breakdowns of their own leads only
@@ -81,7 +81,7 @@ describe('lead scoring R2 permissions & isolation', () => {
     const two = Array.from({ length: 3 }, () => ({ kind: 'FIELD_FILLED', field: 'phone', points: 2 }));
     const results = await Promise.all([save(admin, { rules: one }), save(manager, { rules: two }), save(admin, { rules: one }), save(manager, { rules: two })]);
     expect(results.map((r) => r.status)).toEqual([200, 200, 200, 200]);
-    const rules = await prisma.leadScoringRule.findMany({ where: { organizationId: admin.org.id } });
+    const rules = await prisma.scoringRule.findMany({ where: { organizationId: admin.org.id } });
     const fields = new Set(rules.map((r) => r.field));
     expect(fields.size).toBe(1);
     expect(rules.length).toBe(fields.has('email') ? 5 : 3);

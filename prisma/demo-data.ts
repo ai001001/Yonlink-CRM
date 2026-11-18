@@ -1079,6 +1079,49 @@ export const DEMO_SCORING = {
   ] as { kind: 'FIELD_EQUALS' | 'FIELD_FILLED' | 'ACTIVITY_COUNT'; field?: string; value?: string; maxCount?: number; points: number }[],
 };
 
+/** 演示评分规则的形状 / shape of demo scoring rules */
+type DemoRule = { kind: 'FIELD_EQUALS' | 'FIELD_FILLED' | 'ACTIVITY_COUNT' | 'RELATED_COUNT'; field?: string; value?: string; maxCount?: number; points: number };
+
+/**
+ * 演示客户评分规则（赢单与进行中商机、联系人数、资料完整度、价格表、制造业、已完成跟进），热门 ≥ 50，温和 ≥ 35
+ * （演示客户资料都较完整，阈值据此设定，使三个分级都有客户）。
+ * Demo account scoring rules (won and open deals, contacts, completeness, price book, manufacturing, completed
+ * activities); hot >= 50, warm >= 35 (demo accounts are fairly complete, so the thresholds give all three grades).
+ */
+export const DEMO_ACCOUNT_SCORING = {
+  hotScore: 50,
+  warmScore: 35,
+  rules: [
+    { kind: 'RELATED_COUNT', field: 'won_deals', maxCount: 5, points: 15 },
+    { kind: 'RELATED_COUNT', field: 'open_deals', maxCount: 5, points: 8 },
+    { kind: 'RELATED_COUNT', field: 'contacts', maxCount: 3, points: 5 },
+    { kind: 'FIELD_FILLED', field: 'website', points: 5 },
+    { kind: 'FIELD_FILLED', field: 'phone', points: 5 },
+    { kind: 'FIELD_FILLED', field: 'price_book', points: 5 },
+    { kind: 'FIELD_EQUALS', field: 'industry', value: 'MANUFACTURING', points: 10 },
+    { kind: 'ACTIVITY_COUNT', maxCount: 5, points: 3 },
+  ] as DemoRule[],
+};
+
+/**
+ * 演示联系人评分规则（主要联系人、资料完整度、商机中的决策人与其他角色），热门 ≥ 60，温和 ≥ 30
+ * （演示联系人都有邮箱、电话、职位，阈值据此设定，使三个分级都有联系人）。
+ * Demo contact scoring rules (primary contact, completeness, decision-maker and other deal roles); hot >= 60, warm >= 30
+ * (every demo contact has an email, phone and title, so the thresholds give all three grades).
+ */
+export const DEMO_CONTACT_SCORING = {
+  hotScore: 60,
+  warmScore: 30,
+  rules: [
+    { kind: 'FIELD_EQUALS', field: 'is_primary', value: 'true', points: 20 },
+    { kind: 'FIELD_FILLED', field: 'email', points: 10 },
+    { kind: 'FIELD_FILLED', field: 'phone', points: 5 },
+    { kind: 'FIELD_FILLED', field: 'title', points: 5 },
+    { kind: 'RELATED_COUNT', field: 'decision_roles', maxCount: 3, points: 15 },
+    { kind: 'RELATED_COUNT', field: 'deal_roles', maxCount: 5, points: 5 },
+  ] as DemoRule[],
+};
+
 /**
  * 演示网页表单：官网产品咨询（关联最多 3 条来源为网站的演示线索）、研讨会报名（关联研讨会活动）、已停用的展会登记表。
  * Demo web forms: a website enquiry form (linked to up to 3 website demo leads), a webinar sign-up (linked to the webinar

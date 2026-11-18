@@ -38,6 +38,10 @@ export interface Contact {
   phone: string | null;
   email: string | null;
   isPrimary: boolean;
+  /** 评分（服务端计算）/ score (computed server-side) */
+  score: number;
+  /** 最近修改时间 / last update */
+  updatedAt?: string;
 }
 
 /** 联系人（列表与详情，含所属客户）/ Contact with its account (list and detail) */
@@ -60,6 +64,8 @@ export interface Account {
   _count: { contacts: number; deals: number };
   contacts?: Contact[];
   tags?: RecordTags;
+  /** 评分（服务端计算）/ score (computed server-side) */
+  score: number;
   /** 默认价格表（仅详情返回）/ default price book (detail only) */
   priceBook?: { id: string; name: string; isActive: boolean } | null;
   createdAt: string;
