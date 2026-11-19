@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState, type DragEvent } from 'react';
 import { App, Button, Card, Empty, Select, Space, Spin, Tag, Typography } from 'antd';
 import { t, tEnum } from '@/i18n';
 import { api, qs } from '@/lib/api';
+import { ScoreTag, type ScoringConfig } from './Scoring';
 import { fmtDate, fmtMoney } from '@/lib/format';
 import type { Deal } from '@/lib/types';
 import { usePermissions } from './AuthProvider';
@@ -36,9 +37,11 @@ interface Props {
   version: number;
   /** 打开详情 / open the detail drawer */
   onOpen: (deal: Deal) => void;
+  /** 评分设置（显示卡片上的评分）/ scoring setup (shows the score on cards) */
+  scoreConfig?: ScoringConfig | null;
 }
 
-export function DealBoard({ q, version, onOpen }: Props) {
+export function DealBoard({ q, version, onOpen, scoreConfig }: Props) {
   const { message } = App.useApp();
   const perm = usePermissions();
   const [columns, setColumns] = useState<Column[] | null>(null);
@@ -151,7 +154,14 @@ export function DealBoard({ q, version, onOpen }: Props) {
                         {deal.account.name}
                       </Typography.Text>
                     </div>
-                    <div style={{ margin: '4px 0' }}>{fmtMoney(deal.amount, deal.currency)}</div>
+                    <div style={{ margin: '4px 0' }}>
+                      {fmtMoney(deal.amount, deal.currency)}
+                      {scoreConfig && (
+                        <span style={{ marginLeft: 6 }}>
+                          <ScoreTag score={deal.score} config={scoreConfig} />
+                        </span>
+                      )}
+                    </div>
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                       {fmtDate(deal.expectedCloseDate?.slice(0, 10))} {deal.owner?.name ?? t('common.unassigned')}
                     </Typography.Text>

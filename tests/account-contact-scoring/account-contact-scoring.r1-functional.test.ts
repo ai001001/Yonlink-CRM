@@ -52,7 +52,8 @@ describe('account & contact scoring R1 rules', () => {
   it('按对象的接口、默认值、校验、审计；线索规则不受影响且旧地址兼容 / per-entity API', async () => {
     expect((await get('account')).json).toEqual({ entity: 'ACCOUNT', rules: [], hotScore: 60, warmScore: 30 });
     expect((await get('contact')).json).toEqual({ entity: 'CONTACT', rules: [], hotScore: 60, warmScore: 30 });
-    expect((await get('deal')).status).toBe(404);
+    // 未支持的对象返回 404（商机评分上线后改用工单作为示例）/ unsupported entities are 404 (ticket now, since deals are supported)
+    expect((await get('ticket')).status).toBe(404);
     // 各对象只接受自己的字段 / each entity accepts its own fields only
     const bad: [string, object][] = [
       ['account', { kind: 'FIELD_EQUALS', field: 'source', value: 'WEBSITE', points: 5 }],

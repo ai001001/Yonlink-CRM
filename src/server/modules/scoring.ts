@@ -3,6 +3,8 @@
  * - 线索：来源、状态等于；公司、职位、邮箱、电话、手机、描述、来源市场活动、来源网页表单已填写；已完成跟进数。
  * - 客户：行业等于；电话、网站、地址、描述、价格表已填写；已完成跟进数；联系人数、赢单商机数、进行中商机数。
  * - 联系人：是主要联系人；职位、电话、邮箱已填写；在商机中担任的角色数、决策人角色数。
+ * - 商机：阶段等于；预计成交日、描述、来源市场活动已填写；金额（按当天汇率折合人民币）达到阈值；已完成跟进数；
+ *   联系人角色数、决策人数、产品明细数、报价单数、竞争对手数。
  * - 计数类规则每条加分并有上限；分值 -100–100，可为负分；规则可停用。
  * - 分数由数据库函数（lead_score_items、account_score_items、contact_score_items）与触发器在记录及相关记录变化时计算，
  *   任何写入途径都不会遗漏，客户端不能写入。
@@ -19,7 +21,7 @@
  * records in the organization in the same transaction, audited.
  */
 import { z } from 'zod';
-import { LeadStatus, ScoringEntity, ScoringRuleKind } from '@/generated/prisma/enums';
+import { DealStage, LeadStatus, ScoringEntity, ScoringRuleKind } from '@/generated/prisma/enums';
 import { audit, by } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
@@ -30,8 +32,8 @@ import { LEAD_SOURCES } from './leads';
 import { gradeOf, scoreThresholds } from './scoring-grades';
 
 /** 路径中的对象名 → 评分对象 / entity name in the URL → scoring entity */
-export const ENTITY_PARAM = { lead: ScoringEntity.LEAD, account: ScoringEntity.ACCOUNT, contact: ScoringEntity.CONTACT } as const;
-export const entityParamSchema = z.enum(['lead', 'account', 'contact']);
+export const ENTITY_PARAM = { lead: ScoringEntity.LEAD, account: ScoringEntity.ACCOUNT, contact: ScoringEntity.CONTACT, deal: ScoringEntity.DEAL } as const;
+export const entityParamSchema = z.enum(['lead', 'account', 'contact', 'deal']);
 
 const points = z
   .number()
@@ -41,7 +43,13 @@ const points = z
   .refine((v) => v !== 0, 'Points cannot be 0');
 const maxCount = z.number().int().min(1).max(50);
 const base = { points, isActive: z.boolean().default(true) };
-const { FIELD_EQUALS, FIELD_FILLED, ACTIVITY_COUNT, RELATED_COUNT } = ScoringRuleKind;
+const { FIELD_EQUALS, FIELD_FILLED, ACTIVITY_COUNT, RELATED_COUNT, AMOUNT_AT_LEAST } = ScoringRuleKind;
+/** 金额阈值：不超过 16 位的非负整数（人民币元）/ amount threshold: a non-negative integer of up to 16 digits (CNY) */
+const threshold = z
+  .union([z.string().trim(), z.number().int().nonnegative()])
+  .transform((v) => String(v))
+  .pipe(z.string().regex(/^\d{1,16}$/, 'Invalid threshold'))
+  .transform((v) => String(BigInt(v)));
 
 /**
  * 各对象的规则（按类型区分字段）。同一类型有多种取值集合时不能用 discriminatedUnion（类型值重复会在运行时报错），改用 union。
@@ -65,6 +73,13 @@ const RULES = {
     z.strictObject({ kind: z.literal(FIELD_EQUALS), field: z.literal('is_primary'), value: z.literal('true'), ...base }),
     z.strictObject({ kind: z.literal(FIELD_FILLED), field: z.enum(['title', 'phone', 'email']), ...base }),
     z.strictObject({ kind: z.literal(RELATED_COUNT), field: z.enum(['deal_roles', 'decision_roles']), maxCount, ...base }),
+  ]),
+  [ScoringEntity.DEAL]: z.union([
+    z.strictObject({ kind: z.literal(FIELD_EQUALS), field: z.literal('stage'), value: z.enum(DealStage), ...base }),
+    z.strictObject({ kind: z.literal(FIELD_FILLED), field: z.enum(['expected_close_date', 'description', 'campaign']), ...base }),
+    z.strictObject({ kind: z.literal(AMOUNT_AT_LEAST), field: z.literal('amount'), value: threshold, ...base }),
+    z.strictObject({ kind: z.literal(ACTIVITY_COUNT), maxCount, ...base }),
+    z.strictObject({ kind: z.literal(RELATED_COUNT), field: z.enum(['contact_roles', 'decision_roles', 'line_items', 'quotes', 'competitors']), maxCount, ...base }),
   ]),
 };
 
@@ -92,6 +107,7 @@ function ruleText(r: { kind: string; field?: string | null; value?: string | nul
   if (r.kind === FIELD_EQUALS) return `${r.field}=${r.value}:${pts}${off}`;
   if (r.kind === FIELD_FILLED) return `filled:${r.field}:${pts}${off}`;
   if (r.kind === RELATED_COUNT) return `${r.field}×${r.maxCount}:${pts}${off}`;
+  if (r.kind === AMOUNT_AT_LEAST) return `amount>=${r.value}:${pts}${off}`;
   return `activities×${r.maxCount}:${pts}${off}`;
 }
 
@@ -146,7 +162,9 @@ export async function saveScoring(ctx: AuthContext, entity: ScoringEntity, input
         ? await tx.$executeRaw`UPDATE "leads" SET "score" = "score" WHERE "organization_id" = ${org}::uuid`
         : entity === ScoringEntity.ACCOUNT
           ? await tx.$executeRaw`UPDATE "accounts" SET "score" = "score" WHERE "organization_id" = ${org}::uuid`
-          : await tx.$executeRaw`UPDATE "contacts" SET "score" = "score" WHERE "organization_id" = ${org}::uuid`;
+          : entity === ScoringEntity.CONTACT
+            ? await tx.$executeRaw`UPDATE "contacts" SET "score" = "score" WHERE "organization_id" = ${org}::uuid`
+            : await tx.$executeRaw`UPDATE "deals" SET "score" = "score" WHERE "organization_id" = ${org}::uuid`;
     const changes: Record<string, unknown> = { entity, rescored: count };
     const rulesBefore = before.rules.map(ruleText);
     const rulesAfter = input.rules.map(ruleText);
@@ -179,11 +197,16 @@ export async function explainScore(ctx: AuthContext, entity: ScoringEntity, id: 
     if (!r) throw notFound();
     score = r.score;
     rows = await prisma.$queryRaw`SELECT i.rule_id, i.points FROM "accounts" a, "account_score_items"(a) i WHERE a.id = ${id}::uuid AND a.organization_id = ${org}::uuid`;
-  } else {
+  } else if (entity === ScoringEntity.CONTACT) {
     const r = await prisma.contact.findFirst({ where: { id, organizationId: org, account: visible(ctx) }, select: { score: true } });
     if (!r) throw notFound();
     score = r.score;
     rows = await prisma.$queryRaw`SELECT i.rule_id, i.points FROM "contacts" c, "contact_score_items"(c) i WHERE c.id = ${id}::uuid AND c.organization_id = ${org}::uuid`;
+  } else {
+    const r = await prisma.deal.findFirst({ where: { id, ...visible(ctx) }, select: { score: true } });
+    if (!r) throw notFound();
+    score = r.score;
+    rows = await prisma.$queryRaw`SELECT i.rule_id, i.points FROM "deals" d, "deal_score_items"(d) i WHERE d.id = ${id}::uuid AND d.organization_id = ${org}::uuid`;
   }
   const rules = await prisma.scoringRule.findMany({ where: { organizationId: org, id: { in: rows.map((r) => r.rule_id) } } });
   const byId = new Map(rules.map((r) => [r.id, r]));

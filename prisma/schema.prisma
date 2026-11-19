@@ -300,6 +300,8 @@ model Deal {
   stage             DealStage         @default(QUALIFICATION)
   expectedCloseDate DateTime?         @map("expected_close_date") @db.Date
   description       String?           @db.Text
+  /// 商机评分（由数据库触发器按评分规则计算）/ deal score (computed by a database trigger from the scoring rules)
+  score             Int               @default(0)
   createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -327,6 +329,7 @@ model Deal {
   @@index([organizationId, createdAt(sort: Desc)])
   @@index([organizationId, accountId])
   @@index([organizationId, stage])
+  @@index([organizationId, score(sort: Desc)])
   @@map("deals")
 }
 
@@ -1556,6 +1559,7 @@ enum ScoringEntity {
   LEAD
   ACCOUNT
   CONTACT
+  DEAL
 
   @@map("scoring_entity")
 }
@@ -1567,6 +1571,8 @@ enum ScoringRuleKind {
   FIELD_FILLED
   ACTIVITY_COUNT
   RELATED_COUNT
+  /// 金额（折合人民币）达到阈值，仅商机 / amount (in CNY) at least a threshold, deals only
+  AMOUNT_AT_LEAST
 
   @@map("scoring_rule_kind")
 }

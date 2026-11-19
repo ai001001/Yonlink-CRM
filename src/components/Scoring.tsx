@@ -14,10 +14,10 @@ import { t, tEnum, type MessageKey } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 
 /** 评分对象 / scored entity */
-export type ScoreEntity = 'lead' | 'account' | 'contact';
+export type ScoreEntity = 'lead' | 'account' | 'contact' | 'deal';
 
 /** 规则类型 / rule kind */
-export type RuleKind = 'FIELD_EQUALS' | 'FIELD_FILLED' | 'ACTIVITY_COUNT' | 'RELATED_COUNT';
+export type RuleKind = 'FIELD_EQUALS' | 'FIELD_FILLED' | 'ACTIVITY_COUNT' | 'RELATED_COUNT' | 'AMOUNT_AT_LEAST';
 
 /** 评分规则 / scoring rule */
 export interface ScoringRule {
@@ -43,6 +43,7 @@ export type Grade = 'hot' | 'warm' | 'cold';
 const GRADE_COLOR: Record<Grade, string> = { hot: 'red', warm: 'orange', cold: 'blue' };
 const SOURCES = ['WEBSITE', 'REFERRAL', 'EXHIBITION', 'COLD_CALL', 'ADVERTISEMENT', 'SOCIAL_MEDIA', 'OTHER'];
 const STATUSES = ['NEW', 'CONTACTED', 'QUALIFIED', 'UNQUALIFIED', 'CONVERTED'];
+const STAGES = ['QUALIFICATION', 'NEEDS_ANALYSIS', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST'];
 const INDUSTRIES = ['MANUFACTURING', 'IT', 'FINANCE', 'RETAIL', 'EDUCATION', 'HEALTHCARE', 'CONSTRUCTION', 'LOGISTICS', 'GOVERNMENT', 'OTHER'];
 
 /**
@@ -66,12 +67,20 @@ const SCHEMA: Record<ScoreEntity, Partial<Record<RuleKind, string[]>>> = {
     FIELD_FILLED: ['title', 'phone', 'email'],
     RELATED_COUNT: ['deal_roles', 'decision_roles'],
   },
+  deal: {
+    FIELD_EQUALS: ['stage'],
+    AMOUNT_AT_LEAST: ['amount'],
+    FIELD_FILLED: ['expected_close_date', 'description', 'campaign'],
+    ACTIVITY_COUNT: [],
+    RELATED_COUNT: ['contact_roles', 'decision_roles', 'line_items', 'quotes', 'competitors'],
+  },
 };
 
 /** “字段等于”的取值选项 / value options of a FIELD_EQUALS rule */
 function valueOptions(field: string | null | undefined): { value: string; label: string }[] {
   if (field === 'status') return STATUSES.map((v) => ({ value: v, label: tEnum('leadStatus', v) }));
   if (field === 'industry') return INDUSTRIES.map((v) => ({ value: v, label: tEnum('industry', v) }));
+  if (field === 'stage') return STAGES.map((v) => ({ value: v, label: tEnum('dealStage', v) }));
   if (field === 'is_primary') return [{ value: 'true', label: t('common.yes') }];
   return SOURCES.map((v) => ({ value: v, label: tEnum('leadSource', v) }));
 }
@@ -118,6 +127,7 @@ export function ruleLabel(r: ScoringRule): string {
   }
   if (r.kind === 'FIELD_FILLED') return t('scoring.rule.filled', { field: fieldLabel(r.field) });
   if (r.kind === 'RELATED_COUNT') return t(`scoring.rule.related.${r.field}` as MessageKey, { n: r.maxCount ?? 0 });
+  if (r.kind === 'AMOUNT_AT_LEAST') return t('scoring.rule.amountAtLeast', { value: Number(r.value ?? 0).toLocaleString('en-US') });
   return t('scoring.rule.activities', { n: r.maxCount ?? 0 });
 }
 
@@ -242,6 +252,7 @@ export function ScoringRulesModal({
         if (r.kind === 'ACTIVITY_COUNT') return { ...common, maxCount: r.maxCount };
         if (r.kind === 'RELATED_COUNT') return { ...common, field: r.field, maxCount: r.maxCount };
         if (r.kind === 'FIELD_FILLED') return { ...common, field: r.field };
+        if (r.kind === 'AMOUNT_AT_LEAST') return { ...common, field: 'amount', value: String(r.value ?? '') };
         return { ...common, field: r.field, value: r.value };
       }),
     };
@@ -286,7 +297,7 @@ export function ScoringRulesModal({
             ]
       }
     >
-      <Alert type="info" showIcon title={t(entity === 'lead' ? 'scoring.hint' : entity === 'account' ? 'scoring.hint.account' : 'scoring.hint.contact')} style={{ marginBottom: 16 }} />
+      <Alert type="info" showIcon title={t(entity === 'lead' ? 'scoring.hint' : entity === 'account' ? 'scoring.hint.account' : entity === 'contact' ? 'scoring.hint.contact' : 'scoring.hint.deal')} style={{ marginBottom: 16 }} />
       <Form form={form} name="scoring" layout="vertical" disabled={!canManage}>
         <Space wrap>
           <Form.Item name="hotScore" label={t('scoring.hotScore')} rules={[{ required: true, message: t('common.required', { field: t('scoring.hotScore') }) }]}>
@@ -313,12 +324,18 @@ export function ScoringRulesModal({
                         onChange={(k: RuleKind) => {
                           const next = [...(form.getFieldValue('rules') as RuleForm[])];
                           const counted = k === 'ACTIVITY_COUNT' || k === 'RELATED_COUNT';
-                          next[row.name] = { kind: k, points: next[row.name]?.points ?? 10, isActive: next[row.name]?.isActive ?? true, ...(counted ? { maxCount: 3 } : {}) };
+                          next[row.name] = {
+                            kind: k,
+                            points: next[row.name]?.points ?? 10,
+                            isActive: next[row.name]?.isActive ?? true,
+                            ...(counted ? { maxCount: 3 } : {}),
+                            ...(k === 'AMOUNT_AT_LEAST' ? { field: 'amount' } : {}),
+                          };
                           form.setFieldsValue({ rules: next });
                         }}
                       />
                     </Form.Item>
-                    {kind !== 'ACTIVITY_COUNT' && (
+                    {kind !== 'ACTIVITY_COUNT' && kind !== 'AMOUNT_AT_LEAST' && (
                       <Form.Item name={[row.name, 'field']} rules={[{ required: true, message: t('common.required', { field: t('scoring.fieldLabel') }) }]} style={{ width: 130 }}>
                         <Select aria-label={`${t('scoring.fieldLabel')} ${i + 1}`} placeholder={t('scoring.fieldLabel')} options={fieldOptions(kind)} />
                       </Form.Item>
@@ -330,6 +347,11 @@ export function ScoringRulesModal({
                           placeholder={t('scoring.value')}
                           options={valueOptions(field)}
                         />
+                      </Form.Item>
+                    )}
+                    {kind === 'AMOUNT_AT_LEAST' && (
+                      <Form.Item name={[row.name, 'value']} rules={[{ required: true, message: t('common.required', { field: t('scoring.threshold') }) }]}>
+                        <InputNumber min={0} max={9999999999999999} precision={0} prefix={t('scoring.thresholdPrefix')} style={{ width: 200 }} aria-label={`${t('scoring.threshold')} ${i + 1}`} />
                       </Form.Item>
                     )}
                     {(kind === 'ACTIVITY_COUNT' || kind === 'RELATED_COUNT') && (

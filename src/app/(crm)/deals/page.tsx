@@ -7,10 +7,11 @@
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import { App, Button, Card, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Segmented, Select, Space, Statistic, Table, Tabs, Tag, Typography } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined, StarOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { AuditTrail } from '@/components/AuditTrail';
 import { DealBoard } from '@/components/DealBoard';
+import { ScoreDetail, ScoreFilters, ScoreTag, ScoringRulesModal, useScoring } from '@/components/Scoring';
 import { DealItemsPanel } from '@/components/DealItemsPanel';
 import { DealQuotesPanel } from '@/components/DealQuotesPanel';
 import { DealContactRolesPanel } from '@/components/DealContactRolesPanel';
@@ -58,7 +59,11 @@ export default function DealsPage() {
   const [view, setView] = useState<'list' | 'board'>('list');
   const [boardVersion, setBoardVersion] = useState(0);
   const [stage, setStage] = useState<string>();
-  const { data, loading, reload, pagination } = usePagedList<Deal>('/api/deals', { q, stage, tagId, campaignId });
+  const [grade, setGrade] = useState<string>();
+  const [sort, setSort] = useState<string>();
+  const { data, loading, reload, pagination } = usePagedList<Deal>('/api/deals', { q, stage, tagId, campaignId, grade, sort });
+  const scoring = useScoring('deal');
+  const [scoringOpen, setScoringOpen] = useState(false);
   /** 套用视图（null 恢复列表默认筛选）/ apply a saved view (null resets the list filters) */
   const applyView = (f: Record<string, string> | null) => {
     search.set(f?.q ?? '');
@@ -141,7 +146,10 @@ export default function DealsPage() {
       title={t('deals.title')}
       extra={
         <Space>
-          <ExportButton excel resource="deals" filters={{ q, stage, campaignId }} />
+          <Button icon={<StarOutlined />} onClick={() => setScoringOpen(true)}>
+            {t('scoring.title')}
+          </Button>
+          <ExportButton excel resource="deals" filters={{ q, stage, campaignId, grade }} />
           {perm.canCreate && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
               {t('deals.new')}
@@ -169,6 +177,7 @@ export default function DealsPage() {
           {view === 'list' && (
             <Select allowClear aria-label={t('deals.stage')} placeholder={t('deals.stage')} style={{ width: 140 }} options={stageOptions} value={stage} onChange={setStage} />
           )}
+          {view === 'list' && <ScoreFilters grade={grade} onGrade={setGrade} sort={sort} onSort={setSort} />}
         </Space>
         {view === 'list' && (
           <Space size="large" data-testid="deal-sums">
@@ -178,7 +187,7 @@ export default function DealsPage() {
           </Space>
         )}
       </Space>
-      {view === 'board' && <DealBoard q={q} version={boardVersion} onOpen={setDetail} />}
+      {view === 'board' && <DealBoard q={q} version={boardVersion} onOpen={setDetail} scoreConfig={scoring.config} />}
       {view === 'list' && (
         <BulkBar
           path="/api/deals"
@@ -213,6 +222,7 @@ export default function DealsPage() {
             { title: t('deals.account'), render: (_, r) => r.account.name },
             { title: t('deals.amount'), dataIndex: 'amount', align: 'right', render: (v: string, r) => fmtMoney(v, r.currency) },
             { title: t('deals.stage'), dataIndex: 'stage', render: (v: string) => <Tag color={STAGE_COLOR[v]}>{tEnum('dealStage', v)}</Tag> },
+            { title: t('scoring.score'), dataIndex: 'score', render: (v: number) => <ScoreTag score={v} config={scoring.config} /> },
             {
               title: t('deals.expectedCloseDate'),
               dataIndex: 'expectedCloseDate',
@@ -322,6 +332,12 @@ export default function DealsPage() {
                     <Descriptions.Item label={t('deals.stage')}>
                       <Tag color={STAGE_COLOR[detail.stage]}>{tEnum('dealStage', detail.stage)}</Tag>
                     </Descriptions.Item>
+                    <Descriptions.Item label={t('scoring.score')} span={2}>
+                      <Space orientation="vertical" size={4}>
+                        <ScoreTag score={detail.score} config={scoring.config} />
+                        <ScoreDetail entity="deal" id={detail.id} version={`${detail.updatedAt}:${detail.score}`} />
+                      </Space>
+                    </Descriptions.Item>
                     <Descriptions.Item label={t('deals.expectedCloseDate')}>
                       {fmtDate(detail.expectedCloseDate?.slice(0, 10))}
                       {isOverdue(detail) && (
@@ -391,6 +407,7 @@ export default function DealsPage() {
           />
         )}
       </Drawer>
+      <ScoringRulesModal entity="deal" open={scoringOpen} onClose={() => setScoringOpen(false)} config={scoring.config} canManage={perm.can('scoring.manage')} onSaved={() => { scoring.reload(); refresh(); }} />
     </Card>
   );
 }

@@ -1472,6 +1472,23 @@ export const zhCN = {
   'scoring.entity.CONTACT': '联系人',
   'export.excel': '下载 Excel',
   'xlsx.asOf': '统计日期',
+  'scoring.hint.deal': '规则命中即加（或减）分，分数在商机修改，以及跟进、联系人角色、产品明细、报价单、竞争对手变化时自动计算；金额阈值按当天汇率折合人民币比较（缺少汇率的外币商机不计该项，汇率变更后自动重算）；保存规则后会立即重算全部商机。',
+  'scoring.kind.AMOUNT_AT_LEAST': '金额达到',
+  'scoring.threshold': '金额阈值',
+  'scoring.thresholdPrefix': '≥ ¥',
+  'scoring.rule.amountAtLeast': '金额（折合人民币）≥ ¥{value}',
+  'scoring.rule.related.contact_roles': '每个联系人角色（最多 {n} 个）',
+  'scoring.rule.related.line_items': '每个产品明细（最多 {n} 个）',
+  'scoring.rule.related.quotes': '每张报价单（最多 {n} 张）',
+  'scoring.rule.related.competitors': '每个竞争对手（最多 {n} 个）',
+  'scoring.field.stage': '阶段',
+  'scoring.field.amount': '金额',
+  'scoring.field.expected_close_date': '预计成交日期',
+  'scoring.field.contact_roles': '联系人角色',
+  'scoring.field.line_items': '产品明细',
+  'scoring.field.quotes': '报价单',
+  'scoring.field.competitors': '竞争对手',
+  'scoring.entity.DEAL': '商机',
 } as const;
 
 export type MessageKey = keyof typeof zhCN;

@@ -93,6 +93,8 @@ export interface Deal {
   owner: Ref | null;
   createdAt: string;
   updatedAt: string;
+  /** 评分（服务端计算）/ score (computed server-side) */
+  score: number;
   /** 来源市场活动 / source campaign */
   campaignId?: string | null;
   campaign?: { id: string; name: string } | null;

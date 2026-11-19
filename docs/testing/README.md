@@ -68,6 +68,7 @@
 | 客户与联系人评分 | ✅ | ✅ | ✅ | [account-contact-scoring.md](account-contact-scoring.md) |
 | 报表导出 Excel | ✅ | ✅ | ✅ | [report-excel.md](report-excel.md) |
 | 列表导出 Excel | ✅ | ✅ | ✅ | [list-excel.md](list-excel.md) |
+| 商机评分 | ✅ | ✅ | ✅ | [deal-scoring.md](deal-scoring.md) |
 
 ## 整体回归（全部模块完成后）
 命令：`scripts/regression.sh final-mvp` → **PASS**（lint、typecheck、11 文件 181/181、静态导出、生产构建、E2E 6/6）。原始输出：[results/final-mvp-r3-regression.txt](results/final-mvp-r3-regression.txt)

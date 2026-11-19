@@ -15,6 +15,7 @@ import { assertCampaign } from './campaign-links';
 import { removeStaleRoles } from './deal-contact-roles';
 import { notifyAssigned } from './notifications';
 import { recycle } from './recycle-bin';
+import { gradeRange, scoreListFields, scoreOrder } from './scoring-grades';
 import { tagFilter, tagsInclude } from './tags';
 import { containsText, listQuery, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
@@ -64,6 +65,7 @@ export const dealListSchema = listQuery.extend({
   ownerId: z.uuid().optional(),
   tagId: z.uuid().optional(),
   campaignId: z.uuid().optional(),
+  ...scoreListFields,
 });
 
 const include = {
@@ -87,8 +89,8 @@ async function assertAccount(ctx: AuthContext, accountId: string): Promise<void>
  * 列表与导出共用的查询条件（可见范围 + 筛选 + 搜索）。
  * Query conditions shared by the list and the export (visibility + filters + search).
  */
-export function dealWhere(ctx: AuthContext, query: Omit<z.infer<typeof dealListSchema>, 'page' | 'pageSize'>): Prisma.DealWhereInput {
-  const where: Prisma.DealWhereInput = { AND: [visible(ctx), { stage: query.stage, accountId: query.accountId, ownerId: query.ownerId, campaignId: query.campaignId }, tagFilter(query.tagId)] };
+export function dealWhere(ctx: AuthContext, query: Omit<z.infer<typeof dealListSchema>, 'page' | 'pageSize'>, score?: Prisma.IntFilter): Prisma.DealWhereInput {
+  const where: Prisma.DealWhereInput = { AND: [visible(ctx), { stage: query.stage, accountId: query.accountId, ownerId: query.ownerId, campaignId: query.campaignId, score }, tagFilter(query.tagId)] };
   if (query.q) {
     const c = containsText(query.q);
     where.OR = [{ name: c }, { account: { name: c } }];
@@ -104,12 +106,12 @@ export async function listDeals(
   ctx: AuthContext,
   query: z.infer<typeof dealListSchema>,
 ): Promise<Page<unknown> & { sums: { currency: string; amount: string }[] }> {
-  const where = dealWhere(ctx, query);
+  const where = dealWhere(ctx, query, await gradeRange(ctx.organizationId, 'DEAL', query.grade));
   const [items, total, sums] = await prisma.$transaction([
     prisma.deal.findMany({
       where,
       include,
-      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+      orderBy: scoreOrder<Prisma.DealOrderByWithRelationInput>(query.sort, [{ createdAt: 'desc' }, { id: 'asc' }]),
       skip: (query.page - 1) * query.pageSize,
       take: query.pageSize,
     }),

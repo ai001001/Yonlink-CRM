@@ -1080,7 +1080,7 @@ export const DEMO_SCORING = {
 };
 
 /** 演示评分规则的形状 / shape of demo scoring rules */
-type DemoRule = { kind: 'FIELD_EQUALS' | 'FIELD_FILLED' | 'ACTIVITY_COUNT' | 'RELATED_COUNT'; field?: string; value?: string; maxCount?: number; points: number };
+type DemoRule = { kind: 'FIELD_EQUALS' | 'FIELD_FILLED' | 'ACTIVITY_COUNT' | 'RELATED_COUNT' | 'AMOUNT_AT_LEAST'; field?: string; value?: string; maxCount?: number; points: number };
 
 /**
  * 演示客户评分规则（赢单与进行中商机、联系人数、资料完整度、价格表、制造业、已完成跟进），热门 ≥ 50，温和 ≥ 35
@@ -1119,6 +1119,31 @@ export const DEMO_CONTACT_SCORING = {
     { kind: 'FIELD_FILLED', field: 'title', points: 5 },
     { kind: 'RELATED_COUNT', field: 'decision_roles', maxCount: 3, points: 15 },
     { kind: 'RELATED_COUNT', field: 'deal_roles', maxCount: 5, points: 5 },
+  ] as DemoRule[],
+};
+
+/**
+ * 演示商机评分规则（金额阶梯、阶段、决策人与联系人角色、产品明细、报价单、竞争对手减分、已完成跟进、预计成交日），
+ * 阈值按演示商机的分布设定，使三个分级都有商机。
+ * Demo deal scoring rules (amount tiers, stage, decision-maker and contact roles, line items, quotes, competitors as a
+ * penalty, completed activities, expected close date); thresholds follow the demo distribution so all grades occur.
+ */
+export const DEMO_DEAL_SCORING = {
+  hotScore: 60,
+  warmScore: 30,
+  rules: [
+    { kind: 'AMOUNT_AT_LEAST', field: 'amount', value: '100000', points: 15 },
+    { kind: 'AMOUNT_AT_LEAST', field: 'amount', value: '500000', points: 15 },
+    { kind: 'FIELD_EQUALS', field: 'stage', value: 'NEGOTIATION', points: 20 },
+    { kind: 'FIELD_EQUALS', field: 'stage', value: 'PROPOSAL', points: 10 },
+    { kind: 'FIELD_EQUALS', field: 'stage', value: 'CLOSED_LOST', points: -50 },
+    { kind: 'RELATED_COUNT', field: 'decision_roles', maxCount: 1, points: 15 },
+    { kind: 'RELATED_COUNT', field: 'contact_roles', maxCount: 3, points: 3 },
+    { kind: 'RELATED_COUNT', field: 'line_items', maxCount: 3, points: 3 },
+    { kind: 'RELATED_COUNT', field: 'quotes', maxCount: 2, points: 5 },
+    { kind: 'RELATED_COUNT', field: 'competitors', maxCount: 3, points: -5 },
+    { kind: 'ACTIVITY_COUNT', maxCount: 5, points: 2 },
+    { kind: 'FIELD_FILLED', field: 'expected_close_date', points: 5 },
   ] as DemoRule[],
 };
 

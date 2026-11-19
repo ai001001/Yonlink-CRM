@@ -278,7 +278,7 @@ async function exportList(ctx: AuthContext, entity: ExportEntity, input: Record<
   if (entity === 'deals') {
     const query = dealListSchema.parse(params);
     const rows = await prisma.deal.findMany({
-      where: dealWhere(ctx, query),
+      where: dealWhere(ctx, query, await gradeRange(ctx.organizationId, 'DEAL', query.grade)),
       include: { owner: { select: { name: true, email: true } }, account: { select: { name: true } } },
       orderBy,
       take,
