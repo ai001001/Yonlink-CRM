@@ -55,7 +55,8 @@ export function readXlsx(buf: Buffer) {
   const names = [...workbook.matchAll(/<sheet name="([^"]*)" sheetId="(\d+)"/g)].map((m) => unxml(m[1]!));
   const sheets = names.map((name, i) => {
     const sheetXml = files.get(`xl/worksheets/sheet${i + 1}.xml`)!.toString('utf8');
-    const rows = [...sheetXml.matchAll(/<row r="(\d+)">(.*?)<\/row>/g)].map((m) => ({
+    // 单元格文本可含换行，用 s 标志让 . 匹配换行 / cell text may contain newlines; the s flag lets . match them
+    const rows = [...sheetXml.matchAll(/<row r="(\d+)">(.*?)<\/row>/gs)].map((m) => ({
       r: Number(m[1]),
       cells: [...m[2]!.matchAll(/<c r="([A-Z]+\d+)"(?: t="(\w+)")?(?: s="(\d+)")?>(?:<v>([^<]*)<\/v>|<is><t xml:space="preserve">([^<]*)<\/t><\/is>)<\/c>/g)].map(
         (c): ReadCell => ({ ref: c[1]!, type: c[2] ?? null, style: Number(c[3] ?? 0), value: unxml(c[4] ?? c[5] ?? '') }),

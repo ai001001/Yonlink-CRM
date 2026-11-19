@@ -161,7 +161,7 @@ export default function LeadsPage() {
           <Button icon={<StarOutlined />} onClick={() => setScoringOpen(true)}>
             {t('scoring.title')}
           </Button>
-          <ExportButton resource="leads" filters={{ q, status, source, campaignId, grade }} />
+          <ExportButton excel resource="leads" filters={{ q, status, source, campaignId, grade }} />
           {perm.canCreate && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
               {t('leads.new')}

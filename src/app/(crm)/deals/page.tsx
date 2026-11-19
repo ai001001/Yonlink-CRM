@@ -141,7 +141,7 @@ export default function DealsPage() {
       title={t('deals.title')}
       extra={
         <Space>
-          <ExportButton resource="deals" filters={{ q, stage, campaignId }} />
+          <ExportButton excel resource="deals" filters={{ q, stage, campaignId }} />
           {perm.canCreate && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
               {t('deals.new')}

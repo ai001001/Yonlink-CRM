@@ -100,7 +100,7 @@ export default function ContactsPage() {
           <Button icon={<StarOutlined />} onClick={() => setScoringOpen(true)}>
             {t('scoring.title')}
           </Button>
-          <ExportButton resource="contacts" filters={filters} />
+          <ExportButton excel resource="contacts" filters={filters} />
           {perm.canCreate && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
               {t('contacts.new')}

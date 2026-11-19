@@ -112,7 +112,7 @@ export default function ActivitiesPage() {
             ]}
           />
           {view === 'list' && (
-            <ExportButton
+            <ExportButton excel
               resource="activities"
               filters={{
                 q,

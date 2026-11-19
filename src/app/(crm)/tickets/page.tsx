@@ -240,7 +240,7 @@ export default function TicketsPage() {
               {t('sla.settings')}
             </Button>
           )}
-          <ExportButton resource="tickets" filters={filters} />
+          <ExportButton excel resource="tickets" filters={filters} />
           {perm.can('record.create') && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
               {t('tickets.new')}

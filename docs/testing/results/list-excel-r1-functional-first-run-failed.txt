@@ -1,0 +1,67 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+33 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:723729) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/list-excel/list-excel.r1-functional.test.ts (2 tests | 2 failed) 1211ms
+   ❯ list excel R1 (2)
+     × 6 个列表：Excel 与 CSV 内容一致，数字列为数字单元格，工作表名随语言 / Excel matches CSV for all six lists 902ms
+     × 筛选生效；审计记录格式；非法格式 400；无导出权限 403 / filters, audit, validation, permissions 308ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/list-excel/list-excel.r1-functional.test.ts > list excel R1 > 6 个列表：Excel 与 CSV 内容一致，数字列为数字单元格，工作表名随语言 / Excel matches CSV for all six lists
+AssertionError: expected [ { r: 1, cells: [ …(12) ] }, …(1) ] to have a length of 3 but got 2
+
+- Expected
++ Received
+
+- 3
++ 2
+
+ ❯ tests/list-excel/list-excel.r1-functional.test.ts:84:26
+     82|       expect(sheet.rows[0]!.cells.map((c) => c.value)).toEqual(csvRows…
+     83|       expect(sheet.rows[0]!.cells.every((c) => c.style === 1)).toBe(tr…
+     84|       expect(sheet.rows).toHaveLength(csvRows.length);
+       |                          ^
+     85|       expect(sheet.rows.length, list.name).toBeGreaterThanOrEqual(3);
+     86|       // 逐个单元格比较（CSV 中防公式注入的单引号前缀除外；数字列按数值比较）
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/list-excel/list-excel.r1-functional.test.ts > list excel R1 > 筛选生效；审计记录格式；非法格式 400；无导出权限 403 / filters, audit, validation, permissions
+AssertionError: expected [] to deeply equal [ '=线索二' ]
+
+- Expected
++ Received
+
+- [
+-   "=线索二",
+- ]
++ []
+
+ ❯ tests/list-excel/list-excel.r1-functional.test.ts:115:66
+    113|     await seed();
+    114|     const filtered = readXlsx((await download(leadExport, '/api/leads/…
+    115|     expect(filtered.sheets[0]!.values.slice(1).map((r) => r[0])).toEqu…
+       |                                                                  ^
+    116|     const won = readXlsx((await download(dealExport, '/api/deals/expor…
+    117|     expect(won.sheets[0]!.values.slice(1).map((r) => r[0])).toEqual(['…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  00:33:08
+   Duration  3.70s (tests 69%, import 19%, transform 11%, setup 1%)
+

@@ -16,6 +16,7 @@ import { parseCsv, toCsv, uncsvCell } from '../csv';
 import { prisma } from '../db';
 import { ApiError } from '../errors';
 import { can, requirePermission } from '../permissions';
+import { toXlsx, type Cell, type NumberFormat } from '../xlsx';
 import { accountCreateSchema, accountListSchema, accountWhere, contactCreateSchema, contactListSchema, contactWhere } from './accounts';
 import { activityListSchema, activityWhere } from './activities';
 import { dealListSchema, dealWhere } from './deals';
@@ -65,11 +66,76 @@ async function auditExport(ctx: AuthContext, entityType: 'lead' | 'account' | 'c
   );
 }
 
+/** 列表导出格式 / list export format */
+export type ListExportFormat = 'csv' | 'xlsx';
+
+/** Excel 列表导出结果 / Excel list export result */
+export interface ListXlsxResult {
+  filename: string;
+  data: Buffer;
+  count: number;
+  truncated: boolean;
+}
+
 /**
  * 导出 CSV。查询参数与对应列表相同。
  * Export CSV; query parameters are the same as the corresponding list.
  */
 export async function exportCsv(ctx: AuthContext, entity: ExportEntity, input: Record<string, string>): Promise<ExportResult> {
+  return (await exportList(ctx, entity, input, 'csv')) as ExportResult;
+}
+
+/**
+ * 导出 Excel（.xlsx）：与 CSV 同样的列与筛选；金额、数量为数字单元格，表头加粗冻结，审计记录格式。
+ * Export Excel (.xlsx): the same columns and filters as CSV; amounts and counts are numeric cells, the header is bold and
+ * frozen, and the audit records the format.
+ */
+export async function exportXlsx(ctx: AuthContext, entity: ExportEntity, input: Record<string, string>): Promise<ListXlsxResult> {
+  return (await exportList(ctx, entity, input, 'xlsx')) as ListXlsxResult;
+}
+
+/**
+ * 按格式生成文件并写审计。CSV 内容与原有导出完全一致；Excel 按列格式把金额、数量写为数字。
+ * Render the file in the requested format and audit it. CSV output is unchanged; Excel writes amounts and counts as
+ * numbers according to the column formats.
+ * @param formats 列序号 → 数字格式 / column index → number format
+ */
+async function finish(
+  ctx: AuthContext,
+  format: ListExportFormat,
+  locale: Locale,
+  auditEntity: Parameters<typeof auditExport>[1],
+  query: Record<string, unknown>,
+  base: string,
+  header: string[],
+  rows: unknown[][],
+  truncated: boolean,
+  formats: Record<number, NumberFormat> = {},
+): Promise<ExportResult | ListXlsxResult> {
+  const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  if (format === 'csv') {
+    await auditExport(ctx, auditEntity, query, rows.length, truncated);
+    return { filename: `${base}-${stamp}.csv`, csv: toCsv(header, rows), count: rows.length, truncated };
+  }
+  const cells: Cell[][] = rows.map((r) =>
+    r.map((v, i) => {
+      const f = formats[i];
+      if (v === null || v === undefined || v === '') return null;
+      if (f) return { value: Number(v), format: f };
+      return typeof v === 'number' ? v : String(v);
+    }),
+  );
+  await auditExport(ctx, auditEntity, { ...query, format: 'xlsx' }, rows.length, truncated);
+  // 工作表名用列表名称（随语言）/ the sheet is named after the list, in the export language
+  const sheet = translate(locale, `nav.${base}` as MessageKey);
+  return { filename: `${base}-${stamp}.xlsx`, data: toXlsx([{ name: sheet, rows: [header, ...cells], boldRows: [0], freezeRows: 1 }]), count: rows.length, truncated };
+}
+
+/**
+ * 列表导出（CSV 或 Excel）。查询参数与对应列表相同。
+ * List export (CSV or Excel); query parameters are the same as the corresponding list.
+ */
+async function exportList(ctx: AuthContext, entity: ExportEntity, input: Record<string, string>, format: ListExportFormat): Promise<ExportResult | ListXlsxResult> {
   requirePermission(ctx, 'data.export');
   // 语言参数只决定表头与枚举文字，不参与筛选 / the locale only affects headers and enum labels, not filtering
   const { lang, ...params } = input;
@@ -77,7 +143,6 @@ export async function exportCsv(ctx: AuthContext, entity: ExportEntity, input: R
   const t = (key: MessageKey) => translate(locale, key);
   const tEnum = (prefix: string, value: string | null | undefined) => tEnumIn(locale, prefix, value);
   const TIME_HEADER = (label: string) => translate(locale, 'export.timeHeader', { label });
-  const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const take = EXPORT_MAX + 1;
   const orderBy = [{ createdAt: 'desc' as const }, { id: 'asc' as const }];
 
@@ -86,12 +151,17 @@ export async function exportCsv(ctx: AuthContext, entity: ExportEntity, input: R
     const rows = await prisma.lead.findMany({ where: leadWhere(ctx, query, await gradeRange(ctx.organizationId, 'LEAD', query.grade)), include: { owner: { select: { name: true, email: true } } }, orderBy, take });
     const truncated = rows.length > EXPORT_MAX;
     const data = rows.slice(0, EXPORT_MAX);
-    const csv = toCsv(
+    return finish(
+      ctx,
+      format,
+      locale,
+      'lead',
+      query,
+      'leads',
       [t('leads.name'), t('leads.company'), t('leads.jobTitle'), t('leads.phone'), t('leads.mobile'), t('leads.email'), t('leads.source'), t('leads.status'), t('common.owner'), t('import.ownerEmail'), TIME_HEADER(t('common.createdAt')), t('common.description')],
       data.map((l) => [l.name, l.company, l.title, l.phone, l.mobile, l.email, tEnum('leadSource', l.source), tEnum('leadStatus', l.status), l.owner?.name, l.owner?.email, fmtTime(l.createdAt), l.description]),
+      truncated,
     );
-    await auditExport(ctx, 'lead', query, data.length, truncated);
-    return { filename: `leads-${stamp}.csv`, csv, count: data.length, truncated };
   }
 
   if (entity === 'tickets') {
@@ -110,7 +180,13 @@ export async function exportCsv(ctx: AuthContext, entity: ExportEntity, input: R
     const truncated = rows.length > EXPORT_MAX;
     const data = rows.slice(0, EXPORT_MAX);
     const now = new Date();
-    const csv = toCsv(
+    return finish(
+      ctx,
+      format,
+      locale,
+      'ticket',
+      query,
+      'tickets',
       [
         t('tickets.number'),
         t('tickets.subject'),
@@ -152,9 +228,9 @@ export async function exportCsv(ctx: AuthContext, entity: ExportEntity, input: R
         tk.description,
         tk.resolution,
       ]),
+      truncated,
+      { 15: 'int' },
     );
-    await auditExport(ctx, 'ticket', query, data.length, truncated);
-    return { filename: `tickets-${stamp}.csv`, csv, count: data.length, truncated };
   }
 
   if (entity === 'contacts') {
@@ -162,12 +238,17 @@ export async function exportCsv(ctx: AuthContext, entity: ExportEntity, input: R
     const rows = await prisma.contact.findMany({ where: contactWhere(ctx, query, await gradeRange(ctx.organizationId, 'CONTACT', query.grade)), include: { account: { select: { name: true, owner: { select: { name: true } } } } }, orderBy, take });
     const truncated = rows.length > EXPORT_MAX;
     const data = rows.slice(0, EXPORT_MAX);
-    const csv = toCsv(
+    return finish(
+      ctx,
+      format,
+      locale,
+      'contact',
+      query,
+      'contacts',
       [t('contacts.name'), t('contacts.title'), t('contacts.phone'), t('contacts.email'), t('contacts.isPrimary'), t('contacts.account'), t('common.owner'), TIME_HEADER(t('common.createdAt'))],
       data.map((c) => [c.name, c.title, c.phone, c.email, c.isPrimary ? t('common.yes') : t('common.no'), c.account.name, c.account.owner?.name, fmtTime(c.createdAt)]),
+      truncated,
     );
-    await auditExport(ctx, 'contact', query, data.length, truncated);
-    return { filename: `contacts-${stamp}.csv`, csv, count: data.length, truncated };
   }
 
   if (entity === 'accounts') {
@@ -180,12 +261,18 @@ export async function exportCsv(ctx: AuthContext, entity: ExportEntity, input: R
     });
     const truncated = rows.length > EXPORT_MAX;
     const data = rows.slice(0, EXPORT_MAX);
-    const csv = toCsv(
+    return finish(
+      ctx,
+      format,
+      locale,
+      'account',
+      query,
+      'accounts',
       [t('accounts.name'), t('accounts.industry'), t('accounts.phone'), t('accounts.website'), t('accounts.address'), t('common.owner'), t('import.ownerEmail'), t('contacts.isPrimary'), t('accounts.contactCount'), TIME_HEADER(t('common.createdAt')), t('common.description')],
       data.map((a) => [a.name, tEnum('industry', a.industry), a.phone, a.website, a.address, a.owner?.name, a.owner?.email, a.contacts[0]?.name, a._count.contacts, fmtTime(a.createdAt), a.description]),
+      truncated,
+      { 8: 'int' },
     );
-    await auditExport(ctx, 'account', query, data.length, truncated);
-    return { filename: `accounts-${stamp}.csv`, csv, count: data.length, truncated };
   }
 
   if (entity === 'deals') {
@@ -198,12 +285,18 @@ export async function exportCsv(ctx: AuthContext, entity: ExportEntity, input: R
     });
     const truncated = rows.length > EXPORT_MAX;
     const data = rows.slice(0, EXPORT_MAX);
-    const csv = toCsv(
+    return finish(
+      ctx,
+      format,
+      locale,
+      'deal',
+      query,
+      'deals',
       [t('deals.name'), t('deals.account'), t('deals.amount'), t('deals.currency'), t('deals.stage'), t('deals.expectedCloseDate'), t('common.owner'), t('import.ownerEmail'), TIME_HEADER(t('common.createdAt')), t('common.description')],
       data.map((d) => [d.name, d.account.name, d.amount.toFixed(2), d.currency, tEnum('dealStage', d.stage), fmtDate(d.expectedCloseDate), d.owner?.name, d.owner?.email, fmtTime(d.createdAt), d.description]),
+      truncated,
+      { 2: 'money' },
     );
-    await auditExport(ctx, 'deal', query, data.length, truncated);
-    return { filename: `deals-${stamp}.csv`, csv, count: data.length, truncated };
   }
 
   const query = activityListSchema.parse(params);
@@ -215,7 +308,13 @@ export async function exportCsv(ctx: AuthContext, entity: ExportEntity, input: R
   });
   const truncated = rows.length > EXPORT_MAX;
   const data = rows.slice(0, EXPORT_MAX);
-  const csv = toCsv(
+  return finish(
+    ctx,
+    format,
+    locale,
+    'activity',
+    query,
+    'activities',
     [t('activities.type'), t('activities.subject'), t('activities.content'), TIME_HEADER(t('activities.dueAt')), t('activities.status'), t('activities.account'), t('activities.lead'), t('activities.deal'), t('common.owner'), TIME_HEADER(t('common.createdAt'))],
     data.map((a) => [
       tEnum('activityType', a.type),
@@ -229,9 +328,8 @@ export async function exportCsv(ctx: AuthContext, entity: ExportEntity, input: R
       a.owner?.name,
       fmtTime(a.createdAt),
     ]),
+    truncated,
   );
-  await auditExport(ctx, 'activity', query, data.length, truncated);
-  return { filename: `activities-${stamp}.csv`, csv, count: data.length, truncated };
 }
 
 // ---------------------------------------------------------------------------
