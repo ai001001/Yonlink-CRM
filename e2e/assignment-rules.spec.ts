@@ -29,6 +29,14 @@ test('经理：分配规则维护与批量按规则重新分配 / manager: assig
   for (const n of ['一', '二']) await api(page, 'POST', '/api/leads', { name: `E2E 分配线索${n}`, company: `E2E汽配${n}厂` });
   await nav(page, '线索');
 
+  // 新建一个按规则分配的官网来源表单（不改动演示表单），提交两次后官网规则已分配 2 次
+  // a new rule-assigned website form (the demo forms stay untouched); two submissions → the website rule made 2 assignments
+  const key = (await api(page, 'POST', '/api/web-forms', { name: 'E2E 按规则表单', title: 'E2E', source: 'WEBSITE', assignByRule: true })).publicKey;
+  for (const n of ['甲', '乙']) {
+    const res = await page.request.post(`/api/public/web-forms/${key}`, { data: { name: `E2E 官网访客${n}`, email: 'visitor@example.com' }, headers: { 'x-forwarded-for': `10.9.0.${n === '甲' ? 1 : 2}` } });
+    expect(res.ok()).toBe(true);
+  }
+
   // 打开分配规则：4 条演示规则 / open the rules: 4 demo rules
   await page.getByTestId('assignment-open').click();
   const modal = page.getByRole('dialog', { name: '分配规则' });
@@ -36,6 +44,8 @@ test('经理：分配规则维护与批量按规则重新分配 / manager: assig
   await expect(rules).toHaveCount(4);
   await expect(modal.getByLabel('规则名称 1', { exact: true })).toHaveValue('【演示】展会线索');
   await expect(modal.getByLabel('规则名称 4', { exact: true })).toHaveValue('【演示】其余线索兜底');
+  await expect(rules.nth(1)).toContainText('已分配 2 次');
+  await expect(rules.nth(0)).toContainText('已分配 0 次');
 
   // 新增第 5 条：公司包含 E2E汽配 → 陈静 / add rule 5: company contains E2E汽配 → 陈静
   await modal.getByTestId('assignment-add').click();
@@ -54,7 +64,7 @@ test('经理：分配规则维护与批量按规则重新分配 / manager: assig
   await rules.nth(4).getByTestId('assignment-add-condition').click();
   // 字段从“线索来源”改为“公司”，比较方式自动变为“包含” / switch the field to company; the operator becomes "contains"
   // 切换成功的标志：规则 5 内出现两个文本框（名称 + 值）/ success shows two text inputs in rule 5 (name + value)
-  const textInputs = rules.nth(4).locator('input.ant-input');
+  const textInputs = rules.nth(4).locator('input.ant-input:visible');
   await expect(async () => {
     if ((await textInputs.count()) < 2) {
       await modal.getByLabel('字段 5.1', { exact: true }).click({ timeout: 2000 });

@@ -183,6 +183,10 @@ export function AssignmentRulesModal({ open, onClose, canManage }: { open: boole
                       </Space>
                     }
                   >
+                    {/* 已分配次数只用于显示；注册为隐藏字段，useWatch 才能读到 / display only; registered so useWatch returns it */}
+                    <Form.Item name={[row.name, 'cursor']} hidden noStyle>
+                      <input type="hidden" />
+                    </Form.Item>
                     <Space align="start" wrap style={{ display: 'flex' }}>
                       <Form.Item name={[row.name, 'name']} label={t('assignment.name')} rules={[{ required: true, whitespace: true, message: t('common.required', { field: t('assignment.name') }) }]}>
                         <Input maxLength={100} style={{ width: 220 }} aria-label={`${t('assignment.name')} ${i + 1}`} />

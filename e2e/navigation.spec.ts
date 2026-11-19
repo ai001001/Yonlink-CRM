@@ -91,9 +91,14 @@ for (const role of ROLES) {
     }
 
     // 通知中心从铃铛进入 / the notification centre from the bell
-    await page.getByTestId('notification-bell').click();
-    await page.getByTestId('notification-popover').getByRole('link', { name: '查看全部通知' }).click();
-    await expect(page).toHaveURL(/\/notifications\/?$/);
+    // 按结果确认：未跳转时重新打开铃铛再点（高负载下偶发点击未生效）/ confirm by outcome; retry when the click did not navigate under load
+    await expect(async () => {
+      if (!/\/notifications\/?$/.test(page.url())) {
+        if (!(await page.getByTestId('notification-popover').isVisible())) await page.getByTestId('notification-bell').click({ timeout: 2000 });
+        await page.getByTestId('notification-popover').getByRole('link', { name: '查看全部通知' }).click({ timeout: 2000 });
+      }
+      await expect(page).toHaveURL(/\/notifications\/?$/, { timeout: 3000 });
+    }).toPass({ timeout: 20000 });
     await expect(page.getByRole('main').locator('.ant-card').first()).toBeVisible();
     // 不在导航中的页面不高亮任何菜单 / pages outside the menu highlight nothing
     await expect(menu.locator('.ant-menu-item-selected')).toHaveCount(0);
