@@ -33,6 +33,7 @@ interface WebForm {
   requiredFields: string[];
   source: string;
   ownerId: string | null;
+  assignByRule: boolean;
   campaignId: string | null;
   successMessage: string | null;
   submissionCount: number;
@@ -44,7 +45,7 @@ interface WebForm {
   leads?: { id: string; name: string; company: string | null; status: string; createdAt: string }[];
 }
 
-type FormValues = Pick<WebForm, 'name' | 'title' | 'intro' | 'isActive' | 'fields' | 'requiredFields' | 'source' | 'ownerId' | 'campaignId' | 'successMessage'>;
+type FormValues = Pick<WebForm, 'name' | 'title' | 'intro' | 'isActive' | 'fields' | 'requiredFields' | 'source' | 'ownerId' | 'assignByRule' | 'campaignId' | 'successMessage'>;
 
 /**
  * 表单的公开地址（本站 /web-form 页面）。部署路径前缀与末尾斜杠沿用当前地址（GitHub Pages 为 /Yonlink-CRM/…/），
@@ -77,6 +78,7 @@ export default function WebFormsPage() {
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm<FormValues>();
   const enabled = Form.useWatch('fields', form) ?? [];
+  const byRule = Form.useWatch('assignByRule', form) ?? false;
 
   const openDetail = useCallback(
     (id: string) => {
@@ -92,8 +94,8 @@ export default function WebFormsPage() {
     form.resetFields();
     form.setFieldsValue(
       f === 'new'
-        ? { isActive: true, fields: ['company', 'email', 'phone', 'description'], requiredFields: ['email'], source: 'WEBSITE', ownerId: null, campaignId: null }
-        : { name: f.name, title: f.title, intro: f.intro, isActive: f.isActive, fields: f.fields, requiredFields: f.requiredFields, source: f.source, ownerId: f.ownerId, campaignId: f.campaignId, successMessage: f.successMessage },
+        ? { isActive: true, fields: ['company', 'email', 'phone', 'description'], requiredFields: ['email'], source: 'WEBSITE', ownerId: null, assignByRule: false, campaignId: null }
+        : { name: f.name, title: f.title, intro: f.intro, isActive: f.isActive, fields: f.fields, requiredFields: f.requiredFields, source: f.source, ownerId: f.ownerId, assignByRule: f.assignByRule, campaignId: f.campaignId, successMessage: f.successMessage },
     );
     setEditing(f);
   };
@@ -101,7 +103,7 @@ export default function WebFormsPage() {
   const save = async () => {
     const v = await form.validateFields();
     // 未启用的字段不能必填 / only enabled fields can be required
-    const body = { ...v, intro: v.intro ?? null, successMessage: v.successMessage ?? null, ownerId: v.ownerId ?? null, campaignId: v.campaignId ?? null, requiredFields: (v.requiredFields ?? []).filter((f) => v.fields.includes(f)) };
+    const body = { ...v, intro: v.intro ?? null, successMessage: v.successMessage ?? null, ownerId: v.assignByRule ? null : (v.ownerId ?? null), assignByRule: !!v.assignByRule, campaignId: v.campaignId ?? null, requiredFields: (v.requiredFields ?? []).filter((f) => v.fields.includes(f)) };
     setSaving(true);
     try {
       const saved = editing === 'new' ? await api<WebForm>('/api/web-forms', { method: 'POST', body }) : await api<WebForm>(`/api/web-forms/${(editing as WebForm).id}`, { method: 'PATCH', body });
@@ -199,7 +201,7 @@ export default function WebFormsPage() {
             ),
           },
           { title: t('leads.source'), render: (_, r) => tEnum('leadSource', r.source) },
-          { title: t('common.owner'), render: (_, r) => r.owner?.name ?? t('common.unassigned') },
+          { title: t('common.owner'), render: (_, r) => (r.assignByRule ? t('webForms.byRule') : (r.owner?.name ?? t('common.unassigned'))) },
           { title: t('campaigns.source'), render: (_, r) => r.campaign?.name },
           { title: t('webForms.submissions'), align: 'right', dataIndex: 'submissionCount' },
           { title: t('webForms.lastSubmitted'), render: (_, r) => (r.lastSubmittedAt ? fmtDateTime(r.lastSubmittedAt) : '') },
@@ -262,7 +264,7 @@ export default function WebFormsPage() {
                 {fieldTags(detail)}
               </Descriptions.Item>
               <Descriptions.Item label={t('leads.source')}>{tEnum('leadSource', detail.source)}</Descriptions.Item>
-              <Descriptions.Item label={t('common.owner')}>{detail.owner?.name ?? t('common.unassigned')}</Descriptions.Item>
+              <Descriptions.Item label={t('common.owner')}>{detail.assignByRule ? t('webForms.byRule') : (detail.owner?.name ?? t('common.unassigned'))}</Descriptions.Item>
               <Descriptions.Item label={t('campaigns.source')}>{detail.campaign?.name}</Descriptions.Item>
               <Descriptions.Item label={t('webForms.status')}>{detail.isActive ? t('webForms.active') : t('webForms.inactive')}</Descriptions.Item>
               <Descriptions.Item label={t('webForms.submissions')}>{detail.submissionCount}</Descriptions.Item>
@@ -316,8 +318,16 @@ export default function WebFormsPage() {
             <Form.Item name="source" label={t('leads.source')}>
               <Select options={SOURCES.map((s) => ({ value: s, label: tEnum('leadSource', s) }))} />
             </Form.Item>
-            <Form.Item name="ownerId" label={t('webForms.owner')} extra={t('webForms.ownerHint')}>
-              <Select allowClear placeholder={t('common.unassigned')} options={owners.map((u) => ({ value: u.id, label: u.name }))} />
+            <Form.Item name="ownerId" label={t('webForms.owner')} extra={t(byRule ? 'webForms.ownerRuleHint' : 'webForms.ownerHint')}>
+              <Select
+                allowClear
+                disabled={byRule}
+                placeholder={t(byRule ? 'webForms.byRule' : 'common.unassigned')}
+                options={owners.map((u) => ({ value: u.id, label: u.name }))}
+              />
+            </Form.Item>
+            <Form.Item name="assignByRule" label={t('webForms.assignByRule')} valuePropName="checked">
+              <Switch aria-label={t('webForms.assignByRule')} onChange={(on) => on && form.setFieldValue('ownerId', null)} />
             </Form.Item>
             <Form.Item name="campaignId" label={t('campaigns.source')}>
               <CampaignSelect />

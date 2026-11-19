@@ -31,12 +31,14 @@ interface Props {
   completable?: boolean;
   /** 线索/客户/商机：批量加减标签 / leads, accounts, deals: bulk add/remove tags */
   taggable?: boolean;
+  /** 线索：按分配规则重新分配 / leads: reassign by the assignment rules */
+  ruleAssignable?: boolean;
   /** 完成后回调（刷新列表并清空选择）/ called afterwards (reload and clear selection) */
   onDone: () => void;
   onClear: () => void;
 }
 
-export function BulkBar({ path, selected, names, valueChange, completable, taggable, onDone, onClear }: Props) {
+export function BulkBar({ path, selected, names, valueChange, completable, taggable, ruleAssignable, onDone, onClear }: Props) {
   const { message, modal } = App.useApp();
   const perm = usePermissions();
   const owners = useOwners();
@@ -101,6 +103,11 @@ export function BulkBar({ path, selected, names, valueChange, completable, tagga
             })
           }
         />
+      )}
+      {ruleAssignable && perm.canAssign && (
+        <Button size="small" data-testid="bulk-assign-rule" onClick={() => confirm(t('assignment.confirmBulk', { n }), { action: 'assign_rule' })}>
+          {t('assignment.bulk')}
+        </Button>
       )}
       {valueChange && (
         <Select

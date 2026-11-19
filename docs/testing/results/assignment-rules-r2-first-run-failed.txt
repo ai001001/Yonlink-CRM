@@ -1,0 +1,45 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+36 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:791269) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/assignment-rules/assignment-rules.r2-integration.test.ts (7 tests | 1 failed) 7107ms
+   ❯ assignment rules R2 concurrency (2)
+     × 保存与分配并发：每条提交都成功，线索归旧规则或新规则的负责人 / saves racing submissions 281ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/assignment-rules/assignment-rules.r2-integration.test.ts > assignment rules R2 concurrency > 保存与分配并发：每条提交都成功，线索归旧规则或新规则的负责人 / saves racing submissions
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/assignment-rules/assignment-rules.r2-integration.test.ts:59:76
+     57|     expect((await Promise.all(jobs)).map((r) => r.status).every((s) =>…
+     58|     const owners = new Set((await prisma.lead.findMany({ where: { orga…
+     59|     expect([...owners].every((o) => o === s1.user.id || o === s3.user.…
+       |                                                                            ^
+     60|     expect(await prisma.lead.count({ where: { organizationId: a.org.id…
+     61|     const rules = await prisma.assignmentRule.findMany();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  16:50:48
+   Duration  9.33s (tests 94%, import 4%, transform 1%)
+

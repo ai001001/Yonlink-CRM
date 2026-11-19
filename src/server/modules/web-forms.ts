@@ -5,6 +5,7 @@
  * - 公开提交（无需登录）：只接受已启用的字段；隐藏的诱饵字段被填写时假装成功但不保存；按来源 IP 与表单限流；
  *   请求体不超过 16 KB。生成的线索使用表单配置的来源、负责人（已停用则不分配）、市场活动，状态为新线索，
  *   并通知负责人、写审计（操作人为空，注明来源表单）、更新表单的提交次数与最近提交时间。
+ * - 负责人可固定，也可设为“按分配规则”（两者互斥）；按规则时由线索分配规则轮流分配，没有规则命中则不分配。
  * - 公开标识（publicKey）可重新生成，旧地址立即失效；停用的表单不能查看或提交（404）。
  * Web forms (cf. Zoho Webforms): public pages whose submissions become leads. Everyone can read forms; create, update,
  * delete and key regeneration need campaign.manage (admins, managers; marketing settings). Name is always shown and
@@ -12,7 +13,8 @@
  * submissions (no sign-in) accept enabled fields only; a filled honeypot pretends success but stores nothing;
  * submissions are rate-limited per IP and per form; bodies are capped at 16 KB. Leads take the form's source, owner
  * (unassigned when inactive) and campaign with status NEW; the owner is notified, the creation is audited without an
- * actor and with the form name, and the form's counters are updated. The public key can be regenerated, invalidating
+ * actor and with the form name, and the form's counters are updated. Instead of a fixed owner a form can use the lead
+ * assignment rules (mutually exclusive); when no rule applies the lead stays unassigned. The public key can be regenerated, invalidating
  * the old URL at once; inactive forms cannot be viewed or submitted (404).
  */
 import { randomBytes } from 'node:crypto';
@@ -25,6 +27,7 @@ import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
 import { requirePermission, visible } from '../permissions';
 import { containsText, listQuery, optionalEmail, optionalText, requiredText, resolveOwner, type Page } from '../validation';
+import { assignByRules } from './assignment-rules';
 import { assertCampaign } from './campaign-links';
 import { LEAD_SOURCES } from './leads';
 
@@ -49,6 +52,8 @@ const settings = {
   requiredFields: fieldList.default([]),
   source: z.enum(LEAD_SOURCES).default('WEBSITE'),
   ownerId: z.uuid().nullish().transform((v) => v ?? null),
+  /** 按分配规则分配负责人（与固定负责人互斥）/ assign by the assignment rules (exclusive with ownerId) */
+  assignByRule: z.boolean().default(false),
   campaignId: z.uuid().nullish().transform((v) => v ?? null),
   successMessage: optionalText(500),
 };
@@ -64,6 +69,7 @@ export const webFormUpdateSchema = z
     requiredFields: fieldList,
     source: z.enum(LEAD_SOURCES),
     ownerId: z.uuid().nullable(),
+    assignByRule: z.boolean(),
     campaignId: z.uuid().nullable(),
   })
   .partial();
@@ -91,6 +97,11 @@ function nameTaken(err: unknown): never {
 function checkFields(fields: readonly string[], required: readonly string[]): void {
   const missing = required.filter((f) => !fields.includes(f));
   if (missing.length) throw new ApiError(400, 'VALIDATION_ERROR', 'Required fields must be enabled', { requiredFields: missing.map((f) => `not_enabled:${f}`) });
+}
+
+/** 固定负责人与按规则分配互斥 / a fixed owner and rule assignment are exclusive */
+function checkAssign(ownerId: string | null, assignByRule: boolean): void {
+  if (ownerId && assignByRule) throw new ApiError(400, 'VALIDATION_ERROR', 'Choose either an owner or assignment rules', { assignByRule: ['owner_set'] });
 }
 
 /**
@@ -142,6 +153,7 @@ export async function getWebForm(ctx: AuthContext, id: string) {
 export async function createWebForm(ctx: AuthContext, input: z.infer<typeof webFormCreateSchema>) {
   requirePermission(ctx, 'campaign.manage');
   checkFields(input.fields, input.requiredFields);
+  checkAssign(input.ownerId, input.assignByRule);
   await checkRefs(ctx, input.ownerId, input.campaignId);
   try {
     return await prisma.$transaction(async (tx) => {
@@ -172,6 +184,7 @@ async function requireForm(ctx: AuthContext, id: string) {
 export async function updateWebForm(ctx: AuthContext, id: string, input: z.infer<typeof webFormUpdateSchema>) {
   const current = await requireForm(ctx, id);
   checkFields(input.fields ?? current.fields, input.requiredFields ?? current.requiredFields);
+  checkAssign(input.ownerId === undefined ? current.ownerId : input.ownerId, input.assignByRule ?? current.assignByRule);
   await checkRefs(ctx, input.ownerId, input.campaignId);
   try {
     return await prisma.$transaction(async (tx) => {
@@ -311,8 +324,11 @@ export async function submitWebForm(key: string, input: z.infer<typeof submissio
   const owner = form.ownerId ? await prisma.user.findFirst({ where: { id: form.ownerId, organizationId: form.organizationId, isActive: true }, select: { id: true } }) : null;
   const data = Object.fromEntries(WEB_FORM_FIELDS.filter((f) => form.fields.includes(f)).map((f) => [f, input[f] ?? null]));
   await prisma.$transaction(async (tx) => {
+    const facts = { ...data, source: form.source, campaignId: form.campaignId, webFormId: form.id } as Record<string, string | null>;
+    // 按分配规则：在同一事务内取号，保证轮流分配不重复 / rules: take a turn in the same transaction so round-robin never repeats
+    const assigned = form.assignByRule ? await assignByRules(tx, form.organizationId, facts) : null;
     const lead = await tx.lead.create({
-      data: { ...data, name: input.name, organizationId: form.organizationId, ownerId: owner?.id ?? null, source: form.source, campaignId: form.campaignId, webFormId: form.id },
+      data: { ...data, name: input.name, organizationId: form.organizationId, ownerId: assigned?.ownerId ?? owner?.id ?? null, source: form.source, campaignId: form.campaignId, webFormId: form.id },
     });
     await tx.webForm.update({ where: { id: form.id }, data: { submissionCount: { increment: 1 }, lastSubmittedAt: new Date(now) } });
     await audit(tx, {
@@ -321,7 +337,7 @@ export async function submitWebForm(key: string, input: z.infer<typeof submissio
       action: 'lead.create',
       entityType: 'lead',
       entityId: lead.id,
-      changes: { after: snapshot('lead', lead), webForm: form.name },
+      changes: { after: snapshot('lead', lead), webForm: form.name, ...(assigned ? { assignmentRule: assigned.ruleName } : {}) },
       meta,
     });
     if (lead.ownerId) {

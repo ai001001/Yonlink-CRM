@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import { Alert, App, Button, Modal, Radio, Space, Table, Typography, Upload } from 'antd';
+import { usePermissions } from './AuthProvider';
 import { DownloadOutlined, UploadOutlined } from '@ant-design/icons';
 import { getLocale, t, tEnum, type MessageKey } from '@/i18n';
 import { api, apiDownload, ClientApiError } from '@/lib/api';
@@ -16,6 +17,7 @@ interface Report {
   total: number;
   valid: number;
   created: number;
+  assignedByRule?: number;
   duplicates: { row: number; value: string }[];
   errors: { row: number; field: string; reason: string }[];
   unknownColumns: string[];
@@ -74,6 +76,10 @@ export function ImportModal({ resource, open, onClose, onImported }: Props) {
   const [csv, setCsv] = useState<string | null>(null);
   const [fileName, setFileName] = useState('');
   const [duplicates, setDuplicates] = useState<'skip' | 'create'>('skip');
+  // 未指定负责人的行：归我或按分配规则（仅线索且可指派他人时）/ rows without an owner: me or the assignment rules (leads, owner.assign)
+  const [owner, setOwner] = useState<'self' | 'rules'>('self');
+  const perm = usePermissions();
+  const canUseRules = resource === 'leads' && perm.canAssign;
   const [report, setReport] = useState<Report | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -90,10 +96,10 @@ export function ImportModal({ resource, open, onClose, onImported }: Props) {
     setBusy(true);
     setProblems([]);
     try {
-      const r = await api<Report>(`/api/${resource}/import`, { method: 'POST', body: { csv, dryRun, duplicates, lang: getLocale() } });
+      const r = await api<Report>(`/api/${resource}/import`, { method: 'POST', body: { csv, dryRun, duplicates, lang: getLocale(), owner: canUseRules ? owner : 'self' } });
       if (dryRun) setReport(r);
       else {
-        message.success(t('import.done', { n: r.created }));
+        message.success(r.assignedByRule ? t('import.doneRules', { n: r.created, m: r.assignedByRule }) : t('import.done', { n: r.created }));
         reset();
         onImported();
       }
@@ -177,6 +183,23 @@ export function ImportModal({ resource, open, onClose, onImported }: Props) {
             ]}
           />
         </div>
+        {canUseRules && (
+          <div>
+            <Typography.Text>
+              {t('import.ownerMode')}
+              {t('common.colon')}
+            </Typography.Text>
+            <Radio.Group
+              data-testid="import-owner-mode"
+              value={owner}
+              onChange={(e) => setOwner(e.target.value)}
+              options={[
+                { value: 'self', label: t('import.ownerSelf') },
+                { value: 'rules', label: t('import.ownerRules') },
+              ]}
+            />
+          </div>
+        )}
         {problems.length > 0 && <Alert type="error" showIcon title={problems.join(t('common.sentenceSep'))} />}
         {report && (
           <div data-testid="import-report">

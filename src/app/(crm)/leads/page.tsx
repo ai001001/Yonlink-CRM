@@ -7,13 +7,14 @@
 import { useCallback, useState } from 'react';
 import { App, Button, Card, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import Link from 'next/link';
-import { PlusOutlined, StarOutlined, SwapOutlined, UploadOutlined } from '@ant-design/icons';
+import { ApartmentOutlined, PlusOutlined, StarOutlined, SwapOutlined, UploadOutlined } from '@ant-design/icons';
 import { t, tEnum, type MessageKey } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
 import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch, useSelection } from '@/lib/hooks';
 import { AuditTrail } from '@/components/AuditTrail';
 import { usePermissions } from '@/components/AuthProvider';
+import { AssignmentRulesModal } from '@/components/AssignmentRules';
 import { BulkBar } from '@/components/BulkBar';
 import { CampaignSelect } from '@/components/CampaignSelect';
 import { SavedViews } from '@/components/SavedViews';
@@ -82,6 +83,7 @@ export default function LeadsPage() {
   const { data, loading, reload, pagination } = usePagedList<Lead>('/api/leads', { q, status, source, tagId, campaignId, grade, sort });
   const scoring = useScoring('lead');
   const [scoringOpen, setScoringOpen] = useState(false);
+  const [assignmentOpen, setAssignmentOpen] = useState(false);
   /** 套用视图（null 恢复列表默认筛选）/ apply a saved view (null resets the list filters) */
   const applyView = (f: Record<string, string> | null) => {
     search.set(f?.q ?? '');
@@ -161,6 +163,9 @@ export default function LeadsPage() {
           <Button icon={<StarOutlined />} onClick={() => setScoringOpen(true)}>
             {t('scoring.title')}
           </Button>
+          <Button icon={<ApartmentOutlined />} onClick={() => setAssignmentOpen(true)} data-testid="assignment-open">
+            {t('assignment.title')}
+          </Button>
           <ExportButton excel resource="leads" filters={{ q, status, source, campaignId, grade }} />
           {perm.canCreate && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
@@ -182,6 +187,7 @@ export default function LeadsPage() {
       <BulkBar
         path="/api/leads"
         taggable
+        ruleAssignable
         selected={sel.selected}
         names={Object.fromEntries(data.items.map((r) => [r.id, r.name]))}
         valueChange={{ action: 'status', field: 'status', options: editableStatusOptions }}
@@ -392,6 +398,7 @@ export default function LeadsPage() {
         }}
       />
       <ScoringRulesModal entity="lead" open={scoringOpen} onClose={() => setScoringOpen(false)} config={scoring.config} canManage={perm.can('scoring.manage')} onSaved={() => { scoring.reload(); void reload(); }} />
+      <AssignmentRulesModal open={assignmentOpen} onClose={() => setAssignmentOpen(false)} canManage={perm.can('assignment.manage')} />
       <ImportModal resource="leads" open={importing} onClose={() => setImporting(false)} onImported={() => { setImporting(false); void reload(); }} />
     </Card>
   );

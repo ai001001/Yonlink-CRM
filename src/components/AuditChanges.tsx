@@ -169,6 +169,7 @@ const fieldLabel = (field: string, entityType: string): string => {
   if (entityType === 'webform' && field === 'intro') return t('webForms.intro');
   if (entityType === 'webform' && field === 'fields') return t('webForms.fields');
   if (entityType === 'webform' && field === 'isActive') return t('webForms.status');
+  if (entityType === 'webform' && field === 'assignByRule') return t('webForms.assignByRule');
   if (entityType === 'pricebook' && field === 'isActive') return t('priceBooks.status');
   if (entityType === 'pricebook' && field === 'accounts') return t('priceBooks.accounts');
   if (entityType === 'vendor' && field === 'isActive') return t('vendors.status');
@@ -266,6 +267,16 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
       if (Array.isArray(v)) lines.push(`${t(`scoring.${k}`)}${t('common.colon')}${String(v[0])} → ${String(v[1])}`);
     }
     if (typeof c.rescored === 'number') lines.push(t('scoring.auditRescored', { n: c.rescored }));
+  }
+  if (entry.entityType === 'assignment') {
+    // 分配规则：规则文本前后对比 / assignment rules: rule texts before → after
+    const list = (v: unknown) => (Array.isArray(v) && v.length ? v.join(t('common.sentenceSep')) : '—');
+    if (typeof c.count === 'number') lines.push(t('assignment.auditCount', { n: c.count }));
+    if (Array.isArray(c.rules)) lines.push(`${t('assignment.rules')}${t('common.colon')}${list(c.rules[0])} → ${list(c.rules[1])}`);
+  }
+  if (typeof c.assignmentRule === 'string') {
+    // 按分配规则分配的线索 / a lead assigned by an assignment rule
+    lines.push(t('assignment.auditRule', { rule: c.assignmentRule }));
   }
   if (typeof c.webForm === 'string') {
     // 网页表单生成的线索 / a lead created by a web form

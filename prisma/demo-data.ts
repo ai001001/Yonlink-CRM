@@ -1164,6 +1164,8 @@ export const DEMO_WEB_FORMS: {
   successMessage: string;
   /** 关联的网站来源演示线索数 / number of website demo leads linked to it */
   linkLeads: number;
+  /** 按分配规则分配（否则固定为经理）/ assign by the assignment rules (otherwise the manager) */
+  assignByRule: boolean;
 }[] = [
   {
     name: '【演示】官网产品咨询',
@@ -1176,6 +1178,7 @@ export const DEMO_WEB_FORMS: {
     campaign: null,
     successMessage: '【演示】感谢咨询，我们将在 1 个工作日内与您联系。',
     linkLeads: 3,
+    assignByRule: true,
   },
   {
     name: '【演示】技术研讨会报名',
@@ -1188,6 +1191,7 @@ export const DEMO_WEB_FORMS: {
     campaign: 'webinar',
     successMessage: '【演示】报名成功，会议邀请将发送到您的邮箱。',
     linkLeads: 0,
+    assignByRule: false,
   },
   {
     name: '【演示】上海汽配展现场登记（已结束）',
@@ -1200,6 +1204,7 @@ export const DEMO_WEB_FORMS: {
     campaign: 'expo',
     successMessage: '【演示】登记成功。',
     linkLeads: 0,
+    assignByRule: false,
   },
 ];
 
@@ -1266,4 +1271,18 @@ export const DEMO_PURCHASE_ORDERS: {
   { vendor: 'bearing', subject: '【演示】浮动轴承季度采购', status: 'PARTIALLY_RECEIVED', daysAgo: 20, expectedInDays: 5, taxPercent: '13', lines: [{ sku: 'DT-GK-01-CN', quantity: 500, received: 300 }] },
   { vendor: 'germany', subject: '【演示】进口动平衡检测工具', status: 'ORDERED', daysAgo: 10, expectedInDays: 25, taxPercent: '0', linkFirstSalesOrder: true, lines: [{ sku: 'DT-TL-BAL', quantity: 2, received: 0 }] },
   { vendor: 'casting', subject: '【演示】下季度垫片补货（草稿）', status: 'DRAFT', daysAgo: 1, expectedInDays: 40, taxPercent: '13', lines: [{ sku: 'DT-GK-01-CN', quantity: 300, received: 0 }] },
+];
+
+/**
+ * 演示线索分配规则（按顺序匹配，命中后轮流分配）：展会线索给经理与王芳、官网询盘给两位销售、
+ * 职位含“采购”的给陈静，其余兜底给两位销售。官网产品咨询表单使用这些规则。
+ * Demo lead assignment rules (tried in order, round-robin on a match): trade-show leads to the manager and Wang Fang,
+ * website enquiries to both sales reps, purchasing titles to Chen Jing and a catch-all for both sales reps. The website
+ * enquiry form uses these rules.
+ */
+export const DEMO_ASSIGNMENT_RULES: { name: string; conditions: { field: string; op: string; value: string }[]; users: OwnerKey[] }[] = [
+  { name: '【演示】展会线索', conditions: [{ field: 'source', op: 'EQUALS', value: 'EXHIBITION' }], users: ['manager', 'sales1'] },
+  { name: '【演示】官网询盘轮流分配', conditions: [{ field: 'source', op: 'EQUALS', value: 'WEBSITE' }], users: ['sales1', 'sales2'] },
+  { name: '【演示】采购岗位', conditions: [{ field: 'title', op: 'CONTAINS', value: '采购' }], users: ['sales2'] },
+  { name: '【演示】其余线索兜底', conditions: [], users: ['sales1', 'sales2'] },
 ];

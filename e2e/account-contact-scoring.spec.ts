@@ -93,7 +93,11 @@ test('只读用户只能查看客户与联系人评分规则 / read-only users o
     await expect(modal.getByLabel('分值 1', { exact: true })).toBeDisabled();
     await expect(modal.getByTestId('scoring-add')).toHaveCount(0);
     await expect(modal.getByRole('button', { name: /保\s*存/ })).toHaveCount(0);
-    await modal.getByRole('button', { name: /关\s*闭/ }).first().click();
-    await expect(modal).toBeHidden();
+    // 按结果关闭：弹窗仍可见才点击“关闭”，最终必须隐藏（避免点击与关闭动画竞争）
+    // close by outcome: click Close only while the dialog is visible; it must end hidden (avoids racing the close animation)
+    await expect(async () => {
+      if (await modal.isVisible()) await modal.getByRole('button', { name: /关\s*闭/ }).first().click({ timeout: 2000 });
+      await expect(modal).toBeHidden({ timeout: 1000 });
+    }).toPass({ timeout: 15000 });
   }
 });

@@ -2,10 +2,12 @@
  * 数据导入导出（CSV，参考 Zoho Import / Export）。
  * - 导出：与列表共用查询条件（可见范围 + 筛选 + 搜索），需 data.export 权限，写审计。
  * - 导入：线索、客户；逐行复用新建校验规则，先预检后写入；有效行在一个事务内写入并逐条审计。
+ *   线索可选“按分配规则”分配负责人（需 owner.assign）：未指定负责人的行按规则轮流分配，没有规则命中时归导入人。
  * Data import / export (CSV, cf. Zoho Import / Export).
  * - Export shares the list's query conditions, requires data.export and is audited.
  * - Import (leads, accounts) validates each row with the create rules, supports a dry run, and writes
- *   valid rows in one transaction with per-record audit entries.
+ *   valid rows in one transaction with per-record audit entries. Lead imports may assign owners by the assignment
+ *   rules (needs owner.assign): rows without an owner are assigned round-robin; with no matching rule the importer owns them.
  */
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
@@ -19,6 +21,7 @@ import { can, requirePermission } from '../permissions';
 import { toXlsx, type Cell, type NumberFormat } from '../xlsx';
 import { accountCreateSchema, accountListSchema, accountWhere, contactCreateSchema, contactListSchema, contactWhere } from './accounts';
 import { activityListSchema, activityWhere } from './activities';
+import { assignByRules } from './assignment-rules';
 import { dealListSchema, dealWhere } from './deals';
 import { leadCreateSchema, leadListSchema, leadWhere } from './leads';
 import { gradeRange } from './scoring-grades';
@@ -349,6 +352,8 @@ export const importSchema = z.strictObject({
   duplicates: z.enum(['skip', 'create']).default('skip'),
   /** 提示信息（如缺失的列名）使用的语言 / locale for messages such as missing column names */
   lang: z.enum(LOCALES).optional(),
+  /** 未指定负责人的行：归导入人（默认）或按分配规则（仅线索）/ rows without an owner: the importer (default) or the assignment rules (leads only) */
+  owner: z.enum(['self', 'rules']).default('self'),
 });
 
 /** 导入报告 / Import report */
@@ -357,6 +362,8 @@ export interface ImportReport {
   total: number;
   valid: number;
   created: number;
+  /** 按分配规则分配的行数 / rows assigned by the assignment rules */
+  assignedByRule: number;
   duplicates: { row: number; value: string }[];
   errors: { row: number; field: string; reason: ImportReason }[];
   unknownColumns: string[];
@@ -452,6 +459,10 @@ function reasonOf(issue: z.core.$ZodIssue): ImportReason {
  */
 export async function importCsv(ctx: AuthContext, entity: ImportEntity, input: z.infer<typeof importSchema>): Promise<ImportReport> {
   requirePermission(ctx, 'record.create');
+  if (input.owner === 'rules') {
+    if (entity !== 'leads') throw new ApiError(400, 'VALIDATION_ERROR', 'Assignment rules apply to leads only', { owner: ['leads_only'] });
+    requirePermission(ctx, 'owner.assign');
+  }
   let table: string[][];
   try {
     table = parseCsv(input.csv);
@@ -485,7 +496,7 @@ export async function importCsv(ctx: AuthContext, entity: ImportEntity, input: z
       : (await prisma.account.findMany({ where: { organizationId: ctx.organizationId }, select: { name: true } })).map((a) => a.name.trim().toLowerCase()),
   );
 
-  const report: ImportReport = { dryRun: input.dryRun, total: table.length - 1, valid: 0, created: 0, duplicates: [], errors: [], unknownColumns };
+  const report: ImportReport = { dryRun: input.dryRun, total: table.length - 1, valid: 0, created: 0, assignedByRule: 0, duplicates: [], errors: [], unknownColumns };
   const toCreate: { data: Record<string, unknown>; contact?: Record<string, unknown> }[] = [];
 
   table.slice(1).forEach((cells, i) => {
@@ -547,10 +558,19 @@ export async function importCsv(ctx: AuthContext, entity: ImportEntity, input: z
     async (tx) => {
       for (const item of toCreate) {
         const { ownerId, ...data } = item.data as { ownerId?: string | null } & Record<string, unknown>;
-        const owner = ownerId ?? ctx.userId;
+        // 文件中指定的负责人优先；否则按规则（选择时）；最后归导入人 / the file's owner first, then the rules (when chosen), then the importer
+        const assigned = !ownerId && input.owner === 'rules' ? await assignByRules(tx, ctx.organizationId, data as Record<string, string | null>) : null;
+        const owner = ownerId ?? assigned?.ownerId ?? ctx.userId;
         if (entity === 'leads') {
           const lead = await tx.lead.create({ data: { ...(data as Omit<Prisma.LeadUncheckedCreateInput, 'organizationId'>), organizationId: ctx.organizationId, ownerId: owner } });
-          await audit(tx, { ...by(ctx), action: 'lead.create', entityType: 'lead', entityId: lead.id, changes: { after: snapshot('lead', lead), via: 'lead.import' } });
+          await audit(tx, {
+            ...by(ctx),
+            action: 'lead.create',
+            entityType: 'lead',
+            entityId: lead.id,
+            changes: { after: snapshot('lead', lead), via: 'lead.import', ...(assigned ? { assignmentRule: assigned.ruleName } : {}) },
+          });
+          if (assigned) report.assignedByRule += 1;
         } else {
           const account = await tx.account.create({ data: { ...(data as Omit<Prisma.AccountUncheckedCreateInput, 'organizationId'>), organizationId: ctx.organizationId, ownerId: owner } });
           await audit(tx, { ...by(ctx), action: 'account.create', entityType: 'account', entityId: account.id, changes: { after: snapshot('account', account), via: 'account.import' } });
@@ -568,7 +588,14 @@ export async function importCsv(ctx: AuthContext, entity: ImportEntity, input: z
         ...by(ctx),
         action: `${entityType}.import`,
         entityType,
-        changes: { total: report.total, created: report.created, duplicates: report.duplicates.length, errors: report.errors.length, duplicatePolicy: input.duplicates },
+        changes: {
+          total: report.total,
+          created: report.created,
+          duplicates: report.duplicates.length,
+          errors: report.errors.length,
+          duplicatePolicy: input.duplicates,
+          ...(input.owner === 'rules' ? { assignedByRule: report.assignedByRule } : {}),
+        },
       });
     },
     { timeout: 120_000 },

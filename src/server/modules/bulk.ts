@@ -15,6 +15,7 @@ import { assertOwnerAssignable, requirePermission } from '../permissions';
 import { resolveOwner } from '../validation';
 import { deleteAccount, updateAccount } from './accounts';
 import { deleteActivity, updateActivity } from './activities';
+import { reassignLead } from './assignment-rules';
 import { deleteDeal, updateDeal } from './deals';
 import { deleteLead, updateLead } from './leads';
 import { changeRecordTags, type TaggableEntity } from './tags';
@@ -38,6 +39,8 @@ const tagRemove = z.strictObject({ action: z.literal('tag_remove'), ids, tagId: 
 export const leadBulkSchema = z.discriminatedUnion('action', [
   assign,
   z.strictObject({ action: z.literal('status'), ids, status: z.enum(LeadStatus).exclude([LeadStatus.CONVERTED]) }),
+  /** 按分配规则重新分配 / reassign by the assignment rules */
+  z.strictObject({ action: z.literal('assign_rule'), ids }),
   remove,
   tagAdd,
   tagRemove,
@@ -85,6 +88,7 @@ async function runBulk(list: string[], fn: (id: string) => Promise<unknown>): Pr
  */
 async function precheck(ctx: AuthContext, input: { action: string; ownerId?: string | null; tagId?: string }): Promise<void> {
   if (input.action === 'delete') requirePermission(ctx, 'record.delete');
+  if (input.action === 'assign_rule') requirePermission(ctx, 'owner.assign');
   if (input.tagId) {
     // 标签必须属于本组织（失败则整批拒绝）/ the tag must belong to this organization
     if (!(await prisma.tag.count({ where: { id: input.tagId, organizationId: ctx.organizationId } }))) {
@@ -115,6 +119,8 @@ export async function bulkLeads(ctx: AuthContext, input: z.infer<typeof leadBulk
       return runBulk(input.ids, (id) => updateLead(ctx, id, { ownerId: input.ownerId }));
     case 'status':
       return runBulk(input.ids, (id) => updateLead(ctx, id, { status: input.status }));
+    case 'assign_rule':
+      return runBulk(input.ids, (id) => reassignLead(ctx, id));
     case 'delete':
       return runBulk(input.ids, (id) => deleteLead(ctx, id));
     case 'tag_add':

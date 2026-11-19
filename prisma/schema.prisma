@@ -66,6 +66,8 @@ model Organization {
   campaigns        Campaign[]
   dealContactRoles DealContactRole[]
   dealCompetitors  DealCompetitor[]
+  assignmentRules  AssignmentRule[]
+  assignmentUsers  AssignmentRuleUser[]
 
   @@map("organizations")
 }
@@ -114,6 +116,7 @@ model User {
   uploads            Attachment[]         @relation("AttachmentUploader")
   salesTargets       SalesTarget[]        @relation("TargetOwner")
   targetsUpdated     SalesTarget[]        @relation("TargetUpdater")
+  assignmentRules    AssignmentRuleUser[]
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -1536,6 +1539,8 @@ model WebForm {
   /// 生成线索的来源、负责人、市场活动 / source, owner and campaign of created leads
   source          String       @default("WEBSITE") @db.VarChar(50)
   ownerId         String?      @map("owner_id") @db.Uuid
+  /// 按分配规则分配负责人（与固定负责人互斥）/ assign the owner by assignment rules (exclusive with a fixed owner)
+  assignByRule    Boolean      @default(false) @map("assign_by_rule")
   campaignId      String?      @map("campaign_id") @db.Uuid
   successMessage  String?      @map("success_message") @db.VarChar(500)
   submissionCount Int          @default(0) @map("submission_count")
@@ -1615,4 +1620,51 @@ model ScoringSettings {
 
   @@id([organizationId, entity])
   @@map("scoring_settings")
+}
+
+/// 分配规则适用的对象 / entities an assignment rule applies to
+enum AssignmentEntity {
+  LEAD
+
+  @@map("assignment_entity")
+}
+
+/// 分配规则（对标 Zoho Assignment Rules）：按顺序匹配条件（全部满足），命中后在负责人列表中轮流分配。
+/// conditions 为 [{field, op, value}]（服务端校验，最多 5 条，空数组表示匹配全部）；cursor 为已分配次数（轮转指针）。
+/// Assignment rule (cf. Zoho Assignment Rules): rules are tried in order; all conditions must hold; a match assigns
+/// round-robin among the rule's users. conditions is [{field, op, value}] (validated server-side, at most 5; empty
+/// matches everything); cursor counts assignments made (the round-robin pointer).
+model AssignmentRule {
+  id             String               @id @default(uuid()) @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  entity         AssignmentEntity     @default(LEAD)
+  name           String               @db.VarChar(100)
+  conditions     Json                 @default("[]")
+  position       Int
+  cursor         Int                  @default(0)
+  isActive       Boolean              @default(true) @map("is_active")
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  users          AssignmentRuleUser[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, entity, position])
+  @@map("assignment_rules")
+}
+
+/// 分配规则的负责人（按 position 轮流；复合外键保证与规则、用户同组织）。
+/// Users of an assignment rule, taken in position order; composite FKs keep rule and user in the same organization.
+model AssignmentRuleUser {
+  organizationId String         @map("organization_id") @db.Uuid
+  ruleId         String         @map("rule_id") @db.Uuid
+  userId         String         @map("user_id") @db.Uuid
+  position       Int
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rule           AssignmentRule @relation(fields: [organizationId, ruleId], references: [organizationId, id], onDelete: Cascade)
+  user           User           @relation(fields: [organizationId, userId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([ruleId, userId])
+  @@index([organizationId, userId])
+  @@map("assignment_rule_users")
 }

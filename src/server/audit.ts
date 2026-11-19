@@ -16,7 +16,7 @@ export interface RequestMeta {
 }
 
 /** 审计对象类型 / Audited entity types */
-export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'order' | 'invoice' | 'report' | 'rate' | 'campaign' | 'ticket' | 'sla' | 'scoring' | 'article' | 'vendor' | 'purchase' | 'pricebook' | 'webform' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
+export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'order' | 'invoice' | 'report' | 'rate' | 'campaign' | 'ticket' | 'sla' | 'scoring' | 'assignment' | 'article' | 'vendor' | 'purchase' | 'pricebook' | 'webform' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
 
 /** 字段策略 / Field policy */
 type Policy = 'plain' | 'mask' | 'redact';
@@ -61,7 +61,7 @@ export const AUDIT_FIELDS: Record<Exclude<AuditEntity, 'auth'>, Record<string, P
     priority: 'plain', type: 'plain', channel: 'plain', dueAt: 'plain', resolution: 'redact', resolvedAt: 'plain', escalatedAt: 'plain',
   },
   webform: {
-    name: 'plain', title: 'plain', intro: 'redact', isActive: 'plain', fields: 'plain', requiredFields: 'plain', source: 'plain', ownerId: 'plain', campaignId: 'plain', successMessage: 'redact',
+    name: 'plain', title: 'plain', intro: 'redact', isActive: 'plain', fields: 'plain', requiredFields: 'plain', source: 'plain', ownerId: 'plain', assignByRule: 'plain', campaignId: 'plain', successMessage: 'redact',
   },
   pricebook: { name: 'plain', currency: 'plain', pricingModel: 'plain', isActive: 'plain', description: 'redact' },
   vendor: {
@@ -78,6 +78,8 @@ export const AUDIT_FIELDS: Record<Exclude<AuditEntity, 'auth'>, Record<string, P
   sla: {},
   // 评分规则审计直接记录规则文本与阈值 / scoring audits record rule texts and thresholds directly
   scoring: {},
+  // 分配规则审计直接记录规则文本 / assignment audits record rule texts directly
+  assignment: {},
   // 汇率审计直接记录币种、日期与汇率 / rate audits record currency, date and rate directly
   rate: {},
   invoice: {

@@ -1,0 +1,71 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+36 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:790718) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/assignment-rules/assignment-rules.r1-functional.test.ts (5 tests | 2 failed) 1748ms
+   ❯ assignment rules R1 maintenance (1)
+     × 读取、保存与顺序、校验、权限、审计 / read, save, validate, permissions, audit 254ms
+   ❯ assignment rules R1 import and bulk (2)
+     × 导入：文件中负责人优先、按规则轮流、无命中归导入人、权限与对象限制 / import 167ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/assignment-rules/assignment-rules.r1-functional.test.ts > assignment rules R1 maintenance > 读取、保存与顺序、校验、权限、审计 / read, save, validate, permissions, audit
+AssertionError: expected 400 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 400
+
+ ❯ tests/assignment-rules/assignment-rules.r1-functional.test.ts:73:22
+     71|       rule('兜底', [s3.user.id], [], { isActive: false }),
+     72|     ]);
+     73|     expect(r.status).toBe(200);
+       |                      ^
+     74|     expect(r.json.rules.map((x: { name: string; isActive: boolean; cur…
+     75|       ['展会', true, 0, [s1.user.id, s2.user.id]],
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/assignment-rules/assignment-rules.r1-functional.test.ts > assignment rules R1 import and bulk > 导入：文件中负责人优先、按规则轮流、无命中归导入人、权限与对象限制 / import
+AssertionError: expected { dryRun: true, total: 5, …(6) } to match object { valid: 5, created: +0, …(1) }
+(5 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "assignedByRule": 0,
+    "created": 0,
+-   "valid": 5,
++   "valid": 4,
+  }
+
+ ❯ tests/assignment-rules/assignment-rules.r1-functional.test.ts:179:22
+    177|     const csv = ['姓名,线索来源,负责人邮箱', '甲,展会,', '乙,展会,', `丙,展会,${s3.user.em…
+    178|     const dry = await call(leadImport.POST, { token: a.token, body: { …
+    179|     expect(dry.json).toMatchObject({ valid: 5, created: 0, assignedByR…
+       |                      ^
+    180|     expect((await read()).json.rules[0].cursor).toBe(0); // 预检不取号 / dr…
+    181|     const r = await importLeads(csv, { owner: 'rules' });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 3 passed (5)
+   Start at  16:49:35
+   Duration  3.96s (tests 79%, import 15%, transform 5%, setup 1%)
+
