@@ -13,7 +13,7 @@
  */
 import { z } from 'zod';
 import { Prisma } from '@/generated/prisma/client';
-import { audit, by } from '../audit';
+import { audit, by, setActor } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
@@ -66,6 +66,7 @@ async function recalc(tx: Prisma.TransactionClient, ctx: AuthContext, dealId: st
   const sum = await tx.dealLineItem.aggregate({ where: { organizationId: ctx.organizationId, dealId }, _sum: { lineTotal: true } });
   const amount = sum._sum.lineTotal ?? new Prisma.Decimal(0);
   if (!amount.equals(before)) {
+    await setActor(tx, ctx);
     await tx.deal.update({ where: { id: dealId }, data: { amount } });
     await audit(tx, { ...by(ctx), action: 'deal.update', entityType: 'deal', entityId: dealId, changes: { fields: { amount: [before.toString(), amount.toString()] }, via: 'deal.items' } });
   }

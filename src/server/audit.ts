@@ -204,6 +204,15 @@ export function requestMeta(req: Request): RequestMeta {
 }
 
 /**
+ * 在事务内登记当前操作人，供数据库触发器（如商机阶段历史）记录修改人。
+ * Register the current actor in the transaction for database triggers (such as deal stage history).
+ */
+export async function setActor(tx: Prisma.TransactionClient, ctx: { userId: string }): Promise<void> {
+  // 仅在当前事务内生效（set_config 第三个参数为 true）/ local to the current transaction (is_local = true)
+  await tx.$queryRaw`SELECT set_config('yonlink.actor_id', ${ctx.userId}, true) AS v`;
+}
+
+/**
  * 由身份上下文生成审计的公共字段。
  * Common audit fields derived from the identity context.
  */

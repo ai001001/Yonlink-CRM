@@ -13,7 +13,7 @@
  */
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
-import { audit, by } from '../audit';
+import { audit, by, setActor } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
@@ -53,12 +53,14 @@ interface Payload {
   /** 商机联系人角色与竞争对手 / deal contact roles and competitors */
   contactRoles?: Record<string, unknown>[];
   competitors?: Record<string, unknown>[];
+  /** 商机阶段历史 / deal stage history */
+  stageHistory?: Record<string, unknown>[];
   /** 指向本记录（或其联系人）的转化来源线索 / leads whose conversion points at this record (or its contacts) */
   conversions: { leadId: string; field: 'convertedAccountId' | 'convertedContactId' | 'convertedDealId'; value: string }[];
 }
 
 /** 需要还原为 Date 的字段 / fields revived as Date */
-const DATE_KEYS = new Set(['createdAt', 'updatedAt', 'completedAt', 'dueAt', 'convertedAt', 'editedAt', 'expectedCloseDate', 'validUntil', 'sentAt', 'decidedAt']);
+const DATE_KEYS = new Set(['createdAt', 'updatedAt', 'completedAt', 'dueAt', 'convertedAt', 'editedAt', 'expectedCloseDate', 'validUntil', 'sentAt', 'decidedAt', 'changedAt']);
 
 /**
  * JSON 快照行 → 可写入的数据（还原日期，组织 ID 以当前上下文为准）。
@@ -127,6 +129,7 @@ export async function recycle(tx: Prisma.TransactionClient, ctx: AuthContext, en
     payload.quotes = await tx.quote.findMany({ where: { organizationId: org, dealId: id }, include: { lines: true } });
     payload.contactRoles = await tx.dealContactRole.findMany({ where: { organizationId: org, dealId: id } });
     payload.competitors = await tx.dealCompetitor.findMany({ where: { organizationId: org, dealId: id } });
+    payload.stageHistory = await tx.dealStageHistory.findMany({ where: { organizationId: org, dealId: id } });
     reservedNumbers = payload.quotes.map((q) => q.quoteNumber as string);
     const leads = await tx.lead.findMany({ where: { organizationId: org, convertedDealId: id }, select: { id: true } });
     payload.conversions = leads.map((l) => ({ leadId: l.id, field: 'convertedDealId' as const, value: id }));
@@ -295,7 +298,14 @@ export async function restoreItem(ctx: AuthContext, itemId: string) {
         rec.campaignId = null;
         skipped.push('campaign');
       }
+      await setActor(tx, ctx);
       await tx.deal.create({ data: rec });
+      // 快照含阶段历史时原样恢复（替换触发器写入的新建行）；旧快照保留触发器写入的一行
+      // restore the saved stage history (replacing the trigger's row); older snapshots keep the trigger's row
+      if (p.stageHistory?.length) {
+        await tx.dealStageHistory.deleteMany({ where: { organizationId: org, dealId: rec.id! } });
+        await tx.dealStageHistory.createMany({ data: p.stageHistory.map((h) => revive<Prisma.DealStageHistoryCreateManyInput>(h, org)) });
+      }
       await tx.dealLineItem.createMany({ data: (p.lineItems ?? []).map((i) => revive<Prisma.DealLineItemCreateManyInput>(i, org)) });
       for (const q of p.quotes ?? []) {
         const { lines, ...quote } = q;

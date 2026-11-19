@@ -16,6 +16,7 @@ import { DealItemsPanel } from '@/components/DealItemsPanel';
 import { DealQuotesPanel } from '@/components/DealQuotesPanel';
 import { DealContactRolesPanel } from '@/components/DealContactRolesPanel';
 import { DealCompetitorsPanel } from '@/components/DealCompetitorsPanel';
+import { DealStageHistoryPanel } from '@/components/DealStageHistoryPanel';
 import { NotesPanel } from '@/components/NotesPanel';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { usePermissions } from '@/components/AuthProvider';
@@ -401,6 +402,7 @@ export default function DealsPage() {
                 label: t('attachments.title'),
                 children: <AttachmentsPanel key={`files-${detail.id}`} parent={{ dealId: detail.id }} ownerId={detail.ownerId} />,
               },
+              { key: 'stage-history', label: t('stageHistory.tab'), children: <DealStageHistoryPanel key={`stages-${detail.id}`} dealId={detail.id} version={detail.updatedAt} /> },
               { key: 'activities', label: t('deals.tabActivities'), children: <RelatedActivities relation={{ dealId: detail.id }} /> },
               { key: 'audit', label: t('audit.trail'), children: <AuditTrail entityType="deal" entityId={detail.id} version={detail.updatedAt} /> },
             ]}

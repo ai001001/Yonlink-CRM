@@ -12,6 +12,7 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { usePermissions } from '@/components/AuthProvider';
 import { ColumnChart, HBarChart } from '@/components/Charts';
 import { ExportButton } from '@/components/ExportButton';
+import { StageDurationCard } from '@/components/StageDurationCard';
 import { t, tEnum, type MessageKey } from '@/i18n';
 import { api, ClientApiError, qs } from '@/lib/api';
 import { fmtMoney } from '@/lib/format';
@@ -259,6 +260,7 @@ export default function ReportsPage() {
                 ]}
               />
             </Card>
+            <StageDurationCard from={range[0].format('YYYY-MM-DD')} to={range[1].format('YYYY-MM-DD')} ownerId={ownerId} />
           </div>
         )}
       </Spin>

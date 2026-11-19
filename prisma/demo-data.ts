@@ -304,6 +304,33 @@ export function dealCreatedDaysAgo(d: Pick<DealSeed, 'closeInDays'>): number {
   return d.closeInDays < 0 ? -d.closeInDays + lead : lead;
 }
 
+/**
+ * 演示商机的阶段推进路径（演示数据，按商机编号确定，便于阶段历史与停留时长报表有内容）：
+ * 进行中商机从“资格确认”依次推进到当前阶段，最后一次推进在创建后约 70% 的时间点；
+ * 赢单商机走完四个阶段后在预计成交日赢单；输单商机推进到第 1–3 个阶段后在预计成交日输单。
+ * 返回每一步的阶段与距今天数（递减）。
+ * Demo stage path of a deal (demo data, deterministic per key, so stage history and the duration report have content):
+ * open deals advance from qualification to their stage, the last step at about 70 % of their age; won deals pass all
+ * four open stages and win on the close date; lost deals reach stage 1–3 and are lost on the close date.
+ * Returns each step's stage and days ago (decreasing).
+ */
+export function demoStagePath(d: Pick<DealSeed, 'key' | 'stage' | 'closeInDays'>): { stage: Stage; daysAgo: number }[] {
+  const open: Stage[] = ['QUALIFICATION', 'NEEDS_ANALYSIS', 'PROPOSAL', 'NEGOTIATION'];
+  const created = dealCreatedDaysAgo(d);
+  const hash = [...d.key].reduce((s, c) => s + c.charCodeAt(0), 0);
+  let path: Stage[];
+  let end: number;
+  if (d.stage === 'CLOSED_WON' || d.stage === 'CLOSED_LOST') {
+    path = d.stage === 'CLOSED_WON' ? [...open, 'CLOSED_WON'] : [...open.slice(0, 1 + (hash % 3)), 'CLOSED_LOST'];
+    end = Math.max(1, -d.closeInDays);
+  } else {
+    path = open.slice(0, open.indexOf(d.stage) + 1);
+    end = Math.max(1, Math.round(created * 0.3));
+  }
+  const step = path.length > 1 ? (created - end) / (path.length - 1) : 0;
+  return path.map((stage, i) => ({ stage, daysAgo: Math.round((created - i * step) * 10) / 10 }));
+}
+
 /** 报价单（明细由商机产品明细生成；报价单号在写入时按年份编号）/ Quote (lines come from the deal items) */
 export interface QuoteSeed {
   deal: string;

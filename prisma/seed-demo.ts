@@ -16,7 +16,7 @@ import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
 import { toBase } from '../src/server/modules/exchange-rates';
 import { Prisma } from '../src/generated/prisma/client';
-import { buildDemoData, dealCreatedDaysAgo, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_ACCOUNT_SCORING, DEMO_CONTACT_SCORING, DEMO_DEAL_SCORING, DEMO_ASSIGNMENT_RULES, DEMO_WEB_FORMS, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoStagePath, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_ACCOUNT_SCORING, DEMO_CONTACT_SCORING, DEMO_DEAL_SCORING, DEMO_ASSIGNMENT_RULES, DEMO_WEB_FORMS, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -225,6 +225,23 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         });
         dealIds[d.key] = created.id;
       }
+      // 阶段历史：以演示推进路径替换触发器写入的新建行（修改人为商机负责人）
+      // stage history: replace the trigger's creation rows with the demo stage paths (actor = deal owner)
+      await tx.dealStageHistory.deleteMany({ where: { organizationId: o } });
+      await tx.dealStageHistory.createMany({
+        data: data.deals.flatMap((d) =>
+          demoStagePath(d).map((s) => ({
+            organizationId: o,
+            dealId: dealIds[d.key]!,
+            stage: s.stage,
+            amount: d.amount,
+            currency: d.currency,
+            expectedCloseDate: dayOffset(d.closeInDays),
+            changedById: owner(d.owner),
+            changedAt: new Date(Date.now() - s.daysAgo * DAY),
+          })),
+        ),
+      });
 
       // 商机竞争对手与联系人角色 / deal competitors and contact roles
       const competitors = demoDealCompetitors(data);

@@ -68,6 +68,7 @@ model Organization {
   dealCompetitors  DealCompetitor[]
   assignmentRules  AssignmentRule[]
   assignmentUsers  AssignmentRuleUser[]
+  dealStageHistory DealStageHistory[]
 
   @@map("organizations")
 }
@@ -117,6 +118,7 @@ model User {
   salesTargets       SalesTarget[]        @relation("TargetOwner")
   targetsUpdated     SalesTarget[]        @relation("TargetUpdater")
   assignmentRules    AssignmentRuleUser[]
+  dealStageChanges   DealStageHistory[]   @relation("StageChanger")
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -291,38 +293,39 @@ enum DealStage {
 }
 
 model Deal {
-  id                String            @id @default(uuid()) @db.Uuid
-  organizationId    String            @map("organization_id") @db.Uuid
-  ownerId           String?           @map("owner_id") @db.Uuid
+  id                String             @id @default(uuid()) @db.Uuid
+  organizationId    String             @map("organization_id") @db.Uuid
+  ownerId           String?            @map("owner_id") @db.Uuid
   /// 来源市场活动 / source campaign
-  campaignId        String?           @map("campaign_id") @db.Uuid
-  accountId         String            @map("account_id") @db.Uuid
-  name              String            @db.VarChar(200)
-  amount            Decimal           @default(0) @db.Decimal(18, 2)
-  currency          String            @default("CNY") @db.Char(3)
-  stage             DealStage         @default(QUALIFICATION)
-  expectedCloseDate DateTime?         @map("expected_close_date") @db.Date
-  description       String?           @db.Text
+  campaignId        String?            @map("campaign_id") @db.Uuid
+  accountId         String             @map("account_id") @db.Uuid
+  name              String             @db.VarChar(200)
+  amount            Decimal            @default(0) @db.Decimal(18, 2)
+  currency          String             @default("CNY") @db.Char(3)
+  stage             DealStage          @default(QUALIFICATION)
+  expectedCloseDate DateTime?          @map("expected_close_date") @db.Date
+  description       String?            @db.Text
   /// 商机评分（由数据库触发器按评分规则计算）/ deal score (computed by a database trigger from the scoring rules)
-  score             Int               @default(0)
-  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner             User?             @relation("DealOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  score             Int                @default(0)
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner             User?              @relation("DealOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
   notifications     Notification[]
   salesOrders       SalesOrder[]
   invoices          Invoice[]
   // 有商机的客户不能删除 / accounts with deals cannot be deleted
-  account           Account           @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Restrict)
+  account           Account            @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: Restrict)
   activities        Activity[]
   notes             Note[]
   lineItems         DealLineItem[]
   quotes            Quote[]
-  convertedLeads    Lead[]            @relation("LeadConvertedDeal")
+  convertedLeads    Lead[]             @relation("LeadConvertedDeal")
   tags              DealTag[]
   attachments       Attachment[]
   contactRoles      DealContactRole[]
   competitors       DealCompetitor[]
+  stageHistory      DealStageHistory[]
 
   // 来源市场活动；有关联记录的活动不能删除 / source campaign; campaigns with linked records cannot be deleted
   campaign Campaign? @relation(fields: [organizationId, campaignId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
@@ -1667,4 +1670,27 @@ model AssignmentRuleUser {
   @@id([ruleId, userId])
   @@index([organizationId, userId])
   @@map("assignment_rule_users")
+}
+
+/// 商机阶段历史（对标 Zoho Stage History）：新建商机及阶段、金额、币种、预计成交日变化时由数据库触发器写入，
+/// 修改人取事务内设置的 yonlink.actor_id（系统写入时为空）；只增不改，随商机删除。
+/// Deal stage history (cf. Zoho Stage History): written by a database trigger when a deal is created or its stage,
+/// amount, currency or expected close date changes; changed_by comes from the transaction's yonlink.actor_id (null for
+/// system writes). Append-only; removed with the deal.
+model DealStageHistory {
+  id                String       @id @default(uuid()) @db.Uuid
+  organizationId    String       @map("organization_id") @db.Uuid
+  dealId            String       @map("deal_id") @db.Uuid
+  stage             DealStage
+  amount            Decimal      @db.Decimal(18, 2)
+  currency          String       @db.Char(3)
+  expectedCloseDate DateTime?    @map("expected_close_date") @db.Date
+  changedById       String?      @map("changed_by_id") @db.Uuid
+  changedAt         DateTime     @default(now()) @map("changed_at") @db.Timestamptz(6)
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deal              Deal         @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Cascade)
+  changedBy         User?        @relation("StageChanger", fields: [organizationId, changedById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organizationId, dealId, changedAt])
+  @@map("deal_stage_history")
 }

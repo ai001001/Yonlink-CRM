@@ -5,7 +5,7 @@
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
 import { DealStage } from '@/generated/prisma/enums';
-import { audit, by, diff, snapshot } from '../audit';
+import { audit, by, diff, setActor, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
@@ -149,6 +149,7 @@ export async function createDeal(ctx: AuthContext, input: z.infer<typeof dealCre
   await assertAccount(ctx, data.accountId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
   return prisma.$transaction(async (tx) => {
+    await setActor(tx, ctx);
     const deal = await tx.deal.create({ data: { ...data, organizationId: ctx.organizationId, ownerId: owner }, include });
     await audit(tx, { ...by(ctx), action: 'deal.create', entityType: 'deal', entityId: deal.id, changes: { after: snapshot('deal', deal) } });
     await notifyAssigned(tx, ctx, { entity: 'deal', id: deal.id }, deal.name, deal.ownerId, null);
@@ -180,6 +181,7 @@ export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<ty
   if (data.accountId) await assertAccount(ctx, data.accountId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
   return prisma.$transaction(async (tx) => {
+    await setActor(tx, ctx);
     const deal = await tx.deal.update({ where: { id: current.id }, data: { ...data, ownerId: owner }, include });
     await notifyAssigned(tx, ctx, { entity: 'deal', id: deal.id }, deal.name, deal.ownerId, current.ownerId);
     const fields = diff('deal', current, deal);

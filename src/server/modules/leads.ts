@@ -5,7 +5,7 @@
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
 import { DealStage, LeadStatus } from '@/generated/prisma/enums';
-import { audit, by, diff, snapshot } from '../audit';
+import { audit, by, diff, setActor, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
@@ -237,6 +237,7 @@ export async function convertLead(ctx: AuthContext, id: string, input: z.infer<t
 
     // 商机（可选）/ optional deal
     // 商机继承线索的来源市场活动 / the deal inherits the lead's source campaign
+    if (input.deal) await setActor(tx, ctx);
     const deal = input.deal ? await tx.deal.create({ data: { ...input.deal, organizationId: org, ownerId, accountId: account.id, campaignId: lead.campaignId } }) : null;
     if (deal) {
       await audit(tx, { ...by(ctx), action: 'deal.create', entityType: 'deal', entityId: deal.id, changes: { after: snapshot('deal', deal), via: 'lead.convert' } });

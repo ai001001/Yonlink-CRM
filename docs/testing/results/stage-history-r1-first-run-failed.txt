@@ -1,0 +1,45 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+37 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:841663) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/stage-history/stage-history.r1-functional.test.ts (6 tests | 1 failed) 2267ms
+   ❯ stage history R1 recording (5)
+     × 可见范围：销售代表看不到别人的商机历史；他组织 404；不存在 404 / visibility 211ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/stage-history/stage-history.r1-functional.test.ts > stage history R1 recording > 可见范围：销售代表看不到别人的商机历史；他组织 404；不存在 404 / visibility
+AssertionError: expected 404 to be 400 // Object.is equality
+
+- Expected
++ Received
+
+- 400
++ 404
+
+ ❯ tests/stage-history/stage-history.r1-functional.test.ts:137:43
+    135|     expect((await history(deal.id, b.token)).status).toBe(404);
+    136|     expect((await history('00000000-0000-4000-8000-000000000000')).sta…
+    137|     expect((await history('bad')).status).toBe(400);
+       |                                           ^
+    138|   });
+    139| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  19:37:28
+   Duration  4.43s (tests 85%, import 10%, transform 4%)
+
