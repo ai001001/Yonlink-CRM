@@ -72,6 +72,7 @@ model Organization {
   workflowRules    WorkflowRule[]
   quoteApprovals   QuoteApproval[]
   approvalSettings QuoteApprovalSettings?
+  stockMovements   StockMovement[]
 
   @@map("organizations")
 }
@@ -125,6 +126,7 @@ model User {
   workflowRules      WorkflowRule[]          @relation("WorkflowCreator")
   quoteApprovals     QuoteApproval[]         @relation("ApprovalActor")
   approvalSettings   QuoteApprovalSettings[] @relation("ApprovalSettingsUpdater")
+  stockMovements     StockMovement[]         @relation("StockActor")
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -453,11 +455,16 @@ model Product {
   currency         String           @default("CNY") @db.Char(3)
   description      String?          @db.Text
   isActive         Boolean          @default(true) @map("is_active")
+  /// 库存数量（只由库存流水触发器维护）/ quantity in stock (maintained only by the stock-movement trigger)
+  stockQuantity    Decimal          @default(0) @map("stock_quantity") @db.Decimal(18, 2)
+  /// 再订货水平：库存不高于此值视为低库存；为空表示不提醒 / reorder level: at or below is low stock; null = no alert
+  reorderLevel     Decimal?         @map("reorder_level") @db.Decimal(18, 2)
   createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   lineItems        DealLineItem[]
   priceBookEntries PriceBookEntry[]
+  stockMovements   StockMovement[]
 
   @@unique([organizationId, id])
   @@unique([organizationId, sku])
@@ -870,6 +877,8 @@ model SalesOrder {
   createdBy        User?                @relation("OrderCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
   lines            SalesOrderLineItem[]
   purchaseOrders   PurchaseOrder[]
+
+  stockMovements StockMovement[]
 
   @@unique([organizationId, id])
   @@unique([organizationId, orderNumber])
@@ -1443,6 +1452,8 @@ model PurchaseOrder {
   createdBy       User?                   @relation("PurchaseOrderCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
   lines           PurchaseOrderLineItem[]
 
+  stockMovements StockMovement[]
+
   @@unique([organizationId, id])
   @@unique([organizationId, poNumber])
   @@index([organizationId, vendorId])
@@ -1819,4 +1830,47 @@ model QuoteApproval {
 
   @@index([organizationId, quoteId, createdAt])
   @@map("quote_approvals")
+}
+
+/// 库存变动原因 / stock movement reasons
+enum StockReason {
+  /// 手工调整（含盘点）/ manual adjustment (stock counts included)
+  ADJUSTMENT
+  /// 采购收货 / purchase receipt
+  PURCHASE_RECEIPT
+  /// 销售发货 / sales shipment
+  SALES_SHIPMENT
+  /// 已发货订单取消退回 / return of a cancelled shipped order
+  SALES_RETURN
+
+  @@map("stock_reason")
+}
+
+/// 库存流水（对标 Zoho Inventory 的库存变动）：数量带符号；写入时由数据库触发器原子更新产品库存并记录变动后余额；只增不改。
+/// Stock movement (cf. Zoho Inventory): signed quantity; on insert a database trigger atomically updates the product's
+/// stock and records the balance after; append-only.
+model StockMovement {
+  id              String         @id @default(uuid()) @db.Uuid
+  organizationId  String         @map("organization_id") @db.Uuid
+  productId       String         @map("product_id") @db.Uuid
+  reason          StockReason
+  quantity        Decimal        @db.Decimal(18, 2)
+  /// 变动后余额（触发器写入）/ balance after the movement (set by the trigger)
+  balanceAfter    Decimal        @default(0) @map("balance_after") @db.Decimal(18, 2)
+  purchaseOrderId String?        @map("purchase_order_id") @db.Uuid
+  salesOrderId    String?        @map("sales_order_id") @db.Uuid
+  note            String?        @db.VarChar(200)
+  actorId         String?        @map("actor_id") @db.Uuid
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// 有库存流水的产品不能删除 / products with stock history cannot be deleted
+  product         Product        @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Restrict)
+  /// 来源单据删除时置空（流水保留）；同组织由触发器保证 / cleared when the source order is deleted (the movement stays); same-org enforced by a trigger
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  salesOrder      SalesOrder?    @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
+  actor           User?          @relation("StockActor", fields: [organizationId, actorId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organizationId, productId, createdAt])
+  @@index([organizationId, salesOrderId])
+  @@map("stock_movements")
 }

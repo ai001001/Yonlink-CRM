@@ -104,6 +104,8 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.account.deleteMany({ where: { organizationId: o } });
         await tx.lead.deleteMany({ where: { organizationId: o } });
         // 明细已随商机级联删除，产品随后可删 / line items cascaded with deals, so products can go
+        // 库存流水限制删除产品，先删除 / stock movements restrict product deletion, so they go first
+        await tx.stockMovement.deleteMany({ where: { organizationId: o } });
         await tx.product.deleteMany({ where: { organizationId: o } });
         // 标签关联已随记录级联删除 / tag assignments cascaded with the records
         await tx.tag.deleteMany({ where: { organizationId: o } });
@@ -731,6 +733,47 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
       await tx.accountTag.createMany({ data: assigned.accounts.map((x) => ({ organizationId: o, accountId: accountIds[x.account]!, tagId: tagIds[x.tag]! })) });
       await tx.dealTag.createMany({ data: assigned.deals.map((x) => ({ organizationId: o, dealId: dealIds[x.deal]!, tagId: tagIds[x.tag]! })) });
       await tx.leadTag.createMany({ data: assigned.leads.map((x) => ({ organizationId: o, leadId: leadIds[x.lead]!, tagId: tagIds[x.tag]! })) });
+
+      // 库存（演示数据）：期初库存 → 采购收货 → 销售发货，按时间顺序写入流水，余额由触发器计算；部分产品设置再订货水平
+      // stock (demo data): opening stock → purchase receipts → shipments, written in time order so the trigger computes
+      // balances; some products get a reorder level
+      const products = await tx.product.findMany({ where: { organizationId: o }, orderBy: { sku: 'asc' } });
+      const productBySku = new Map(products.map((p) => [p.sku, p]));
+      const events: { at: Date; productId: string; reason: 'ADJUSTMENT' | 'PURCHASE_RECEIPT' | 'SALES_SHIPMENT'; quantity: Prisma.Decimal; note?: string; purchaseOrderId?: string; salesOrderId?: string }[] = [];
+      const pos = await tx.purchaseOrder.findMany({ where: { organizationId: o }, include: { lines: true } });
+      for (const po of pos) {
+        for (const l of po.lines) {
+          const p = productBySku.get(l.productSku);
+          if (p && l.receivedQuantity.gt(0)) events.push({ at: po.receivedAt ?? new Date(po.createdAt.getTime() + 10 * DAY), productId: p.id, reason: 'PURCHASE_RECEIPT', quantity: l.receivedQuantity, purchaseOrderId: po.id });
+        }
+      }
+      const shipped = await tx.salesOrder.findMany({ where: { organizationId: o, shippedAt: { not: null }, status: { in: ['SHIPPED', 'DELIVERED'] } }, include: { lines: true } });
+      for (const so of shipped) {
+        for (const l of so.lines) {
+          const p = productBySku.get(l.productSku);
+          if (p) events.push({ at: so.shippedAt!, productId: p.id, reason: 'SALES_SHIPMENT', quantity: l.quantity.negated(), salesOrderId: so.id });
+        }
+      }
+      // 期初库存 = 目标期末库存 + 发货 − 收货（且不少于发货量，避免中途为负）；第 3 个产品期末 6（低库存）、第 7 个为 0（缺货）
+      // opening = target closing + shipped − received (at least the shipped quantity so it never dips below zero);
+      // the 3rd product ends at 6 (low stock), the 7th at 0 (out of stock)
+      for (const [i, p] of products.entries()) {
+        const net = (reason: string) => events.filter((e) => e.productId === p.id && e.reason === reason).reduce((sum, e) => sum.plus(e.quantity.abs()), new Prisma.Decimal(0));
+        const shippedQty = net('SALES_SHIPMENT');
+        const target = new Prisma.Decimal(i === 2 ? 6 : i === 6 ? 0 : 40 + ((i * 37) % 160));
+        const opening = Prisma.Decimal.max(target.plus(shippedQty).minus(net('PURCHASE_RECEIPT')), shippedQty);
+        if (opening.gt(0)) events.push({ at: new Date(Date.now() - 150 * DAY), productId: p.id, reason: 'ADJUSTMENT', quantity: opening, note: '【演示】期初库存' });
+      }
+      events.sort((x, y) => x.at.getTime() - y.at.getTime());
+      for (const e of events) {
+        await tx.stockMovement.create({
+          data: { organizationId: o, productId: e.productId, reason: e.reason, quantity: e.quantity, note: e.note ?? null, purchaseOrderId: e.purchaseOrderId ?? null, salesOrderId: e.salesOrderId ?? null, actorId: ids.manager, createdAt: e.at },
+        });
+      }
+      // 再订货水平：每隔一个产品设置为 30（第 3 个设为 10，使其显示低库存）/ reorder level 30 on every other product (10 on the 3rd so it shows low)
+      for (const [i, p] of products.entries()) {
+        if (i % 2 === 0) await tx.product.update({ where: { id: p.id }, data: { reorderLevel: i === 2 ? 10 : 30 } });
+      }
 
       // 报价单审批：规则 + 需要审批的草稿（第 1 张已批准、第 2 张待审批）；原因用与系统相同的计算
       // quote approvals: the policy plus drafts needing approval (1st approved, 2nd pending); reasons use the system's calculation

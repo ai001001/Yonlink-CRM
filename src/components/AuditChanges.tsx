@@ -307,6 +307,13 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     const threat = typeof c.threatLevel === 'string' ? ` · ${t('competitors.threatLevel')}${t('common.colon')}${tEnum('competitorThreat', c.threatLevel)}` : '';
     lines.push(`${t('competitors.audit', { name: c.competitor })}${threat}`);
   }
+  if (entry.action === 'product.stock_adjust' && Array.isArray(c.stock)) {
+    // 库存调整：SKU、变动、前后库存 / stock adjustment: SKU, change and stock before → after
+    lines.push(t('stock.auditAdjust', { sku: String(c.sku ?? ''), quantity: String(c.quantity ?? ''), before: String(c.stock[0]), after: String(c.stock[1]) }));
+  } else if (Array.isArray(c.stock) && c.stock.length) {
+    // 收货、发货、取消退回带来的库存变动 / stock movements from receipts, shipments and returns
+    lines.push(t('stock.auditMovements', { list: (c.stock as { sku: string; quantity: string }[]).map((x) => `${x.sku} ${Number(x.quantity) > 0 ? '+' : ''}${x.quantity}`).join(t('common.listSep')) }));
+  }
   if (Array.isArray(c.reasons) && entry.entityType === 'quote') {
     // 报价单提交审批：原因 / quote approval submission: reasons
     lines.push(t('approvals.auditReasons', { list: (c.reasons as string[]).map(reasonText).join(t('common.listSep')) }));

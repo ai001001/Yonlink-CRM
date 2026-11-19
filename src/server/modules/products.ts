@@ -13,6 +13,7 @@ import { ApiError, notFound } from '../errors';
 import { requirePermission } from '../permissions';
 import { containsText, listQuery, optionalText, requiredText, type Page } from '../validation';
 import { amountSchema, CURRENCIES } from './deals';
+import { lowStockWhere } from './stock';
 
 const fields = {
   sku: z
@@ -29,6 +30,13 @@ const fields = {
   currency: z.enum(CURRENCIES).default('CNY'),
   description: optionalText(5000),
   isActive: z.boolean().default(true),
+  /** 再订货水平（为空不提醒）/ reorder level (null: no alert) */
+  reorderLevel: z
+    .union([z.string().trim(), z.number().finite()])
+    .transform((v) => String(v))
+    .pipe(z.string().regex(/^\d{1,16}(\.\d{1,2})?$/, 'Invalid quantity'))
+    .nullish()
+    .transform((v) => v ?? null),
 };
 
 /** 新建产品 / Create product */
@@ -41,6 +49,8 @@ export const productUpdateSchema = z
 export const productListSchema = listQuery.extend({
   active: z.enum(['true', 'false']).optional(),
   currency: z.enum(CURRENCIES).optional(),
+  /** 库存筛选：low 低库存、out 缺货 / stock filter: low or out */
+  stock: z.enum(['low', 'out']).optional(),
 });
 
 /**
@@ -52,6 +62,7 @@ export async function listProducts(ctx: AuthContext, query: z.infer<typeof produ
     organizationId: ctx.organizationId,
     isActive: query.active === undefined ? undefined : query.active === 'true',
     currency: query.currency,
+    ...(query.stock === 'low' ? lowStockWhere() : query.stock === 'out' ? { stockQuantity: { lte: 0 } } : {}),
   };
   if (query.q) {
     const c = containsText(query.q);
@@ -75,7 +86,7 @@ export async function listProducts(ctx: AuthContext, query: z.infer<typeof produ
  * Product detail; 404 across organizations.
  */
 export async function getProduct(ctx: AuthContext, id: string) {
-  const product = await prisma.product.findFirst({ where: { id, organizationId: ctx.organizationId }, include: { _count: { select: { lineItems: true } } } });
+  const product = await prisma.product.findFirst({ where: { id, organizationId: ctx.organizationId }, include: { _count: { select: { lineItems: true, stockMovements: true } } } });
   if (!product) throw notFound();
   return product;
 }
@@ -116,6 +127,8 @@ export async function deleteProduct(ctx: AuthContext, id: string): Promise<void>
   requirePermission(ctx, 'product.manage');
   const product = await getProduct(ctx, id);
   if (product._count.lineItems > 0) throw new ApiError(409, 'CONFLICT', 'Product is used by deals', { product: ['in_use'] });
+  // 有库存流水的产品保留历史，只能停用 / products with stock history are kept; deactivate instead
+  if (product._count.stockMovements > 0) throw new ApiError(409, 'CONFLICT', 'Product has stock history', { product: ['has_stock'] });
   // 并发新增明细时，数据库 RESTRICT 外键仍会拒绝（P2003 → 409）/ the RESTRICT FK still blocks concurrent use
   await prisma.$transaction(async (tx) => {
     await tx.product.delete({ where: { id } });

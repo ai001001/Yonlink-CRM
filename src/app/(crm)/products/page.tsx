@@ -4,10 +4,11 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { App, Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Segmented, Select, Space, Switch, Table, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { usePermissions } from '@/components/AuthProvider';
+import { StockDrawer, StockTag } from '@/components/StockDrawer';
 import { t } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtMoney } from '@/lib/format';
@@ -16,6 +17,7 @@ import type { Product } from '@/lib/types';
 
 const CURRENCIES = ['CNY', 'USD', 'EUR', 'HKD', 'JPY'].map((v) => ({ value: v, label: v }));
 type ActiveFilter = 'true' | 'false' | 'all';
+type StockFilter = 'all' | 'low' | 'out';
 
 export default function ProductsPage() {
   const { message } = App.useApp();
@@ -23,7 +25,20 @@ export default function ProductsPage() {
   const canManage = perm.can('product.manage');
   const [q, setQ] = useState('');
   const [active, setActive] = useState<ActiveFilter>('true');
-  const { data, loading, reload, pagination } = usePagedList<Product>('/api/products', { q, active: active === 'all' ? undefined : active });
+  const [stock, setStock] = useState<StockFilter>('all');
+  const { data, loading, reload, pagination } = usePagedList<Product>('/api/products', { q, active: active === 'all' ? undefined : active, stock: stock === 'all' ? undefined : stock });
+  const [summary, setSummary] = useState({ low: 0, out: 0 });
+  const [stockOf, setStockOf] = useState<Product | null>(null);
+  const loadSummary = useCallback(() => {
+    api<{ low: number; out: number }>('/api/products/stock-summary')
+      .then(setSummary)
+      .catch(() => setSummary({ low: 0, out: 0 }));
+  }, []);
+  useEffect(loadSummary, [loadSummary]);
+  const refresh = () => {
+    void reload();
+    loadSummary();
+  };
   const [form] = Form.useForm();
   const [editing, setEditing] = useState<Product | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
@@ -36,14 +51,18 @@ export default function ProductsPage() {
 
   const save = async () => {
     const values = await form.validateFields();
-    const body = { ...values, unitPrice: values.unitPrice === undefined || values.unitPrice === null ? '0' : String(values.unitPrice) };
+    const body = {
+      ...values,
+      unitPrice: values.unitPrice === undefined || values.unitPrice === null ? '0' : String(values.unitPrice),
+      reorderLevel: values.reorderLevel === undefined || values.reorderLevel === null || values.reorderLevel === '' ? null : String(values.reorderLevel),
+    };
     setSaving(true);
     try {
       if (editing === 'new') await api('/api/products', { method: 'POST', body });
       else await api(`/api/products/${(editing as Product).id}`, { method: 'PATCH', body });
       message.success(t('common.saved'));
       setEditing(null);
-      void reload();
+      refresh();
     } catch (err) {
       if (err instanceof ClientApiError) form.setFields(toFormErrors(err.details));
       message.error(err instanceof ClientApiError && err.code === 'CONFLICT' ? t('products.skuTaken') : (err as Error).message);
@@ -58,7 +77,8 @@ export default function ProductsPage() {
       message.success(ok);
       void reload();
     } catch (err) {
-      message.error(err instanceof ClientApiError && err.code === 'CONFLICT' ? t('products.inUse') : (err as Error).message);
+      const code = err instanceof ClientApiError ? err.details?.product?.[0] : undefined;
+      message.error(code === 'has_stock' ? t('stock.hasStock') : err instanceof ClientApiError && err.code === 'CONFLICT' ? t('products.inUse') : (err as Error).message);
     }
   };
 
@@ -84,6 +104,16 @@ export default function ProductsPage() {
           ]}
         />
         <Input.Search allowClear placeholder={t('products.searchPlaceholder')} style={{ width: 260 }} onSearch={setQ} />
+        <Segmented<StockFilter>
+          data-testid="stock-filter"
+          value={stock}
+          onChange={setStock}
+          options={[
+            { value: 'all', label: t('stock.filterAll') },
+            { value: 'low', label: t('stock.filterLow', { n: summary.low }) },
+            { value: 'out', label: t('stock.filterOut', { n: summary.out }) },
+          ]}
+        />
       </Space>
       <Table<Product>
         rowKey="id"
@@ -101,27 +131,35 @@ export default function ProductsPage() {
             dataIndex: 'isActive',
             render: (v: boolean) => (v ? <Tag color="green">{t('products.active')}</Tag> : <Tag>{t('products.inactive')}</Tag>),
           },
+          { title: t('stock.quantity'), render: (_, r) => <StockTag product={r} /> },
+          { title: t('stock.reorderLevel'), align: 'right', render: (_, r) => (r.reorderLevel === null ? '—' : String(Number(r.reorderLevel))) },
           { title: t('products.usage'), align: 'right', render: (_, r) => r._count?.lineItems ?? 0 },
           {
             title: t('common.actions'),
-            hidden: !canManage,
             render: (_, r) => (
               <Space>
-                <Button type="link" size="small" onClick={() => openForm(r)}>
-                  {t('common.edit')}
+                <Button type="link" size="small" onClick={() => setStockOf(r)}>
+                  {t('stock.view')}
                 </Button>
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={() => run(() => api(`/api/products/${r.id}`, { method: 'PATCH', body: { isActive: !r.isActive } }), t('common.saved'))}
-                >
-                  {r.isActive ? t('products.deactivate') : t('products.activate')}
-                </Button>
-                <Popconfirm title={t('common.confirmDelete')} onConfirm={() => run(() => api(`/api/products/${r.id}`, { method: 'DELETE' }), t('common.deleted'))}>
-                  <Button type="link" size="small" danger>
-                    {t('common.delete')}
-                  </Button>
-                </Popconfirm>
+                {canManage && (
+                  <>
+                    <Button type="link" size="small" onClick={() => openForm(r)}>
+                      {t('common.edit')}
+                    </Button>
+                    <Button
+                      type="link"
+                      size="small"
+                      onClick={() => run(() => api(`/api/products/${r.id}`, { method: 'PATCH', body: { isActive: !r.isActive } }), t('common.saved'))}
+                    >
+                      {r.isActive ? t('products.deactivate') : t('products.activate')}
+                    </Button>
+                    <Popconfirm title={t('common.confirmDelete')} onConfirm={() => run(() => api(`/api/products/${r.id}`, { method: 'DELETE' }), t('common.deleted'))}>
+                      <Button type="link" size="small" danger>
+                        {t('common.delete')}
+                      </Button>
+                    </Popconfirm>
+                  </>
+                )}
               </Space>
             ),
           },
@@ -170,11 +208,15 @@ export default function ProductsPage() {
               <Switch checkedChildren={t('products.active')} unCheckedChildren={t('products.inactive')} />
             </Form.Item>
           </div>
+          <Form.Item name="reorderLevel" label={t('stock.reorderLevel')} extra={t('stock.reorderHint')}>
+            <InputNumber<string> stringMode min="0" precision={2} style={{ width: 200 }} />
+          </Form.Item>
           <Form.Item name="description" label={t('common.description')}>
             <Input.TextArea rows={3} maxLength={5000} />
           </Form.Item>
         </Form>
       </Modal>
+      <StockDrawer product={stockOf} canManage={canManage} onClose={() => setStockOf(null)} onChanged={refresh} />
     </Card>
   );
 }

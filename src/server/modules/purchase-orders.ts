@@ -28,6 +28,7 @@ import { requirePermission } from '../permissions';
 import { containsText, listQuery, optionalText, requiredText, type Page } from '../validation';
 import { amountSchema, CURRENCIES, dateOnly } from './deals';
 import { ratesOn, toBase } from './exchange-rates';
+import { recordMovements } from './stock';
 
 const DONE: PurchaseOrderStatus[] = [PurchaseOrderStatus.RECEIVED, PurchaseOrderStatus.CANCELLED];
 
@@ -335,7 +336,9 @@ export async function receivePurchaseOrder(ctx: AuthContext, id: string, input: 
       data: complete ? { status: PurchaseOrderStatus.RECEIVED, receivedAt: new Date() } : { status: PurchaseOrderStatus.PARTIALLY_RECEIVED },
       include: detailInclude,
     });
-    await audit(tx, { ...by(ctx), action: 'purchase.receive', entityType: 'purchase', entityId: id, changes: { received, status: [current.status, po.status] } });
+    // 收货增加库存 / receipts add stock
+    const stock = await recordMovements(tx, ctx, 'PURCHASE_RECEIPT', received, { purchaseOrderId: id });
+    await audit(tx, { ...by(ctx), action: 'purchase.receive', entityType: 'purchase', entityId: id, changes: { received, status: [current.status, po.status], ...(stock.length ? { stock } : {}) } });
     return po;
   });
 }

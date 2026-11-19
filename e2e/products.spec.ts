@@ -94,7 +94,8 @@ test('产品目录与商机明细 / product catalog and deal line items', async 
   await nav(page, '产品');
   await searchList(page, PRODUCTS, 'E2E-PUMP');
   const productRow = page.getByRole('row', { name: /E2E-PUMP/ });
-  await expect(productRow.locator('td').nth(6)).toHaveText('1');
+  // 使用次数列：产品库存功能在其前增加了“库存”“再订货水平”两列 / usage column: stock and reorder level now precede it
+  await expect(productRow.locator('td').nth(8)).toHaveText('1');
   await productRow.getByRole('button', { name: /删\s*除/ }).click();
   await page.getByRole('button', { name: /确\s*定|OK/ }).click();
   await expect(page.getByText('该产品已被商机使用，不能删除，可改为停用').first()).toBeVisible();

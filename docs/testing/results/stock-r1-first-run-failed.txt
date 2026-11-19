@@ -1,0 +1,41 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+43 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:888707) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/stock/stock.r1-functional.test.ts (4 tests | 1 failed) 2506ms
+   ❯ stock R1 documents (2)
+     × 采购收货增加库存（部分收货、手工明细跳过）；采购单号按权限显示 / purchase receipts 214ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/stock/stock.r1-functional.test.ts > stock R1 documents > 采购收货增加库存（部分收货、手工明细跳过）；采购单号按权限显示 / purchase receipts
+AssertionError: expected 400 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 400
+
+ ❯ orderedPo tests/stock/stock.r1-functional.test.ts:39:116
+
+ ❯ tests/stock/stock.r1-functional.test.ts:104:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  22:22:18
+   Duration  4.83s (tests 85%, import 10%, transform 5%)
+

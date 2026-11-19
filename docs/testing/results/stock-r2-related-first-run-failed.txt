@@ -1,0 +1,148 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+43 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:889460) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:889484) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:889507) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:889535) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:889564) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:889597) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:889624) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:889655) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/sales-orders/sales-orders.r1-functional.test.ts (9 tests | 1 failed) 6047ms
+   ❯ sales orders R1 lifecycle (3)
+     × 不能跳过发货直接交付；已发货也可取消，取消原因保存但审计中脱敏 / no skipping; cancel after shipping 290ms
+(node:889679) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:889703) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:889732) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:889750) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/purchase-orders/purchase-orders.r1-functional.test.ts (7 tests | 1 failed) 4676ms
+   ❯ purchase orders R1 ordering & receiving (4)
+     × 分批收货、超收、到货状态；收货后不能取消；终态不可改 / receiving 232ms
+(node:889776) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:889800) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:889830) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:889855) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:889879) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:889898) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:889930) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:889954) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:889993) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:890017) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:890037) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:890058) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:890075) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:890089) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/purchase-orders/purchase-orders.r1-functional.test.ts > purchase orders R1 ordering & receiving > 分批收货、超收、到货状态；收货后不能取消；终态不可改 / receiving
+AssertionError: expected [ { stock: [], …(2) }, …(1) ] to deeply equal [ …(2) ]
+
+- Expected
++ Received
+
+@@ -8,10 +8,11 @@
+      ],
+      "status": [
+        "ORDERED",
+        "PARTIALLY_RECEIVED",
+      ],
++     "stock": [],
+    },
+    {
+      "received": [
+        {
+          "quantity": "6",
+@@ -24,7 +25,8 @@
+      ],
+      "status": [
+        "PARTIALLY_RECEIVED",
+        "RECEIVED",
+      ],
++     "stock": [],
+    },
+  ]
+
+ ❯ tests/purchase-orders/purchase-orders.r1-functional.test.ts:169:40
+    167|     expect((await call(poItem.DELETE, { token: a.token, params: { id: …
+    168|     const logs = await prisma.auditLog.findMany({ where: { action: 'pu…
+    169|     expect(logs.map((l) => l.changes)).toEqual([
+       |                                        ^
+    170|       { received: [{ sku: 'M-1', quantity: '4' }], status: ['ORDERED',…
+    171|       { received: [{ sku: 'M-1', quantity: '6' }, { sku: 'M-2', quanti…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/sales-orders/sales-orders.r1-functional.test.ts > sales orders R1 lifecycle > 不能跳过发货直接交付；已发货也可取消，取消原因保存但审计中脱敏 / no skipping; cancel after shipping
+AssertionError: expected { …(2) } to deeply equal { fields: { status: [ …(2) ], …(1) } }
+
+- Expected
++ Received
+
+@@ -7,6 +7,13 @@
+      "status": [
+        "SHIPPED",
+        "CANCELLED",
+      ],
+    },
++   "stock": [
++     {
++       "balance": "0",
++       "quantity": "3",
++       "sku": "P-1",
++     },
++   ],
+  }
+
+ ❯ tests/sales-orders/sales-orders.r1-functional.test.ts:123:25
+    121|     expect(c.json.shippedAt).not.toBeNull();
+    122|     const log = await prisma.auditLog.findFirstOrThrow({ where: { enti…
+    123|     expect(log.changes).toEqual({ fields: { status: ['SHIPPED', 'CANCE…
+       |                         ^
+    124|   });
+    125|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 24 passed (26)
+      Tests  2 failed | 275 passed (277)
+   Start at  22:23:37
+   Duration  117.12s (tests 92%, import 6%, transform 1%)
+

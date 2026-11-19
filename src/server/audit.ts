@@ -37,7 +37,7 @@ export const AUDIT_FIELDS: Record<Exclude<AuditEntity, 'auth'>, Record<string, P
   },
   user: { name: 'plain', email: 'mask', role: 'plain', isActive: 'plain' },
   note: { content: 'redact', leadId: 'plain', accountId: 'plain', dealId: 'plain' },
-  product: { sku: 'plain', name: 'plain', category: 'plain', unit: 'plain', unitPrice: 'plain', currency: 'plain', isActive: 'plain', description: 'redact' },
+  product: { sku: 'plain', name: 'plain', category: 'plain', unit: 'plain', unitPrice: 'plain', currency: 'plain', isActive: 'plain', reorderLevel: 'plain', description: 'redact' },
   tag: { name: 'plain', color: 'plain' },
   view: { name: 'plain', entity: 'plain', shared: 'plain', filters: 'plain' },
   target: { userId: 'plain', month: 'plain', currency: 'plain', amount: 'plain' },

@@ -107,10 +107,13 @@ test('只读用户：可看到演示标签，不能添加或管理 / read-only u
   await page.getByTestId('demo-accounts').getByRole('button', { name: '登录 周会计' }).click();
   await expect(page.getByTestId('current-role')).toHaveText('只读用户');
   await nav(page, '客户');
-  await page.getByLabel('按标签筛选').click();
-  await dropdown(page).getByTitle('重点客户', { exact: true }).click();
   const first = page.locator('tbody tr.ant-table-row').first();
-  await expect(first).toContainText('重点客户');
+  // 按结果确认：下拉动画期间的点击可能被忽略，未筛选时重新选择 / confirm by outcome; a click during the open animation may be ignored
+  await expect(async () => {
+    if (!(await dropdown(page).getByTitle('重点客户', { exact: true }).isVisible())) await page.getByLabel('按标签筛选').click({ timeout: 2000 });
+    await dropdown(page).getByTitle('重点客户', { exact: true }).click({ timeout: 2000 });
+    await expect(first).toContainText('重点客户', { timeout: 3000 });
+  }).toPass({ timeout: 20000 });
   await expect(page.getByRole('button', { name: '管理标签' })).toHaveCount(0);
   await first.locator('td').getByRole('button').first().click();
   const editor = page.getByRole('dialog', { name: /客户详情/ }).getByTestId('tag-editor');

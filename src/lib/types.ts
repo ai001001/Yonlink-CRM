@@ -111,6 +111,10 @@ export interface Product {
   currency: string;
   description: string | null;
   isActive: boolean;
+  /** 库存数量 / quantity in stock */
+  stockQuantity: string;
+  /** 再订货水平 / reorder level */
+  reorderLevel: string | null;
   _count?: { lineItems: number };
 }
 

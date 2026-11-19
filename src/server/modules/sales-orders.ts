@@ -21,6 +21,7 @@ import { ApiError, notFound } from '../errors';
 import { assertCanUpdate, visible } from '../permissions';
 import { containsText, listQuery, optionalText, requiredText, type Page } from '../validation';
 import { dateOnly } from './deals';
+import { recordMovements, returnShipment } from './stock';
 
 const expectedDelivery = dateOnly.nullish().transform((v) => (v ? new Date(`${v}T00:00:00Z`) : null));
 
@@ -242,10 +243,16 @@ export async function changeOrderStatus(ctx: AuthContext, id: string, input: z.i
       const invoices = await tx.invoice.count({ where: { organizationId: ctx.organizationId, salesOrderId: id, status: { not: 'VOID' } } });
       if (invoices > 0) throw new ApiError(409, 'CONFLICT', 'Order has invoices', { invoices: [String(invoices)] });
     }
+    // 发货减少库存；已发货订单取消时退回 / shipping takes stock out; cancelling a shipped order returns it
+    let stock: { sku: string; quantity: string; balance: string }[] = [];
+    if (input.status === SalesOrderStatus.SHIPPED) {
+      stock = await recordMovements(tx, ctx, 'SALES_SHIPMENT', current.lines.map((l) => ({ sku: l.productSku, quantity: l.quantity })), { salesOrderId: id });
+    }
+    if (input.status === SalesOrderStatus.CANCELLED && current.status === SalesOrderStatus.SHIPPED) stock = await returnShipment(tx, ctx, id);
     const fields: Record<string, unknown> = { status: [current.status, input.status] };
     // 取消原因属于长文本，审计中脱敏 / the cancellation reason is free text and redacted in the audit
     if (data.cancelReason) fields.cancelReason = [null, REDACTED];
-    await audit(tx, { ...by(ctx), action: 'order.status', entityType: 'order', entityId: id, changes: { fields } });
+    await audit(tx, { ...by(ctx), action: 'order.status', entityType: 'order', entityId: id, changes: { fields, ...(stock.length ? { stock } : {}) } });
   });
   return getOrder(ctx, id);
 }

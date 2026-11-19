@@ -1,0 +1,48 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+43 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:889344) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/stock/stock.r2-integration.test.ts (5 tests | 1 failed) 5151ms
+   ❯ stock R2 isolation and database (2)
+     × 组织隔离；跨组织单据被拒绝；约束与只增不改；删除订单时流水保留 / isolation and guards 228ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/stock/stock.r2-integration.test.ts > stock R2 isolation and database > 组织隔离；跨组织单据被拒绝；约束与只增不改；删除订单时流水保留 / isolation and guards
+AssertionError: expected [Function] to throw error matching /another organization/ but got '\nInvalid `expect(prisma.stockMovemen…'
+
+- Expected:
+/another organization/
+
++ Received:
+"
+Invalid `expect(prisma.stockMovement.create()` invocation in
+/home/ai/Desktop/CRM/Yonlink-CRM/tests/stock/stock.r2-integration.test.ts:67:39
+
+  64 await expect(prisma.stockMovement.create({ data: { organizationId: b.org.id, productId: p.id, reason: 'ADJUSTMENT', quantity: 1 } })).rejects.toThrow();
+  65 const vendor = await prisma.vendor.create({ data: { organizationId: a.org.id, name: 'V' } });
+  66 const po = await prisma.purchaseOrder.create({ data: { organizationId: a.org.id, vendorId: vendor.id, poNumber: 'PO-X-1', subject: 's', currency: 'CNY', subtotal: 0, taxAmount: 0, total: 0 } });
+→ 67 await expect(prisma.stockMovement.create(
+Foreign key constraint violated on the (not available)"
+
+ ❯ tests/stock/stock.r2-integration.test.ts:67:169
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  22:23:29
+   Duration  7.32s (tests 93%, import 5%, transform 1%)
+
