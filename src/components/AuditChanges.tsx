@@ -305,7 +305,24 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     const threat = typeof c.threatLevel === 'string' ? ` · ${t('competitors.threatLevel')}${t('common.colon')}${tEnum('competitorThreat', c.threatLevel)}` : '';
     lines.push(`${t('competitors.audit', { name: c.competitor })}${threat}`);
   }
-  if (fields) {
+  if (entry.entityType === 'workflow') {
+    // 工作流：执行结果；规则快照只显示名称、对象、触发时机；修改只列出变化的项
+    // workflows: run results; rule snapshots show name, module and trigger; updates list the changed items
+    const list = (v: unknown) => (Array.isArray(v) ? v.join(t('common.listSep')) : '');
+    if (entry.action === 'workflow.run') {
+      lines.push(t('workflows.auditRun', { rule: String(c.rule ?? ''), record: String(c.record ?? '') }));
+      if (Array.isArray(c.actions) && c.actions.length) lines.push(t('workflows.auditActions', { list: list(c.actions) }));
+      if (Array.isArray(c.skipped)) lines.push(t('workflows.auditSkipped', { list: list(c.skipped) }));
+    } else if (snap) {
+      lines.push(`${t('workflows.name')}${t('common.colon')}${String(snap.name ?? '')}`);
+      lines.push(`${t('workflows.entityLabel')}${t('common.colon')}${tEnum('workflows.entity', String(snap.entity ?? ''))} · ${tEnum('workflows.trigger', String(snap.trigger ?? ''))}`);
+    } else if (fields) {
+      const LABEL: Record<string, MessageKey> = { name: 'workflows.name', trigger: 'workflows.triggerLabel', triggerField: 'workflows.triggerField', conditions: 'workflows.conditions', actions: 'workflows.actions', isActive: 'workflows.active' };
+      // 条件、动作显示条数；触发时机显示名称 / conditions and actions show counts; the trigger shows its name
+      const show = (f: string, v: unknown) => (Array.isArray(v) ? t('workflows.auditCount', { n: v.length }) : f === 'trigger' ? tEnum('workflows.trigger', String(v)) : value(f, v, users));
+      for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${LABEL[f] ? t(LABEL[f]) : f}${t('common.colon')}${show(f, b)} → ${show(f, a)}`);
+    }
+  } else if (fields) {
     for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, b, users, entry.entityType)} → ${value(f, a, users, entry.entityType)}`);
   } else if (snap) {
     for (const [f, v] of Object.entries(snap)) if (v !== null) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, v, users, entry.entityType)}`);
@@ -336,6 +353,7 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     lines.push(t('reportExport.audit', { report: t(c.report === 'sales' ? 'reports.title' : 'forecasts.title'), currency: f.currency ?? '', scope }));
   }
   if (typeof c.via === 'string') lines.push(t('audit.via', { via: actionLabel(c.via) }));
+  if (typeof c.workflow === 'string') lines.push(t('workflows.auditVia', { rule: c.workflow }));
   if (!lines.length) return null;
   return (
     <Space orientation="vertical" size={0}>

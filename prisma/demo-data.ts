@@ -1313,3 +1313,65 @@ export const DEMO_ASSIGNMENT_RULES: { name: string; conditions: { field: string;
   { name: '【演示】采购岗位', conditions: [{ field: 'title', op: 'CONTAINS', value: '采购' }], users: ['sales2'] },
   { name: '【演示】其余线索兜底', conditions: [], users: ['sales1', 'sales2'] },
 ];
+
+/**
+ * 演示工作流规则（演示数据；动作中的用户与标签在写入时按键替换为实际 ID）：
+ * 高分新线索提醒负责人并创建首次联系任务；商机进入商务谈判时创建合同任务并通知经理；
+ * 大单赢单通知经理；展会线索自动加标签（已停用，演示启停）。
+ * Demo workflow rules (demo data; users and tags in actions are keys replaced by real ids when written): high-score
+ * new leads notify the owner and get a first-call task; deals entering negotiation get a contract task and notify the
+ * manager; big wins notify the manager; trade-show leads get a tag (inactive, to show toggling).
+ */
+export const DEMO_WORKFLOWS: {
+  name: string;
+  entity: 'LEAD' | 'DEAL';
+  trigger: 'CREATE' | 'UPDATE' | 'CREATE_OR_UPDATE' | 'FIELD_CHANGE';
+  triggerField?: string;
+  conditions: { field: string; op: string; value?: string }[];
+  actions: ({ type: 'NOTIFY'; recipient: 'OWNER' | OwnerKey; message: string } | { type: 'CREATE_TASK'; subject: string; dueInDays: number; assignTo: 'OWNER' | OwnerKey } | { type: 'ADD_TAG'; tag: DemoTagKey })[];
+  isActive: boolean;
+}[] = [
+  {
+    name: '【演示】高分新线索：提醒并安排首次联系',
+    entity: 'LEAD',
+    trigger: 'CREATE',
+    conditions: [{ field: 'score', op: 'GTE', value: '50' }],
+    actions: [
+      { type: 'NOTIFY', recipient: 'OWNER', message: '高分新线索，请 24 小时内联系' },
+      { type: 'CREATE_TASK', subject: '【演示】首次电话联系', dueInDays: 1, assignTo: 'OWNER' },
+    ],
+    isActive: true,
+  },
+  {
+    name: '【演示】进入商务谈判：准备合同',
+    entity: 'DEAL',
+    trigger: 'FIELD_CHANGE',
+    triggerField: 'stage',
+    conditions: [{ field: 'stage', op: 'EQUALS', value: 'NEGOTIATION' }],
+    actions: [
+      { type: 'CREATE_TASK', subject: '【演示】准备合同草稿', dueInDays: 2, assignTo: 'OWNER' },
+      { type: 'NOTIFY', recipient: 'manager', message: '商机进入商务谈判' },
+    ],
+    isActive: true,
+  },
+  {
+    name: '【演示】大单赢单通知经理',
+    entity: 'DEAL',
+    trigger: 'FIELD_CHANGE',
+    triggerField: 'stage',
+    conditions: [
+      { field: 'stage', op: 'EQUALS', value: 'CLOSED_WON' },
+      { field: 'amount', op: 'GTE', value: '500000' },
+    ],
+    actions: [{ type: 'NOTIFY', recipient: 'manager', message: '大单赢单' }],
+    isActive: true,
+  },
+  {
+    name: '【演示】展会线索自动加标签（已停用）',
+    entity: 'LEAD',
+    trigger: 'CREATE',
+    conditions: [{ field: 'source', op: 'EQUALS', value: 'EXHIBITION' }],
+    actions: [{ type: 'ADD_TAG', tag: 'expo' }],
+    isActive: false,
+  },
+];

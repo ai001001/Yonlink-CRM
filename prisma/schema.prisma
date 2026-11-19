@@ -69,6 +69,7 @@ model Organization {
   assignmentRules  AssignmentRule[]
   assignmentUsers  AssignmentRuleUser[]
   dealStageHistory DealStageHistory[]
+  workflowRules    WorkflowRule[]
 
   @@map("organizations")
 }
@@ -119,6 +120,7 @@ model User {
   targetsUpdated     SalesTarget[]        @relation("TargetUpdater")
   assignmentRules    AssignmentRuleUser[]
   dealStageChanges   DealStageHistory[]   @relation("StageChanger")
+  workflowRules      WorkflowRule[]       @relation("WorkflowCreator")
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -764,6 +766,8 @@ enum NotificationType {
   TICKET_ESCALATED
   /// 网页表单生成了分配给我的线索 / a web form created a lead assigned to me
   WEB_FORM_LEAD
+  /// 工作流规则发出的提醒 / a reminder sent by a workflow rule
+  WORKFLOW
 
   @@map("notification_type")
 }
@@ -1693,4 +1697,56 @@ model DealStageHistory {
 
   @@index([organizationId, dealId, changedAt])
   @@map("deal_stage_history")
+}
+
+/// 工作流适用的对象 / entities a workflow rule applies to
+enum WorkflowEntity {
+  LEAD
+  DEAL
+
+  @@map("workflow_entity")
+}
+
+/// 工作流触发时机 / when a workflow rule fires
+enum WorkflowTrigger {
+  /// 新建时 / on create
+  CREATE
+  /// 编辑时（有字段变化）/ on edit (some field changed)
+  UPDATE
+  /// 新建或编辑时 / on create or edit
+  CREATE_OR_UPDATE
+  /// 指定字段变化时 / when a given field changes
+  FIELD_CHANGE
+
+  @@map("workflow_trigger")
+}
+
+/// 工作流规则（对标 Zoho Workflow Rules）：记录新建/编辑时按触发时机与条件执行动作（更新字段、指派、创建任务、通知、加标签）。
+/// conditions、actions 为 JSON（服务端按对象校验）；工作流执行的改动不会再触发工作流。
+/// Workflow rule (cf. Zoho Workflow Rules): on record create/edit, matching the trigger and conditions, run actions
+/// (field update, assign, create task, notify, add tag). conditions and actions are JSON validated server-side per
+/// entity; changes made by workflows never trigger workflows.
+model WorkflowRule {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  name           String          @db.VarChar(100)
+  entity         WorkflowEntity
+  trigger        WorkflowTrigger
+  /// 字段变化触发时的字段 / the field for FIELD_CHANGE
+  triggerField   String?         @map("trigger_field") @db.VarChar(30)
+  conditions     Json            @default("[]")
+  actions        Json
+  isActive       Boolean         @default(true) @map("is_active")
+  /// 执行次数与最近执行时间 / run count and last run time
+  runCount       Int             @default(0) @map("run_count")
+  lastRunAt      DateTime?       @map("last_run_at") @db.Timestamptz(6)
+  createdById    String?         @map("created_by_id") @db.Uuid
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User?           @relation("WorkflowCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organizationId, id])
+  @@index([organizationId, entity, isActive])
+  @@map("workflow_rules")
 }

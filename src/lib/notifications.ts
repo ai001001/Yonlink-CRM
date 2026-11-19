@@ -10,7 +10,7 @@ import { fmtDateTime } from './format';
 /** 通知 / Notification */
 export interface AppNotification {
   id: string;
-  type: 'ASSIGNED' | 'ACTIVITY_DUE' | 'TICKET_COMMENT' | 'TICKET_ESCALATED' | 'WEB_FORM_LEAD';
+  type: 'ASSIGNED' | 'ACTIVITY_DUE' | 'TICKET_COMMENT' | 'TICKET_ESCALATED' | 'WEB_FORM_LEAD' | 'WORKFLOW';
   title: string;
   dueAt: string | null;
   readAt: string | null;
@@ -67,6 +67,7 @@ export function notificationText(n: AppNotification, now = Date.now()): string {
   }
   if (n.type === 'TICKET_ESCALATED') return t('notifications.ticketEscalated', { title: n.title });
   if (n.type === 'WEB_FORM_LEAD') return t('notifications.webFormLead', { title: n.title });
+  if (n.type === 'WORKFLOW') return t('notifications.workflow', { title: n.title });
   if (n.type === 'TICKET_COMMENT') return t('notifications.ticketComment', { actor: n.actor?.name ?? t('notifications.someone'), title: n.title });
   const entity = t(`notifications.entity.${notificationTarget(n).entity}` as MessageKey);
   return t('notifications.assigned', { actor: n.actor?.name ?? t('notifications.someone'), entity, title: n.title });

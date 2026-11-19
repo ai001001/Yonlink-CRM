@@ -30,6 +30,7 @@ import { containsText, listQuery, optionalEmail, optionalText, requiredText, res
 import { assignByRules } from './assignment-rules';
 import { assertCampaign } from './campaign-links';
 import { LEAD_SOURCES } from './leads';
+import { runWorkflows } from './workflows';
 
 /** 可选字段（顺序即表单显示顺序）/ optional fields, in display order */
 export const WEB_FORM_FIELDS = ['company', 'title', 'email', 'phone', 'mobile', 'description'] as const;
@@ -345,6 +346,8 @@ export async function submitWebForm(key: string, input: z.infer<typeof submissio
         data: { organizationId: form.organizationId, userId: lead.ownerId, type: NotificationType.WEB_FORM_LEAD, leadId: lead.id, title: `${lead.name} · ${form.name}`.slice(0, 200) },
       });
     }
+    // 网页表单生成的线索同样触发“新建时”工作流（系统身份）/ web-form leads also fire create workflows (as the system)
+    await runWorkflows(tx, { entity: 'LEAD', before: null, after: lead, actorId: null, meta });
   });
   return done;
 }

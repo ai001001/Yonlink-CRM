@@ -13,14 +13,16 @@ import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
 import { assertCampaign } from './campaign-links';
 import { removeStaleRoles } from './deal-contact-roles';
+import { CURRENCIES } from './dictionaries';
 import { notifyAssigned } from './notifications';
 import { recycle } from './recycle-bin';
 import { gradeRange, scoreListFields, scoreOrder } from './scoring-grades';
 import { tagFilter, tagsInclude } from './tags';
+import { runWorkflows } from './workflows';
 import { containsText, listQuery, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
-/** 支持的币种 / Supported currencies */
-export const CURRENCIES = ['CNY', 'USD', 'EUR', 'HKD', 'JPY'] as const;
+/** 支持的币种（定义见字典模块）/ Supported currencies (defined in the dictionaries module) */
+export { CURRENCIES };
 
 /** 金额：非负，最多 16 位整数、2 位小数 / Amount: non-negative, ≤16 integer digits, ≤2 decimals */
 export const amountSchema = z
@@ -153,6 +155,10 @@ export async function createDeal(ctx: AuthContext, input: z.infer<typeof dealCre
     const deal = await tx.deal.create({ data: { ...data, organizationId: ctx.organizationId, ownerId: owner }, include });
     await audit(tx, { ...by(ctx), action: 'deal.create', entityType: 'deal', entityId: deal.id, changes: { after: snapshot('deal', deal) } });
     await notifyAssigned(tx, ctx, { entity: 'deal', id: deal.id }, deal.name, deal.ownerId, null);
+    // 工作流可能改动记录，执行后返回最新数据 / workflows may change the record; return the latest
+    if (await runWorkflows(tx, { entity: 'DEAL', before: null, after: deal, actorId: ctx.userId, meta: ctx.meta })) {
+      return tx.deal.findUniqueOrThrow({ where: { id: deal.id }, include });
+    }
     return deal;
   });
 }
@@ -190,6 +196,9 @@ export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<ty
     }
     // 换客户：移除不属于新客户的联系人角色 / account changed: drop roles of contacts outside the new account
     if (deal.accountId !== current.accountId) await removeStaleRoles(tx, ctx, deal.id, deal.accountId);
+    if (await runWorkflows(tx, { entity: 'DEAL', before: current, after: deal, actorId: ctx.userId, meta: ctx.meta })) {
+      return tx.deal.findUniqueOrThrow({ where: { id: deal.id }, include });
+    }
     return deal;
   });
 }

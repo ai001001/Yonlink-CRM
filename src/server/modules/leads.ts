@@ -12,15 +12,17 @@ import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermiss
 import { ApiError, notFound } from '../errors';
 import { detachSharedActivities } from './activities';
 import { assertCampaign } from './campaign-links';
+import { LEAD_SOURCES } from './dictionaries';
 import { amountSchema, CURRENCIES, dateOnly } from './deals';
 import { notifyAssigned } from './notifications';
 import { recycle } from './recycle-bin';
 import { gradeRange, scoreListFields, scoreOrder } from './scoring-grades';
 import { tagFilter, tagsInclude } from './tags';
+import { runWorkflows } from './workflows';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
-/** 线索来源（固定字典，前端用 i18n 显示）/ Lead sources (fixed dictionary, displayed via i18n) */
-export const LEAD_SOURCES = ['WEBSITE', 'REFERRAL', 'EXHIBITION', 'COLD_CALL', 'ADVERTISEMENT', 'SOCIAL_MEDIA', 'OTHER'] as const;
+/** 线索来源（定义见字典模块）/ Lead sources (defined in the dictionaries module) */
+export { LEAD_SOURCES };
 
 const fields = {
   name: requiredText(100),
@@ -118,6 +120,10 @@ export async function createLead(ctx: AuthContext, input: z.infer<typeof leadCre
     const lead = await tx.lead.create({ data: { ...data, organizationId: ctx.organizationId, ownerId: owner }, include });
     await audit(tx, { ...by(ctx), action: 'lead.create', entityType: 'lead', entityId: lead.id, changes: { after: snapshot('lead', lead) } });
     await notifyAssigned(tx, ctx, { entity: 'lead', id: lead.id }, lead.name, lead.ownerId, null);
+    // 工作流可能改动记录，执行后返回最新数据 / workflows may change the record; return the latest
+    if (await runWorkflows(tx, { entity: 'LEAD', before: null, after: lead, actorId: ctx.userId, meta: ctx.meta })) {
+      return tx.lead.findUniqueOrThrow({ where: { id: lead.id }, include });
+    }
     return lead;
   });
 }
@@ -142,6 +148,9 @@ export async function updateLead(ctx: AuthContext, id: string, input: z.infer<ty
     const fields = diff('lead', current, lead);
     if (Object.keys(fields).length) {
       await audit(tx, { ...by(ctx), action: 'lead.update', entityType: 'lead', entityId: lead.id, changes: { fields } });
+    }
+    if (await runWorkflows(tx, { entity: 'LEAD', before: current, after: lead, actorId: ctx.userId, meta: ctx.meta })) {
+      return tx.lead.findUniqueOrThrow({ where: { id: lead.id }, include });
     }
     return lead;
   });
