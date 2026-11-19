@@ -15,8 +15,9 @@ import { createHash, randomUUID } from 'node:crypto';
 import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
 import { toBase } from '../src/server/modules/exchange-rates';
+import { approvalReasons } from '../src/server/modules/approvals';
 import { Prisma } from '../src/generated/prisma/client';
-import { buildDemoData, dealCreatedDaysAgo, demoStagePath, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_ACCOUNT_SCORING, DEMO_CONTACT_SCORING, DEMO_DEAL_SCORING, DEMO_ASSIGNMENT_RULES, DEMO_WEB_FORMS, DEMO_WORKFLOWS, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoStagePath, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_ACCOUNT_SCORING, DEMO_CONTACT_SCORING, DEMO_DEAL_SCORING, DEMO_ASSIGNMENT_RULES, DEMO_WEB_FORMS, DEMO_WORKFLOWS, DEMO_APPROVAL, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -114,6 +115,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.scoringSettings.deleteMany({ where: { organizationId: o } });
         await tx.assignmentRule.deleteMany({ where: { organizationId: o } });
         await tx.workflowRule.deleteMany({ where: { organizationId: o } });
+        await tx.quoteApprovalSettings.deleteMany({ where: { organizationId: o } });
         // 网页表单引用市场活动，先删除 / web forms reference campaigns, so they go first
         await tx.webForm.deleteMany({ where: { organizationId: o } });
         // 线索、商机已删除，活动可删 / leads and deals are gone, so campaigns can go
@@ -729,6 +731,24 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
       await tx.accountTag.createMany({ data: assigned.accounts.map((x) => ({ organizationId: o, accountId: accountIds[x.account]!, tagId: tagIds[x.tag]! })) });
       await tx.dealTag.createMany({ data: assigned.deals.map((x) => ({ organizationId: o, dealId: dealIds[x.deal]!, tagId: tagIds[x.tag]! })) });
       await tx.leadTag.createMany({ data: assigned.leads.map((x) => ({ organizationId: o, leadId: leadIds[x.lead]!, tagId: tagIds[x.tag]! })) });
+
+      // 报价单审批：规则 + 需要审批的草稿（第 1 张已批准、第 2 张待审批）；原因用与系统相同的计算
+      // quote approvals: the policy plus drafts needing approval (1st approved, 2nd pending); reasons use the system's calculation
+      await tx.quoteApprovalSettings.create({ data: { organizationId: o, enabled: true, maxDiscountPercent: DEMO_APPROVAL.maxDiscountPercent, minTotal: DEMO_APPROVAL.minTotal, updatedById: ids.admin } });
+      const drafts = await tx.quote.findMany({ where: { organizationId: o, status: 'DRAFT' }, include: { lines: { select: { discountPercent: true } } }, orderBy: { quoteNumber: 'asc' } });
+      let decided = 0;
+      for (const q of drafts) {
+        const reasons = await approvalReasons(tx, o, q);
+        if (!reasons.length || decided >= 2) continue;
+        const submitter = q.createdById ?? ids.manager;
+        const submittedAt = new Date(Date.now() - (2 - decided) * DAY);
+        await tx.quoteApproval.create({ data: { organizationId: o, quoteId: q.id, action: 'SUBMIT', actorId: submitter, comment: DEMO_APPROVAL.comments.submit, reasons, createdAt: submittedAt } });
+        if (decided === 0) {
+          await tx.quoteApproval.create({ data: { organizationId: o, quoteId: q.id, action: 'APPROVE', actorId: ids.admin, comment: DEMO_APPROVAL.comments.approve, createdAt: new Date(submittedAt.getTime() + 3 * 3600_000) } });
+        }
+        await tx.quote.update({ where: { id: q.id }, data: { approvalStatus: decided === 0 ? 'APPROVED' : 'PENDING', approvalReasons: reasons } });
+        decided += 1;
+      }
 
       // 工作流规则（标签与用户按键替换为 ID；按顺序创建，执行顺序即创建顺序）
       // workflow rules (tag and user keys replaced by ids; created in order, which is the run order)

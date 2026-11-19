@@ -1,0 +1,138 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+42 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+ ❯ tests/approvals/approvals.r1-functional.test.ts (6 tests | 5 failed) 1581ms
+   ❯ approvals R1 flow (5)
+     × 不启用时原流程不变；不需要审批时不能提交 / disabled policy and not-required quotes 183ms
+     × 完整流程：发送被拦、提交锁定、驳回需意见、修改再提交、批准、发送 / the whole flow 180ms
+     × 批准后修改需重新审批；撤回；不能审批自己提交的 / re-approval, recall, self-approval 177ms
+     × 外币按当天汇率折合人民币；没有汇率需审批 / foreign currency conversion 159ms
+     × 审批列表：待我审批（可否审批）、我提交的；销售不能看待审批 / lists 189ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/approvals/approvals.r1-functional.test.ts > approvals R1 flow > 不启用时原流程不变；不需要审批时不能提交 / disabled policy and not-required quotes
+AssertionError: expected undefined to deeply equal { approvalStatus: [ 'not_required' ] }
+
+- Expected:
+{
+  "approvalStatus": [
+    "not_required",
+  ],
+}
+
++ Received:
+undefined
+
+ ❯ tests/approvals/approvals.r1-functional.test.ts:77:55
+     75|   it('不启用时原流程不变；不需要审批时不能提交 / disabled policy and not-required quotes',…
+     76|     const q = await repQuote('200', '30');
+     77|     expect((await doSubmit(q.id)).json.error.details).toEqual({ approv…
+       |                                                       ^
+     78|     expect((await send(q.id)).status).toBe(200);
+     79|     await settings({});
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  tests/approvals/approvals.r1-functional.test.ts > approvals R1 flow > 完整流程：发送被拦、提交锁定、驳回需意见、修改再提交、批准、发送 / the whole flow
+AssertionError: expected 404 to be 409 // Object.is equality
+
+- Expected
++ Received
+
+- 409
++ 404
+
+ ❯ tests/approvals/approvals.r1-functional.test.ts:89:28
+     87|     const q = await repQuote('2', '15'); // 折扣 15% > 10%
+     88|     const blocked = await send(q.id);
+     89|     expect(blocked.status).toBe(409);
+       |                            ^
+     90|     expect(blocked.json.error.details).toEqual({ approvalStatus: ['req…
+     91|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  tests/approvals/approvals.r1-functional.test.ts > approvals R1 flow > 批准后修改需重新审批；撤回；不能审批自己提交的 / re-approval, recall, self-approval
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/approvals/approvals.r1-functional.test.ts:144:93
+    142|     await doDecide(q.id, 'APPROVE', '同意');
+    143|     // 同步明细（内容可能变化）清空批准 / syncing clears the approval
+    144|     expect((await call(quoteSync.POST, { token: rep.token, params: { i…
+       |                                                                                             ^
+    145|     expect(await status(q.id)).toBeNull();
+    146|     expect((await send(q.id)).json.error.details).toEqual({ approvalSt…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  tests/approvals/approvals.r1-functional.test.ts > approvals R1 flow > 外币按当天汇率折合人民币；没有汇率需审批 / foreign currency conversion
+AssertionError: expected undefined to deeply equal { Object (approvalStatus) }
+
+- Expected:
+{
+  "approvalStatus": [
+    "required",
+    "total:no_rate",
+  ],
+}
+
++ Received:
+undefined
+
+ ❯ tests/approvals/approvals.r1-functional.test.ts:164:53
+    162|     const usd = await repQuote('20', '0', 'USD'); // 20,000 USD
+    163|     // 没有汇率 / no rate
+    164|     expect((await send(usd.id)).json.error.details).toEqual({ approval…
+       |                                                     ^
+    165|     const today = new Date().toISOString().slice(0, 10);
+    166|     await call(rates.POST, { token: a.token, body: { currency: 'USD', …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  tests/approvals/approvals.r1-functional.test.ts > approvals R1 flow > 审批列表：待我审批（可否审批）、我提交的；销售不能看待审批 / lists
+AssertionError: expected [] to deeply equal [ [ undefined, true, …(1) ] ]
+
+- Expected
++ Received
+
+- [
+-   [
+-     undefined,
+-     true,
+-     "8dd26e9f-bfc5-41b4-88d6-a6c413b81e0c",
+-   ],
+- ]
++ []
+
+ ❯ tests/approvals/approvals.r1-functional.test.ts:180:142
+    178|     await doDecide(q2.id, 'REJECT', '不行');
+    179|     const pending = (await call(approvalsRoute.GET, { token: mgr.token…
+    180|     expect(pending.items.map((x: { id: string; canDecide: boolean; sub…
+       |                                                                                                                                              ^
+    181|     expect((await call(approvalsRoute.GET, { token: rep.token, query: …
+    182|     const mine = (await call(approvalsRoute.GET, { token: rep.token, q…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 1 passed (6)
+   Start at  21:27:15
+   Duration  3.71s (tests 80%, import 13%, transform 6%, setup 1%)
+

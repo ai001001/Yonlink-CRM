@@ -21,6 +21,7 @@ const PATHS: Record<string, string> = {
   市场活动: '/campaigns',
   网页表单: '/web-forms',
   跟进: '/activities',
+  审批: '/approvals',
   产品: '/products',
   价格表: '/price-books',
   报价单: '/quotes',
@@ -39,9 +40,9 @@ const PATHS: Record<string, string> = {
   审计日志: '/audit-logs',
 };
 
-const BUSINESS = ['工作台', '线索', '联系人', '客户', '商机', '销售预测', '市场活动', '网页表单', '跟进', '产品', '价格表', '报价单', '销售订单', '发票', '服务工单', '知识库', '报表'];
+const BUSINESS = ['工作台', '线索', '联系人', '客户', '商机', '销售预测', '市场活动', '网页表单', '跟进', '审批', '产品', '价格表', '报价单', '销售订单', '发票', '服务工单', '知识库', '报表'];
 /** 有 purchase.read 的角色在“库存”组多出采购单（销售订单后）与供应商（发票后）/ roles with purchase.read also see purchase orders and vendors */
-const WITH_PURCHASE = ['工作台', '线索', '联系人', '客户', '商机', '销售预测', '市场活动', '网页表单', '跟进', '产品', '价格表', '报价单', '销售订单', '采购单', '发票', '供应商', '服务工单', '知识库', '报表'];
+const WITH_PURCHASE = ['工作台', '线索', '联系人', '客户', '商机', '销售预测', '市场活动', '网页表单', '跟进', '审批', '产品', '价格表', '报价单', '销售订单', '采购单', '发票', '供应商', '服务工单', '知识库', '报表'];
 const GROUPS = ['销售', '营销', '活动', '库存', '服务', '分析', '设置'];
 
 /** 各角色应看到的菜单（按顺序）/ entries each role should see, in order */

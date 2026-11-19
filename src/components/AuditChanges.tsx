@@ -6,6 +6,7 @@
 
 import { Space, Typography } from 'antd';
 import { t, tEnum, type MessageKey } from '@/i18n';
+import { reasonText } from './QuoteApproval';
 
 /** 审计日志条目 / Audit log entry */
 export interface AuditLogEntry {
@@ -170,6 +171,7 @@ const fieldLabel = (field: string, entityType: string): string => {
   if (entityType === 'webform' && field === 'fields') return t('webForms.fields');
   if (entityType === 'webform' && field === 'isActive') return t('webForms.status');
   if (entityType === 'webform' && field === 'assignByRule') return t('webForms.assignByRule');
+  if (entityType === 'approval') return t(`approvals.field.${field}` as MessageKey);
   if (entityType === 'pricebook' && field === 'isActive') return t('priceBooks.status');
   if (entityType === 'pricebook' && field === 'accounts') return t('priceBooks.accounts');
   if (entityType === 'vendor' && field === 'isActive') return t('vendors.status');
@@ -305,6 +307,11 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     const threat = typeof c.threatLevel === 'string' ? ` · ${t('competitors.threatLevel')}${t('common.colon')}${tEnum('competitorThreat', c.threatLevel)}` : '';
     lines.push(`${t('competitors.audit', { name: c.competitor })}${threat}`);
   }
+  if (Array.isArray(c.reasons) && entry.entityType === 'quote') {
+    // 报价单提交审批：原因 / quote approval submission: reasons
+    lines.push(t('approvals.auditReasons', { list: (c.reasons as string[]).map(reasonText).join(t('common.listSep')) }));
+  }
+  if (typeof c.approvalCleared === 'string') lines.push(t('approvals.auditCleared', { status: tEnum('approvalStatus', c.approvalCleared) }));
   if (entry.entityType === 'workflow') {
     // 工作流：执行结果；规则快照只显示名称、对象、触发时机；修改只列出变化的项
     // workflows: run results; rule snapshots show name, module and trigger; updates list the changed items

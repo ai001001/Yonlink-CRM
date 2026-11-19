@@ -12,7 +12,7 @@
  * optional links are skipped. Quote numbers in snapshots stay reserved. Entries expire after 30 days.
  */
 import { z } from 'zod';
-import type { Prisma } from '@/generated/prisma/client';
+import { Prisma } from '@/generated/prisma/client';
 import { audit, by, setActor } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
@@ -49,7 +49,7 @@ interface Payload {
   attachments?: Record<string, unknown>[];
   contacts?: Record<string, unknown>[];
   lineItems?: Record<string, unknown>[];
-  quotes?: (Record<string, unknown> & { lines: Record<string, unknown>[] })[];
+  quotes?: (Record<string, unknown> & { lines: Record<string, unknown>[]; approvals?: Record<string, unknown>[] })[];
   /** 商机联系人角色与竞争对手 / deal contact roles and competitors */
   contactRoles?: Record<string, unknown>[];
   competitors?: Record<string, unknown>[];
@@ -126,7 +126,7 @@ export async function recycle(tx: Prisma.TransactionClient, ctx: AuthContext, en
   }
   if (entity === 'deal') {
     payload.lineItems = await tx.dealLineItem.findMany({ where: { organizationId: org, dealId: id } });
-    payload.quotes = await tx.quote.findMany({ where: { organizationId: org, dealId: id }, include: { lines: true } });
+    payload.quotes = await tx.quote.findMany({ where: { organizationId: org, dealId: id }, include: { lines: true, approvals: true } });
     payload.contactRoles = await tx.dealContactRole.findMany({ where: { organizationId: org, dealId: id } });
     payload.competitors = await tx.dealCompetitor.findMany({ where: { organizationId: org, dealId: id } });
     payload.stageHistory = await tx.dealStageHistory.findMany({ where: { organizationId: org, dealId: id } });
@@ -308,9 +308,22 @@ export async function restoreItem(ctx: AuthContext, itemId: string) {
       }
       await tx.dealLineItem.createMany({ data: (p.lineItems ?? []).map((i) => revive<Prisma.DealLineItemCreateManyInput>(i, org)) });
       for (const q of p.quotes ?? []) {
-        const { lines, ...quote } = q;
-        await tx.quote.create({ data: revive<Prisma.QuoteUncheckedCreateInput>(quote, org) });
+        const { lines, approvals, ...quote } = q;
+        const data = revive<Prisma.QuoteUncheckedCreateInput>(quote, org);
+        // 可空 JSON 字段的空值须写为数据库 NULL / a null nullable-JSON field must be written as database NULL
+        if (data.approvalReasons === null) data.approvalReasons = Prisma.DbNull;
+        await tx.quote.create({ data });
         await tx.quoteLineItem.createMany({ data: lines.map((l) => revive<Prisma.QuoteLineItemCreateManyInput>(l, org)) });
+        // 审批历史一并恢复（旧快照没有）/ restore the approval history too (absent in older snapshots)
+        if (approvals?.length) {
+          await tx.quoteApproval.createMany({
+            data: approvals.map((x) => {
+              const row = revive<Prisma.QuoteApprovalCreateManyInput>(x, org);
+              if (row.reasons === null) row.reasons = Prisma.DbNull;
+              return row;
+            }),
+          });
+        }
       }
       await tx.dealCompetitor.createMany({ data: (p.competitors ?? []).map((c) => revive<Prisma.DealCompetitorCreateManyInput>(c, org)) });
       // 联系人角色：联系人仍存在且仍属于商机客户时恢复 / restore roles whose contact still exists in the deal's account

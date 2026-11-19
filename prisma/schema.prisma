@@ -70,57 +70,61 @@ model Organization {
   assignmentUsers  AssignmentRuleUser[]
   dealStageHistory DealStageHistory[]
   workflowRules    WorkflowRule[]
+  quoteApprovals   QuoteApproval[]
+  approvalSettings QuoteApprovalSettings?
 
   @@map("organizations")
 }
 
 model User {
-  id                 String               @id @default(uuid()) @db.Uuid
-  organizationId     String               @map("organization_id") @db.Uuid
-  email              String               @db.VarChar(254)
-  name               String               @db.VarChar(100)
-  passwordHash       String               @map("password_hash")
-  notifications      Notification[]       @relation("NotificationRecipient")
-  notificationsSent  Notification[]       @relation("NotificationActor")
-  createdOrders      SalesOrder[]         @relation("OrderCreator")
-  createdInvoices    Invoice[]            @relation("InvoiceCreator")
-  recordedPayments   InvoicePayment[]     @relation("PaymentRecorder")
-  ratesCreated       ExchangeRate[]       @relation("RateCreator")
-  ownedCampaigns     Campaign[]           @relation("CampaignOwner")
+  id                 String                  @id @default(uuid()) @db.Uuid
+  organizationId     String                  @map("organization_id") @db.Uuid
+  email              String                  @db.VarChar(254)
+  name               String                  @db.VarChar(100)
+  passwordHash       String                  @map("password_hash")
+  notifications      Notification[]          @relation("NotificationRecipient")
+  notificationsSent  Notification[]          @relation("NotificationActor")
+  createdOrders      SalesOrder[]            @relation("OrderCreator")
+  createdInvoices    Invoice[]               @relation("InvoiceCreator")
+  recordedPayments   InvoicePayment[]        @relation("PaymentRecorder")
+  ratesCreated       ExchangeRate[]          @relation("RateCreator")
+  ownedCampaigns     Campaign[]              @relation("CampaignOwner")
   /// 角色（服务端每个请求从数据库读取）/ role (read from the DB on every request)
-  role               UserRole             @default(SALES)
-  isActive           Boolean              @default(true) @map("is_active")
+  role               UserRole                @default(SALES)
+  isActive           Boolean                 @default(true) @map("is_active")
   /// 演示账号：仅在 DEMO_LOGIN_ENABLED=1 时可免密一键登录 / demo account: password-less login only when DEMO_LOGIN_ENABLED=1
-  isDemo             Boolean              @default(false) @map("is_demo")
-  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization       Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  isDemo             Boolean                 @default(false) @map("is_demo")
+  createdAt          DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization       Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   sessions           Session[]
-  ownedLeads         Lead[]               @relation("LeadOwner")
-  ownedAccounts      Account[]            @relation("AccountOwner")
-  ownedDeals         Deal[]               @relation("DealOwner")
-  ownedActivities    Activity[]           @relation("ActivityOwner")
-  auditLogs          AuditLog[]           @relation("AuditActor")
-  notes              Note[]               @relation("NoteAuthor")
-  createdQuotes      Quote[]              @relation("QuoteCreator")
-  deletedItems       RecycleBinItem[]     @relation("RecycleDeleter")
+  ownedLeads         Lead[]                  @relation("LeadOwner")
+  ownedAccounts      Account[]               @relation("AccountOwner")
+  ownedDeals         Deal[]                  @relation("DealOwner")
+  ownedActivities    Activity[]              @relation("ActivityOwner")
+  auditLogs          AuditLog[]              @relation("AuditActor")
+  notes              Note[]                  @relation("NoteAuthor")
+  createdQuotes      Quote[]                 @relation("QuoteCreator")
+  deletedItems       RecycleBinItem[]        @relation("RecycleDeleter")
   savedViews         SavedView[]
   viewDefaults       UserViewDefault[]
   dashboardLayout    UserDashboardLayout?
-  tickets            Ticket[]             @relation("TicketOwner")
-  slaEscalations     TicketSlaPolicy[]    @relation("SlaEscalateTo")
-  kbArticles         KbArticle[]          @relation("KbArticleAuthor")
-  ticketArticleLinks TicketArticle[]      @relation("TicketArticleLinker")
-  purchaseOrders     PurchaseOrder[]      @relation("PurchaseOrderCreator")
-  webFormsOwned      WebForm[]            @relation("WebFormOwner")
-  webFormsCreated    WebForm[]            @relation("WebFormCreator")
-  ticketComments     TicketComment[]      @relation("TicketCommentAuthor")
-  uploads            Attachment[]         @relation("AttachmentUploader")
-  salesTargets       SalesTarget[]        @relation("TargetOwner")
-  targetsUpdated     SalesTarget[]        @relation("TargetUpdater")
+  tickets            Ticket[]                @relation("TicketOwner")
+  slaEscalations     TicketSlaPolicy[]       @relation("SlaEscalateTo")
+  kbArticles         KbArticle[]             @relation("KbArticleAuthor")
+  ticketArticleLinks TicketArticle[]         @relation("TicketArticleLinker")
+  purchaseOrders     PurchaseOrder[]         @relation("PurchaseOrderCreator")
+  webFormsOwned      WebForm[]               @relation("WebFormOwner")
+  webFormsCreated    WebForm[]               @relation("WebFormCreator")
+  ticketComments     TicketComment[]         @relation("TicketCommentAuthor")
+  uploads            Attachment[]            @relation("AttachmentUploader")
+  salesTargets       SalesTarget[]           @relation("TargetOwner")
+  targetsUpdated     SalesTarget[]           @relation("TargetUpdater")
   assignmentRules    AssignmentRuleUser[]
-  dealStageChanges   DealStageHistory[]   @relation("StageChanger")
-  workflowRules      WorkflowRule[]       @relation("WorkflowCreator")
+  dealStageChanges   DealStageHistory[]      @relation("StageChanger")
+  workflowRules      WorkflowRule[]          @relation("WorkflowCreator")
+  quoteApprovals     QuoteApproval[]         @relation("ApprovalActor")
+  approvalSettings   QuoteApprovalSettings[] @relation("ApprovalSettingsUpdater")
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -500,31 +504,36 @@ enum QuoteStatus {
 /// 报价单（由商机生成，明细为生成时的快照；草稿可修改，发送后内容冻结）
 /// Quote generated from a deal; line items are a snapshot; drafts are editable, content is frozen once sent
 model Quote {
-  id             String          @id @default(uuid()) @db.Uuid
-  organizationId String          @map("organization_id") @db.Uuid
-  dealId         String          @map("deal_id") @db.Uuid
-  salesOrders    SalesOrder[]
+  id              String          @id @default(uuid()) @db.Uuid
+  organizationId  String          @map("organization_id") @db.Uuid
+  dealId          String          @map("deal_id") @db.Uuid
+  salesOrders     SalesOrder[]
   /// 组织内唯一的报价单号，如 QT-2026-0001 / per-organization unique number
-  quoteNumber    String          @map("quote_number") @db.VarChar(30)
-  subject        String          @db.VarChar(200)
-  status         QuoteStatus     @default(DRAFT)
-  currency       String          @db.Char(3)
-  validUntil     DateTime?       @map("valid_until") @db.Date
-  taxPercent     Decimal         @default(0) @map("tax_percent") @db.Decimal(5, 2)
-  subtotal       Decimal         @db.Decimal(18, 2)
-  taxAmount      Decimal         @map("tax_amount") @db.Decimal(18, 2)
-  total          Decimal         @db.Decimal(18, 2)
-  terms          String?         @db.Text
-  notes          String?         @db.Text
-  createdById    String?         @map("created_by_id") @db.Uuid
-  sentAt         DateTime?       @map("sent_at") @db.Timestamptz(6)
-  decidedAt      DateTime?       @map("decided_at") @db.Timestamptz(6)
-  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  deal           Deal            @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Cascade)
-  createdBy      User?           @relation("QuoteCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
-  lines          QuoteLineItem[]
+  quoteNumber     String          @map("quote_number") @db.VarChar(30)
+  subject         String          @db.VarChar(200)
+  status          QuoteStatus     @default(DRAFT)
+  currency        String          @db.Char(3)
+  validUntil      DateTime?       @map("valid_until") @db.Date
+  taxPercent      Decimal         @default(0) @map("tax_percent") @db.Decimal(5, 2)
+  subtotal        Decimal         @db.Decimal(18, 2)
+  taxAmount       Decimal         @map("tax_amount") @db.Decimal(18, 2)
+  total           Decimal         @db.Decimal(18, 2)
+  terms           String?         @db.Text
+  notes           String?         @db.Text
+  createdById     String?         @map("created_by_id") @db.Uuid
+  sentAt          DateTime?       @map("sent_at") @db.Timestamptz(6)
+  decidedAt       DateTime?       @map("decided_at") @db.Timestamptz(6)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deal            Deal            @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Cascade)
+  createdBy       User?           @relation("QuoteCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  lines           QuoteLineItem[]
+  /// 审批状态（未提交为空；修改草稿后清空，需重新审批）/ approval status (null when not submitted; cleared when the draft changes)
+  approvalStatus  ApprovalStatus? @map("approval_status")
+  /// 提交审批时命中的原因 / reasons that required approval at submission
+  approvalReasons Json?           @map("approval_reasons")
+  approvals       QuoteApproval[]
 
   @@unique([organizationId, id])
   @@unique([organizationId, quoteNumber])
@@ -768,6 +777,10 @@ enum NotificationType {
   WEB_FORM_LEAD
   /// 工作流规则发出的提醒 / a reminder sent by a workflow rule
   WORKFLOW
+  /// 有报价单等我审批 / a quote awaits my approval
+  APPROVAL_REQUEST
+  /// 我提交的报价单已审批 / my quote submission was decided
+  APPROVAL_DECIDED
 
   @@map("notification_type")
 }
@@ -1749,4 +1762,61 @@ model WorkflowRule {
   @@unique([organizationId, id])
   @@index([organizationId, entity, isActive])
   @@map("workflow_rules")
+}
+
+/// 审批状态 / approval status
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("approval_status")
+}
+
+/// 审批记录动作 / approval history action
+enum ApprovalAction {
+  SUBMIT
+  APPROVE
+  REJECT
+  RECALL
+
+  @@map("approval_action")
+}
+
+/// 报价单审批规则（每组织一行，对标 Zoho Approval Processes）：启用后，任一明细折扣超过上限或总计折合人民币达到金额时，
+/// 发送前须经有 quote.approve 权限的他人审批。
+/// Quote approval policy (one row per organization; cf. Zoho Approval Processes): when enabled, a quote whose line
+/// discount exceeds the cap or whose total in CNY reaches the amount must be approved by someone else with quote.approve
+/// before it can be sent.
+model QuoteApprovalSettings {
+  organizationId     String       @id @map("organization_id") @db.Uuid
+  enabled            Boolean      @default(false)
+  /// 折扣上限（%），超过即需审批；为空表示不按折扣 / discount cap (%); above it needs approval; null disables the check
+  maxDiscountPercent Decimal?     @map("max_discount_percent") @db.Decimal(5, 2)
+  /// 总计折合人民币达到该金额需审批；为空表示不按金额 / CNY total at or above this needs approval; null disables the check
+  minTotal           Decimal?     @map("min_total") @db.Decimal(18, 2)
+  updatedById        String?      @map("updated_by_id") @db.Uuid
+  updatedAt          DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  updatedBy          User?        @relation("ApprovalSettingsUpdater", fields: [organizationId, updatedById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("quote_approval_settings")
+}
+
+/// 报价单审批历史（只增不改）/ quote approval history (append-only)
+model QuoteApproval {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  quoteId        String         @map("quote_id") @db.Uuid
+  action         ApprovalAction
+  actorId        String         @map("actor_id") @db.Uuid
+  comment        String?        @db.VarChar(500)
+  reasons        Json?
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  quote          Quote          @relation(fields: [organizationId, quoteId], references: [organizationId, id], onDelete: Cascade)
+  actor          User           @relation("ApprovalActor", fields: [organizationId, actorId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organizationId, quoteId, createdAt])
+  @@map("quote_approvals")
 }

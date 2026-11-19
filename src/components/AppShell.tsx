@@ -88,7 +88,15 @@ const NAV_GROUPS: { key: string; label: string | null; icon?: React.ReactNode; i
       { key: '/web-forms', icon: <FormOutlined />, label: t('nav.webForms') },
     ],
   },
-  { key: 'activities', label: t('nav.group.activities'), icon: <ScheduleOutlined />, items: [{ key: '/activities', icon: <ScheduleOutlined />, label: t('nav.activities') }] },
+  {
+    key: 'activities',
+    label: t('nav.group.activities'),
+    icon: <ScheduleOutlined />,
+    items: [
+      { key: '/activities', icon: <ScheduleOutlined />, label: t('nav.activities') },
+      { key: '/approvals', icon: <AuditOutlined />, label: t('nav.approvals') },
+    ],
+  },
   {
     key: 'inventory',
     label: t('nav.group.inventory'),

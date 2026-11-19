@@ -16,7 +16,7 @@ export interface RequestMeta {
 }
 
 /** 审计对象类型 / Audited entity types */
-export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'order' | 'invoice' | 'report' | 'rate' | 'campaign' | 'ticket' | 'sla' | 'scoring' | 'assignment' | 'workflow' | 'article' | 'vendor' | 'purchase' | 'pricebook' | 'webform' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
+export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'order' | 'invoice' | 'report' | 'rate' | 'campaign' | 'ticket' | 'sla' | 'scoring' | 'assignment' | 'workflow' | 'approval' | 'article' | 'vendor' | 'purchase' | 'pricebook' | 'webform' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
 
 /** 字段策略 / Field policy */
 type Policy = 'plain' | 'mask' | 'redact';
@@ -82,6 +82,8 @@ export const AUDIT_FIELDS: Record<Exclude<AuditEntity, 'auth'>, Record<string, P
   assignment: {},
   // 工作流审计直接记录规则快照、字段变化与执行结果 / workflow audits record rule snapshots, field changes and run results directly
   workflow: {},
+  // 审批规则审计直接记录变化的规则字段 / approval-policy audits record the changed fields directly
+  approval: {},
   // 汇率审计直接记录币种、日期与汇率 / rate audits record currency, date and rate directly
   rate: {},
   invoice: {

@@ -162,6 +162,10 @@ export interface Quote {
   notes: string | null;
   sentAt: string | null;
   decidedAt: string | null;
+  /** 审批状态（未提交为空）/ approval status (null when not submitted) */
+  approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
+  /** 提交审批时的原因 / reasons recorded at submission */
+  approvalReasons?: string[] | null;
   createdAt: string;
   updatedAt: string;
   createdBy: { id: string; name: string } | null;

@@ -1375,3 +1375,12 @@ export const DEMO_WORKFLOWS: {
     isActive: false,
   },
 ];
+
+/**
+ * 演示报价单审批（演示数据）：启用审批，折扣超过 5% 或总计折合人民币达到 100 万需审批。
+ * 草稿报价单按创建顺序：第 1 张由提交人提交后经管理员批准；第 2 张已提交、待经理审批；其余需要审批的草稿保持未提交。
+ * Demo quote approvals (demo data): approvals on for discounts above 5 % or CNY totals of 1,000,000 or more. Among the
+ * drafts (creation order) needing approval, the first was submitted and approved by the admin, the second is pending,
+ * and the rest stay unsubmitted.
+ */
+export const DEMO_APPROVAL = { maxDiscountPercent: '5', minTotal: '1000000', comments: { submit: '【演示】客户批量采购，申请特殊折扣', approve: '【演示】同意，注意回款节点' } } as const;

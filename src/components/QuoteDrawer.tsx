@@ -15,6 +15,7 @@ import { api, ClientApiError } from '@/lib/api';
 import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
 import type { Quote, QuoteLine, QuoteStatus } from '@/lib/types';
 import { usePermissions } from './AuthProvider';
+import { approvalError, ApprovalTag, QuoteApprovalPanel } from './QuoteApproval';
 import { CreateOrderModal, OrderStatusTag } from './SalesOrderDrawer';
 
 /** 状态颜色 / Status colours */
@@ -52,7 +53,7 @@ export function quoteError(err: unknown): string {
   const d = err instanceof ClientApiError ? err.details : undefined;
   const code = d?.status?.[0] ?? d?.dealId?.[0];
   if (code === 'not_draft' || code === 'no_items') return t(`quotes.error.${code}` as MessageKey);
-  return (err as Error).message;
+  return approvalError(err) ?? (err as Error).message;
 }
 
 interface EditForm {
@@ -162,7 +163,8 @@ export function QuoteDrawer({ quoteId, onClose, onChanged }: Props) {
   };
 
   const editable = !!quote && perm.canEdit(quote.deal);
-  const draft = quote?.status === 'DRAFT';
+  // 待审批的草稿锁定（不能修改、同步、发送、删除）/ pending drafts are locked
+  const draft = quote?.status === 'DRAFT' && quote.approvalStatus !== 'PENDING';
   // 已接受且没有未取消的订单时可生成订单 / an accepted quote without an active order can become an order
   const canOrder = editable && quote?.status === 'ACCEPTED' && !quote.salesOrders?.some((o) => o.status !== 'CANCELLED');
 
@@ -206,7 +208,7 @@ export function QuoteDrawer({ quoteId, onClose, onChanged }: Props) {
               </Button>
             )}
             {editable &&
-              NEXT[quote.status].map((s) => (
+              (quote.approvalStatus === 'PENDING' ? [] : NEXT[quote.status]).map((s) => (
                 <Popconfirm
                   key={s}
                   title={t('quotes.confirmStatus', { status: tEnum('quoteStatus', s) })}
@@ -251,11 +253,12 @@ export function QuoteDrawer({ quoteId, onClose, onChanged }: Props) {
               </Descriptions.Item>
             </Descriptions>
           )}
-          {editable && !draft && <Alert type="info" showIcon title={t('quotes.draftOnly')} style={{ marginBottom: 12 }} />}
+          {editable && !draft && <Alert type="info" showIcon title={t(quote.approvalStatus === 'PENDING' ? 'approvals.locked' : 'quotes.draftOnly')} style={{ marginBottom: 12 }} />}
           <Descriptions column={2} bordered size="small" style={{ marginBottom: 16 }}>
             <Descriptions.Item label={t('quotes.number')}>{quote.quoteNumber}</Descriptions.Item>
             <Descriptions.Item label={t('quotes.status')}>
               <QuoteStatusTag quote={quote} />
+              <ApprovalTag status={quote.approvalStatus} />
             </Descriptions.Item>
             <Descriptions.Item label={t('quotes.subject')} span={2}>
               {quote.subject}
@@ -274,6 +277,14 @@ export function QuoteDrawer({ quoteId, onClose, onChanged }: Props) {
               <span style={{ whiteSpace: 'pre-wrap' }}>{quote.notes}</span>
             </Descriptions.Item>
           </Descriptions>
+          <QuoteApprovalPanel
+            quote={quote}
+            editable={editable}
+            onChanged={() => {
+              void load();
+              onChanged();
+            }}
+          />
           <Typography.Title level={5}>{t('quotes.lines')}</Typography.Title>
           <QuoteLinesTable quote={quote} />
         </div>

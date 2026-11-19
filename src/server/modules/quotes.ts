@@ -4,20 +4,24 @@
  * - 小计 = 明细合计；税额 = 小计 × 税率%（四舍五入到分）；总计 = 小计 + 税额。
  * - 状态：草稿 → 已发送 → 已接受 / 已拒绝；已发送可退回草稿。仅草稿可修改、同步明细、删除。
  * - 可见与编辑权限跟随所属商机（销售代表只能操作自己负责商机的报价单）。
+ * - 审批（见 approvals.ts）：待审批的草稿不能修改、同步、删除、发送；需要审批而未批准的草稿不能发送；
+ *   已批准或已驳回的草稿修改后清空审批结果。
  * Quotes service: generated from a deal by snapshotting its line items; per-organization yearly numbering;
  * subtotal = sum of lines, tax = subtotal × rate (half-up to cents), total = subtotal + tax;
  * DRAFT → SENT → ACCEPTED/REJECTED (SENT may return to DRAFT); only drafts can be edited, synced or deleted;
- * visibility and edit rights follow the deal.
+ * visibility and edit rights follow the deal. Approvals (see approvals.ts): pending drafts cannot be edited, synced,
+ * deleted or sent; drafts needing approval cannot be sent until approved; editing a decided draft clears the decision.
  */
 import { z } from 'zod';
 import { Prisma } from '@/generated/prisma/client';
-import { QuoteStatus } from '@/generated/prisma/enums';
+import { ApprovalStatus, QuoteStatus } from '@/generated/prisma/enums';
 import { audit, by, diff, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
 import { assertCanUpdate, visible } from '../permissions';
 import { containsText, listQuery, optionalText, requiredText, type Page } from '../validation';
+import { approvalReasons } from './approvals';
 import { dateOnly } from './deals';
 
 /** 税率：0–100，最多 2 位小数 / tax rate: 0–100, ≤ 2 decimals */
@@ -191,7 +195,28 @@ async function requireEditable(ctx: AuthContext, id: string, draftOnly: boolean)
   const quote = await getQuote(ctx, id);
   assertCanUpdate(ctx, quote.deal);
   if (draftOnly && quote.status !== QuoteStatus.DRAFT) throw new ApiError(409, 'CONFLICT', 'Only drafts can be changed', { status: ['not_draft'] });
+  if (draftOnly && quote.approvalStatus === ApprovalStatus.PENDING) throw new ApiError(409, 'CONFLICT', 'Quote is pending approval', { approvalStatus: ['pending'] });
   return quote;
+}
+
+/**
+ * 在事务内锁定草稿并重新确认仍可修改（防止与并发的提交审批交错）。
+ * Lock the draft inside the transaction and re-check it is still editable (guards against a concurrent submission).
+ */
+async function lockDraft(tx: Prisma.TransactionClient, id: string): Promise<void> {
+  const [row] = await tx.$queryRaw<{ status: QuoteStatus; approval_status: ApprovalStatus | null }[]>`
+    SELECT status, approval_status FROM quotes WHERE id = ${id}::uuid FOR UPDATE`;
+  if (!row || row.status !== QuoteStatus.DRAFT) throw new ApiError(409, 'CONFLICT', 'Only drafts can be changed', { status: ['not_draft'] });
+  if (row.approval_status === ApprovalStatus.PENDING) throw new ApiError(409, 'CONFLICT', 'Quote is pending approval', { approvalStatus: ['pending'] });
+}
+
+/** 已有审批结果的草稿被修改时清空结果 / clear the decision when a decided draft changes */
+const clearDecision = (status: ApprovalStatus | null) =>
+  status === ApprovalStatus.APPROVED || status === ApprovalStatus.REJECTED ? { approvalStatus: null, approvalReasons: Prisma.DbNull } : {};
+
+/** 审批结果被清空时的审计附注 / audit note when the decision is cleared */
+function decisionCleared(status: ApprovalStatus | null) {
+  return status === ApprovalStatus.APPROVED || status === ApprovalStatus.REJECTED ? { approvalCleared: status } : {};
 }
 
 /**
@@ -233,12 +258,17 @@ export async function createQuote(ctx: AuthContext, input: z.infer<typeof quoteC
 export async function updateQuote(ctx: AuthContext, id: string, input: z.infer<typeof quoteUpdateSchema>) {
   const current = await requireEditable(ctx, id, true);
   await prisma.$transaction(async (tx) => {
+    await lockDraft(tx, id);
     const quote = await tx.quote.update({
       where: { id },
       data: { ...input, ...(input.taxPercent !== undefined ? quoteTotals(current.subtotal, input.taxPercent) : {}) },
     });
     const fields = diff('quote', current, quote);
-    if (Object.keys(fields).length) await audit(tx, { ...by(ctx), action: 'quote.update', entityType: 'quote', entityId: id, changes: { fields } });
+    if (Object.keys(fields).length) {
+      // 内容变化后需要重新审批 / content changed: approval must be redone
+      await tx.quote.update({ where: { id }, data: clearDecision(current.approvalStatus) });
+      await audit(tx, { ...by(ctx), action: 'quote.update', entityType: 'quote', entityId: id, changes: { fields, ...decisionCleared(current.approvalStatus) } });
+    }
   });
   return getQuote(ctx, id);
 }
@@ -252,15 +282,16 @@ export async function syncQuote(ctx: AuthContext, id: string) {
   const deal = await dealWithItems(ctx, current.dealId);
   const { lines, subtotal } = snapshotLines(ctx.organizationId, id, deal.lineItems);
   await prisma.$transaction(async (tx) => {
+    await lockDraft(tx, id);
     await tx.quoteLineItem.deleteMany({ where: { organizationId: ctx.organizationId, quoteId: id } });
     await tx.quoteLineItem.createMany({ data: lines });
-    const quote = await tx.quote.update({ where: { id }, data: { currency: deal.currency, ...quoteTotals(subtotal, current.taxPercent) } });
+    const quote = await tx.quote.update({ where: { id }, data: { currency: deal.currency, ...quoteTotals(subtotal, current.taxPercent), ...clearDecision(current.approvalStatus) } });
     await audit(tx, {
       ...by(ctx),
       action: 'quote.sync_items',
       entityType: 'quote',
       entityId: id,
-      changes: { lines: [current.lines.length, lines.length], fields: diff('quote', current, quote) },
+      changes: { lines: [current.lines.length, lines.length], fields: diff('quote', current, quote), ...decisionCleared(current.approvalStatus) },
     });
   });
   return getQuote(ctx, id);
@@ -275,6 +306,14 @@ export async function changeQuoteStatus(ctx: AuthContext, id: string, input: z.i
   if (!TRANSITIONS[current.status].includes(input.status)) {
     throw new ApiError(409, 'CONFLICT', 'Invalid status transition', { status: [`${current.status}->${input.status}`] });
   }
+  if (input.status === QuoteStatus.SENT) {
+    // 发送前检查审批 / check approval before sending
+    if (current.approvalStatus === ApprovalStatus.PENDING) throw new ApiError(409, 'CONFLICT', 'Quote is pending approval', { approvalStatus: ['pending'] });
+    const reasons = await approvalReasons(prisma, ctx.organizationId, current);
+    if (reasons.length && current.approvalStatus !== ApprovalStatus.APPROVED) {
+      throw new ApiError(409, 'CONFLICT', 'Approval is required before sending', { approvalStatus: ['required', ...reasons] });
+    }
+  }
   const now = new Date();
   const data: Prisma.QuoteUpdateInput = { status: input.status };
   if (input.status === QuoteStatus.SENT) data.sentAt = now;
@@ -282,7 +321,8 @@ export async function changeQuoteStatus(ctx: AuthContext, id: string, input: z.i
   if (input.status === QuoteStatus.DRAFT) data.sentAt = null;
   await prisma.$transaction(async (tx) => {
     // 条件更新防止并发重复流转 / conditional update guards against concurrent transitions
-    const n = await tx.quote.updateMany({ where: { id, status: current.status }, data: data as Prisma.QuoteUpdateManyMutationInput });
+    // 状态与审批状态都未变才流转（发送与提交审批并发时只有一个成功）/ both unchanged (a send racing a submission: one wins)
+    const n = await tx.quote.updateMany({ where: { id, status: current.status, approvalStatus: current.approvalStatus }, data: data as Prisma.QuoteUpdateManyMutationInput });
     if (n.count !== 1) throw new ApiError(409, 'CONFLICT', 'Quote was changed concurrently', { status: ['changed'] });
     await audit(tx, { ...by(ctx), action: 'quote.status', entityType: 'quote', entityId: id, changes: { fields: { status: [current.status, input.status] } } });
   });
@@ -296,6 +336,7 @@ export async function changeQuoteStatus(ctx: AuthContext, id: string, input: z.i
 export async function deleteQuote(ctx: AuthContext, id: string): Promise<void> {
   const current = await requireEditable(ctx, id, true);
   await prisma.$transaction(async (tx) => {
+    await lockDraft(tx, id);
     const n = await tx.quote.deleteMany({ where: { id, status: QuoteStatus.DRAFT } });
     if (n.count !== 1) throw new ApiError(409, 'CONFLICT', 'Only drafts can be changed', { status: ['not_draft'] });
     await audit(tx, { ...by(ctx), action: 'quote.delete', entityType: 'quote', entityId: id, changes: { before: snapshot('quote', current), lines: current.lines.length } });
