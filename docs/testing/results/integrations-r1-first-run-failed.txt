@@ -1,0 +1,50 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+44 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:949010) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/integrations/integrations.r1-functional.test.ts (5 tests | 1 failed) 1859ms
+   ❯ integrations R1 webhooks (3)
+     × 连接时拒绝内网地址；测试事件；停用跳过；重新生成密钥 / SSRF, ping, inactive, secret rotation 175ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/integrations/integrations.r1-functional.test.ts > integrations R1 webhooks > 连接时拒绝内网地址；测试事件；停用跳过；重新生成密钥 / SSRF, ping, inactive, secret rotation
+AssertionError: expected { ok: true, statusCode: 200, …(2) } to match object { ok: false, error: 'private_address' }
+(2 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "error": "private_address",
+-   "ok": false,
++   "error": null,
++   "ok": true,
+  }
+
+ ❯ tests/integrations/integrations.r1-functional.test.ts:215:26
+    213|     delete process.env.WEBHOOK_ALLOW_PRIVATE;
+    214|     const blocked = await call(testRoute.POST, { token: a.token, param…
+    215|     expect(blocked.json).toMatchObject({ ok: false, error: 'private_ad…
+       |                          ^
+    216|     expect(received).toHaveLength(1);
+    217|     process.env.WEBHOOK_ALLOW_PRIVATE = '1';
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  11:40:52
+   Duration  4.14s (tests 82%, import 13%, transform 5%, setup 1%)
+

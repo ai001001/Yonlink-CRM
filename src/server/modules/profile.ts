@@ -11,7 +11,7 @@
 import { verify } from '@node-rs/argon2';
 import { z } from 'zod';
 import { audit, by } from '../audit';
-import { hashPassword, type AuthContext } from '../auth';
+import { hashPassword, requireSession, type AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError } from '../errors';
 import { requiredText } from '../validation';
@@ -93,6 +93,7 @@ export async function updateProfile(ctx: AuthContext, input: z.infer<typeof prof
  * Change my password: verify the current one; on success other sessions are revoked (the current one is kept).
  */
 export async function changePassword(ctx: AuthContext, input: z.infer<typeof passwordChangeSchema>): Promise<{ revokedSessions: number }> {
+  requireSession(ctx);
   const user = await prisma.user.findUniqueOrThrow({ where: { id: ctx.userId }, select: { passwordHash: true, isDemo: true } });
   if (user.isDemo) throw new ApiError(403, 'FORBIDDEN', 'Demo accounts cannot set a password', { currentPassword: ['demo'] });
   const now = Date.now();
@@ -119,6 +120,7 @@ export async function changePassword(ctx: AuthContext, input: z.infer<typeof pas
  * Sign out of all other devices (the current session is kept; audited).
  */
 export async function revokeOtherSessions(ctx: AuthContext): Promise<{ revokedSessions: number }> {
+  requireSession(ctx);
   return prisma.$transaction(async (tx) => {
     const { count } = await tx.session.deleteMany({ where: { userId: ctx.userId, ...(ctx.sessionId ? { id: { not: ctx.sessionId } } : {}) } });
     await audit(tx, { ...by(ctx), action: 'auth.logout_others', entityType: 'auth', entityId: ctx.userId, changes: { revokedSessions: count } });

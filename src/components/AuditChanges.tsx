@@ -319,6 +319,10 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     lines.push(t('approvals.auditReasons', { list: (c.reasons as string[]).map(reasonText).join(t('common.listSep')) }));
   }
   if (typeof c.approvalCleared === 'string') lines.push(t('approvals.auditCleared', { status: tEnum('approvalStatus', c.approvalCleared) }));
+  if ((entry.entityType === 'apikey' || entry.entityType === 'webhook') && typeof c.name === 'string') {
+    // API 密钥与 Webhook：名称、前缀或地址（从不记录密钥）/ keys and webhooks: name, prefix or URL (never secrets)
+    lines.push(`${t('integrations.name')}${t('common.colon')}${c.name}${typeof c.prefix === 'string' ? ` · ${c.prefix}…` : ''}${typeof c.url === 'string' ? ` · ${c.url}` : ''}`);
+  }
   if (entry.entityType === 'workflow') {
     // 工作流：执行结果；规则快照只显示名称、对象、触发时机；修改只列出变化的项
     // workflows: run results; rule snapshots show name, module and trigger; updates list the changed items

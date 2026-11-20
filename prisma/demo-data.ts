@@ -1384,3 +1384,9 @@ export const DEMO_WORKFLOWS: {
  * and the rest stay unsubmitted.
  */
 export const DEMO_APPROVAL = { maxDiscountPercent: '5', minTotal: '1000000', comments: { submit: '【演示】客户批量采购，申请特殊折扣', approve: '【演示】同意，注意回款节点' } } as const;
+
+/**
+ * 演示 Webhook（演示数据，已停用；地址为保留域名 example.com，不会发送到真实系统）。
+ * Demo webhook (demo data, inactive; example.com is a reserved domain, so nothing reaches a real system).
+ */
+export const DEMO_WEBHOOK = { name: '【演示】ERP 订单同步（已停用）', url: 'https://example.com/yonlink-demo-webhook' } as const;

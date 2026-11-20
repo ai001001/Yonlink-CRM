@@ -6,7 +6,7 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { App, Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Segmented, Select, Space, Switch, Table, Tag, Typography } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { usePermissions } from '@/components/AuthProvider';
@@ -62,7 +62,7 @@ const OPS: Record<FieldType, string[]> = {
   id: ['EQUALS', 'IS_EMPTY', 'NOT_EMPTY'],
 };
 const NO_VALUE = new Set(['IS_EMPTY', 'NOT_EMPTY']);
-const ACTION_TYPES = ['UPDATE_FIELD', 'ASSIGN_OWNER', 'CREATE_TASK', 'NOTIFY', 'ADD_TAG'] as const;
+const ACTION_TYPES = ['UPDATE_FIELD', 'ASSIGN_OWNER', 'CREATE_TASK', 'NOTIFY', 'ADD_TAG', 'WEBHOOK'] as const;
 
 interface Condition {
   field: string;
@@ -80,6 +80,7 @@ interface Action {
   recipient?: string;
   message?: string;
   tagId?: string;
+  webhookId?: string;
 }
 interface Rule {
   id: string;
@@ -105,6 +106,13 @@ export default function WorkflowsPage() {
   const canManage = perm.can('workflow.manage');
   const owners = useOwners();
   const [tags] = useTags();
+  const [webhooks, setWebhooks] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
+  useEffect(() => {
+    if (!canManage) return;
+    api<{ items: { id: string; name: string; isActive: boolean }[] }>('/api/webhooks')
+      .then((r) => setWebhooks(r.items))
+      .catch(() => setWebhooks([]));
+  }, [canManage]);
   const [entity, setEntity] = useState<'ALL' | Entity>('ALL');
   const { data, loading, reload, pagination } = usePagedList<Rule>('/api/workflows', { entity: entity === 'ALL' ? undefined : entity });
   const [editing, setEditing] = useState<Rule | 'new' | null>(null);
@@ -138,6 +146,8 @@ export default function WorkflowsPage() {
         return t('workflows.actionText.NOTIFY', { user: a.recipient === 'OWNER' ? t('workflows.recordOwner') : userName(a.recipient), message: a.message ?? '' });
       case 'ADD_TAG':
         return t('workflows.actionText.ADD_TAG', { tag: tags.find((x) => x.id === a.tagId)?.name ?? t('workflows.deletedTag') });
+      case 'WEBHOOK':
+        return t('workflows.actionText.WEBHOOK', { name: webhooks.find((x) => x.id === a.webhookId)?.name ?? t('workflows.webhookHidden') });
     }
   };
   const triggerText = (r: Pick<Rule, 'trigger' | 'triggerField'>) =>
@@ -171,6 +181,8 @@ export default function WorkflowsPage() {
             return { type: a.type, recipient: a.recipient ?? 'OWNER', message: a.message };
           case 'ADD_TAG':
             return { type: a.type, tagId: a.tagId };
+          case 'WEBHOOK':
+            return { type: a.type, webhookId: a.webhookId };
         }
       }),
     };
@@ -431,6 +443,11 @@ export default function WorkflowsPage() {
                             <Input aria-label={`${t('workflows.message')} ${label}`} placeholder={t('workflows.message')} maxLength={150} />
                           </Form.Item>
                         </>
+                      )}
+                      {a?.type === 'WEBHOOK' && (
+                        <Form.Item name={[row.name, 'webhookId']} style={{ width: 220 }} rules={required('workflows.webhook')}>
+                          <Select aria-label={`${t('workflows.webhook')} ${label}`} options={webhooks.map((x) => ({ value: x.id, label: x.isActive ? x.name : t('workflows.webhookInactive', { name: x.name }) }))} />
+                        </Form.Item>
                       )}
                       {a?.type === 'ADD_TAG' && (
                         <Form.Item name={[row.name, 'tagId']} style={{ width: 200 }} rules={required('workflows.tag')}>

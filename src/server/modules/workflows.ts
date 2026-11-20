@@ -5,7 +5,7 @@
  * - 条件（最多 5 条，全部满足，按记录写入后的值判断）：枚举等于/不等于；文本等于、包含、开头是、结尾是、为空、不为空；
  *   数字（金额、评分）不小于/不大于；负责人、市场活动等于、为空、不为空。
  * - 动作（1–5 个，按顺序执行）：更新字段（线索状态、来源；商机阶段）、指派负责人、创建任务（关联记录，N 天后到期，
- *   分配给记录负责人或指定用户）、站内通知（记录负责人或指定用户）、加标签。
+ *   分配给记录负责人或指定用户）、站内通知（记录负责人或指定用户）、加标签、调用 Webhook（写入投递队列，异步发送）。
  * - 执行：在触发写入的同一事务内、按规则创建顺序依次执行；后面的规则看到前面规则的改动。工作流做出的改动不会再触发工作流
  *   （防止循环）。动作以系统身份执行，不受触发人权限限制；目标用户已停用、标签已删除、已转化线索改状态等情况跳过该动作
  *   并在审计中注明，不影响触发的写入。每次执行写一条 workflow.run 审计，字段更新与指派另在记录上写审计。
@@ -32,6 +32,7 @@ import { ApiError, notFound } from '../errors';
 import { requirePermission } from '../permissions';
 import { requiredText, type Page } from '../validation';
 import { CURRENCIES, LEAD_SOURCES } from './dictionaries';
+import { enqueueDelivery } from './webhooks';
 
 /** 每组织最多规则数 / max rules per organization */
 export const MAX_WORKFLOWS = 100;
@@ -104,6 +105,7 @@ const actionSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('CREATE_TASK'), subject: requiredText(200), dueInDays: z.number().int().min(0).max(365), assignTo: z.union([z.literal('OWNER'), z.uuid()]) }),
   z.strictObject({ type: z.literal('NOTIFY'), recipient: z.union([z.literal('OWNER'), z.uuid()]), message: requiredText(150) }),
   z.strictObject({ type: z.literal('ADD_TAG'), tagId: z.uuid() }),
+  z.strictObject({ type: z.literal('WEBHOOK'), webhookId: z.uuid() }),
 ]);
 export type Action = z.infer<typeof actionSchema>;
 
@@ -218,19 +220,23 @@ function nameTaken(err: unknown): never {
 async function checkRefs(ctx: AuthContext, actions: Action[]): Promise<void> {
   const userIds = new Set<string>();
   const tagIds = new Set<string>();
+  const webhookIds = new Set<string>();
   for (const a of actions) {
+    if (a.type === 'WEBHOOK') webhookIds.add(a.webhookId);
     if (a.type === 'ASSIGN_OWNER') userIds.add(a.userId);
     if (a.type === 'CREATE_TASK' && a.assignTo !== 'OWNER') userIds.add(a.assignTo);
     if (a.type === 'NOTIFY' && a.recipient !== 'OWNER') userIds.add(a.recipient);
     if (a.type === 'ADD_TAG') tagIds.add(a.tagId);
   }
-  const [users, tags] = await Promise.all([
+  const [users, tags, webhooks] = await Promise.all([
     prisma.user.count({ where: { organizationId: ctx.organizationId, isActive: true, id: { in: [...userIds] } } }),
     prisma.tag.count({ where: { organizationId: ctx.organizationId, id: { in: [...tagIds] } } }),
+    prisma.webhook.count({ where: { organizationId: ctx.organizationId, id: { in: [...webhookIds] } } }),
   ]);
   const details: Record<string, string[]> = {};
   if (users !== userIds.size) details.actions = ['user_not_found'];
   if (tags !== tagIds.size) details.actions = [...(details.actions ?? []), 'tag_not_found'];
+  if (webhooks !== webhookIds.size) details.actions = [...(details.actions ?? []), 'webhook_not_found'];
   if (Object.keys(details).length) throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid workflow actions', details);
 }
 
@@ -326,6 +332,12 @@ export interface WorkflowEvent {
   actorId: string | null;
   meta?: AuthContext['meta'];
 }
+
+/** Webhook 负载包含的字段 / fields included in webhook payloads */
+const WEBHOOK_FIELDS = {
+  LEAD: ['status', 'source', 'company', 'title', 'ownerId', 'campaignId', 'score'],
+  DEAL: ['stage', 'amount', 'currency', 'expectedCloseDate', 'ownerId', 'accountId', 'campaignId', 'score'],
+} as const;
 
 /** 比较用的值（Decimal、日期转字符串）/ comparable value (Decimal and dates as strings) */
 function norm(v: unknown): string | null {
@@ -468,6 +480,19 @@ export async function runWorkflows(tx: Prisma.TransactionClient, ev: WorkflowEve
           }
           await tx.notification.create({ data: { organizationId: org, userId: to, type: NotificationType.WORKFLOW, actorId: ev.actorId, ...target, title: `${a.message} · ${record.name}`.slice(0, 200) } });
           done.push('NOTIFY');
+          break;
+        }
+        case 'WEBHOOK': {
+          // 负载只含业务状态字段，不含邮箱、电话等个人信息 / business fields only, no emails or phone numbers
+          const fields = ev.entity === WorkflowEntity.LEAD ? WEBHOOK_FIELDS.LEAD : WEBHOOK_FIELDS.DEAL;
+          const data = {
+            rule: rule.name,
+            entity: ev.entity,
+            trigger: ev.before === null ? 'create' : 'update',
+            record: Object.fromEntries([['id', record.id], ['name', record.name], ...fields.map((f) => [f, norm(record[f])])]),
+          };
+          if (await enqueueDelivery(tx, org, a.webhookId, 'workflow.run', data)) done.push('WEBHOOK');
+          else skipped.push('WEBHOOK: webhook_inactive');
           break;
         }
         case 'ADD_TAG': {

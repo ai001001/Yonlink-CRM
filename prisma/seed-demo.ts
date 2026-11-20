@@ -17,7 +17,7 @@ import { removeOrganizationFiles, saveFile } from '../src/server/storage';
 import { toBase } from '../src/server/modules/exchange-rates';
 import { approvalReasons } from '../src/server/modules/approvals';
 import { Prisma } from '../src/generated/prisma/client';
-import { buildDemoData, dealCreatedDaysAgo, demoStagePath, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_ACCOUNT_SCORING, DEMO_CONTACT_SCORING, DEMO_DEAL_SCORING, DEMO_ASSIGNMENT_RULES, DEMO_WEB_FORMS, DEMO_WORKFLOWS, DEMO_APPROVAL, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoStagePath, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_ACCOUNT_SCORING, DEMO_CONTACT_SCORING, DEMO_DEAL_SCORING, DEMO_ASSIGNMENT_RULES, DEMO_WEB_FORMS, DEMO_WORKFLOWS, DEMO_APPROVAL, DEMO_WEBHOOK, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -117,6 +117,8 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.scoringSettings.deleteMany({ where: { organizationId: o } });
         await tx.assignmentRule.deleteMany({ where: { organizationId: o } });
         await tx.workflowRule.deleteMany({ where: { organizationId: o } });
+        await tx.webhook.deleteMany({ where: { organizationId: o } });
+        await tx.apiKey.deleteMany({ where: { organizationId: o } });
         await tx.quoteApprovalSettings.deleteMany({ where: { organizationId: o } });
         // 网页表单引用市场活动，先删除 / web forms reference campaigns, so they go first
         await tx.webForm.deleteMany({ where: { organizationId: o } });
@@ -792,6 +794,9 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.quote.update({ where: { id: q.id }, data: { approvalStatus: decided === 0 ? 'APPROVED' : 'PENDING', approvalReasons: reasons } });
         decided += 1;
       }
+
+      // 演示 Webhook（已停用）/ demo webhook (inactive)
+      await tx.webhook.create({ data: { organizationId: o, name: DEMO_WEBHOOK.name, url: DEMO_WEBHOOK.url, secret: `whsec_${randomBytes(24).toString('base64url')}`, isActive: false, createdById: ids.admin } });
 
       // 工作流规则（标签与用户按键替换为 ID；按顺序创建，执行顺序即创建顺序）
       // workflow rules (tag and user keys replaced by ids; created in order, which is the run order)

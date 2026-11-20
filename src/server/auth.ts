@@ -26,6 +26,20 @@ export interface AuthContext {
   meta?: RequestMeta;
   /** 当前会话 ID（修改密码、退出其他设备时保留当前会话）/ current session id (kept when changing the password or signing out elsewhere) */
   sessionId?: string;
+  /** 通过 API 密钥访问时的密钥 ID（此时没有会话）/ the API key id when authenticated by an API key (no session) */
+  apiKeyId?: string;
+}
+
+/** API 密钥前缀 / API key prefix */
+export const API_KEY_PREFIX = 'ylk_';
+
+/**
+ * 要求浏览器会话（API 密钥不能管理密钥与 Webhook、不能改密码或退出其他设备，避免泄露的密钥自我延续）。
+ * Require a browser session: API keys cannot manage keys or webhooks, change passwords or sign out other devices, so a
+ * leaked key cannot entrench itself.
+ */
+export function requireSession(ctx: AuthContext): void {
+  if (ctx.apiKeyId) throw new ApiError(403, 'FORBIDDEN', 'A signed-in session is required', { auth: ['session_required'] });
 }
 
 /**
@@ -129,6 +143,7 @@ function bearer(req: Request): string | null {
 export async function authenticate(req: Request): Promise<AuthContext> {
   const token = bearer(req);
   if (!token) throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required');
+  if (token.startsWith(API_KEY_PREFIX)) return authenticateApiKey(req, token);
   const session = await prisma.session.findUnique({
     where: { tokenHash: hashToken(token) },
     include: { user: { select: { id: true, organizationId: true, isActive: true, role: true } } },
@@ -137,6 +152,26 @@ export async function authenticate(req: Request): Promise<AuthContext> {
     throw new ApiError(401, 'UNAUTHORIZED', 'Session expired');
   }
   return { userId: session.user.id, organizationId: session.user.organizationId, role: session.user.role, meta: requestMeta(req), sessionId: session.id };
+}
+
+/**
+ * API 密钥认证：未吊销、未过期、绑定用户仍启用；以该用户的身份与当前角色访问。最近使用时间每分钟最多更新一次。
+ * API key authentication: not revoked or expired and the bound user is active; acts as that user with the current role.
+ * The last-used time is updated at most once a minute.
+ */
+async function authenticateApiKey(req: Request, token: string): Promise<AuthContext> {
+  const key = await prisma.apiKey.findUnique({
+    where: { keyHash: hashToken(token) },
+    include: { user: { select: { id: true, organizationId: true, isActive: true, role: true } } },
+  });
+  const now = Date.now();
+  if (!key || key.revokedAt || (key.expiresAt && key.expiresAt.getTime() <= now) || !key.user.isActive) {
+    throw new ApiError(401, 'UNAUTHORIZED', 'Invalid API key');
+  }
+  if (!key.lastUsedAt || now - key.lastUsedAt.getTime() > 60_000) {
+    await prisma.apiKey.updateMany({ where: { id: key.id }, data: { lastUsedAt: new Date(now) } });
+  }
+  return { userId: key.user.id, organizationId: key.user.organizationId, role: key.user.role, meta: requestMeta(req), apiKeyId: key.id };
 }
 
 /**

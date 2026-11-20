@@ -14,65 +14,68 @@ datasource db {
 }
 
 model Organization {
-  id               String                  @id @default(uuid()) @db.Uuid
-  name             String                  @db.VarChar(200)
-  createdAt        DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
-  users            User[]
-  accounts         Account[]
-  contacts         Contact[]
-  leads            Lead[]
-  deals            Deal[]
-  activities       Activity[]
-  auditLogs        AuditLog[]
-  notes            Note[]
-  products         Product[]
-  dealItems        DealLineItem[]
-  quotes           Quote[]
-  quoteItems       QuoteLineItem[]
-  tags             Tag[]
-  leadTags         LeadTag[]
-  accountTags      AccountTag[]
-  dealTags         DealTag[]
-  recycleBin       RecycleBinItem[]
-  savedViews       SavedView[]
-  viewDefaults     UserViewDefault[]
-  dashboardLayouts UserDashboardLayout[]
-  tickets          Ticket[]
-  ticketCounters   TicketCounter[]
-  ticketComments   TicketComment[]
-  ticketSla        TicketSlaPolicy?
-  kbArticles       KbArticle[]
-  ticketArticles   TicketArticle[]
-  vendors          Vendor[]
-  purchaseOrders   PurchaseOrder[]
-  purchaseLines    PurchaseOrderLineItem[]
-  documentCounters DocumentCounter[]
-  priceBooks       PriceBook[]
-  priceBookEntries PriceBookEntry[]
-  priceBookTiers   PriceBookTier[]
-  webForms         WebForm[]
-  scoringRules     ScoringRule[]
-  scoringSettings  ScoringSettings[]
-  attachments      Attachment[]
-  salesTargets     SalesTarget[]
-  notifications    Notification[]
-  salesOrders      SalesOrder[]
-  salesOrderItems  SalesOrderLineItem[]
-  invoices         Invoice[]
-  invoiceItems     InvoiceLineItem[]
-  invoicePayments  InvoicePayment[]
-  exchangeRates    ExchangeRate[]
-  campaigns        Campaign[]
-  dealContactRoles DealContactRole[]
-  dealCompetitors  DealCompetitor[]
-  assignmentRules  AssignmentRule[]
-  assignmentUsers  AssignmentRuleUser[]
-  dealStageHistory DealStageHistory[]
-  workflowRules    WorkflowRule[]
-  quoteApprovals   QuoteApproval[]
-  approvalSettings QuoteApprovalSettings?
-  stockMovements   StockMovement[]
+  id                String                  @id @default(uuid()) @db.Uuid
+  name              String                  @db.VarChar(200)
+  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  users             User[]
+  accounts          Account[]
+  contacts          Contact[]
+  leads             Lead[]
+  deals             Deal[]
+  activities        Activity[]
+  auditLogs         AuditLog[]
+  notes             Note[]
+  products          Product[]
+  dealItems         DealLineItem[]
+  quotes            Quote[]
+  quoteItems        QuoteLineItem[]
+  tags              Tag[]
+  leadTags          LeadTag[]
+  accountTags       AccountTag[]
+  dealTags          DealTag[]
+  recycleBin        RecycleBinItem[]
+  savedViews        SavedView[]
+  viewDefaults      UserViewDefault[]
+  dashboardLayouts  UserDashboardLayout[]
+  tickets           Ticket[]
+  ticketCounters    TicketCounter[]
+  ticketComments    TicketComment[]
+  ticketSla         TicketSlaPolicy?
+  kbArticles        KbArticle[]
+  ticketArticles    TicketArticle[]
+  vendors           Vendor[]
+  purchaseOrders    PurchaseOrder[]
+  purchaseLines     PurchaseOrderLineItem[]
+  documentCounters  DocumentCounter[]
+  priceBooks        PriceBook[]
+  priceBookEntries  PriceBookEntry[]
+  priceBookTiers    PriceBookTier[]
+  webForms          WebForm[]
+  scoringRules      ScoringRule[]
+  scoringSettings   ScoringSettings[]
+  attachments       Attachment[]
+  salesTargets      SalesTarget[]
+  notifications     Notification[]
+  salesOrders       SalesOrder[]
+  salesOrderItems   SalesOrderLineItem[]
+  invoices          Invoice[]
+  invoiceItems      InvoiceLineItem[]
+  invoicePayments   InvoicePayment[]
+  exchangeRates     ExchangeRate[]
+  campaigns         Campaign[]
+  dealContactRoles  DealContactRole[]
+  dealCompetitors   DealCompetitor[]
+  assignmentRules   AssignmentRule[]
+  assignmentUsers   AssignmentRuleUser[]
+  dealStageHistory  DealStageHistory[]
+  workflowRules     WorkflowRule[]
+  quoteApprovals    QuoteApproval[]
+  approvalSettings  QuoteApprovalSettings?
+  stockMovements    StockMovement[]
+  apiKeys           ApiKey[]
+  webhooks          Webhook[]
+  webhookDeliveries WebhookDelivery[]
 
   @@map("organizations")
 }
@@ -127,6 +130,9 @@ model User {
   quoteApprovals     QuoteApproval[]         @relation("ApprovalActor")
   approvalSettings   QuoteApprovalSettings[] @relation("ApprovalSettingsUpdater")
   stockMovements     StockMovement[]         @relation("StockActor")
+  apiKeys            ApiKey[]                @relation("ApiKeyUser")
+  apiKeysCreated     ApiKey[]                @relation("ApiKeyCreator")
+  webhooksCreated    Webhook[]               @relation("WebhookCreator")
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -1873,4 +1879,81 @@ model StockMovement {
   @@index([organizationId, productId, createdAt])
   @@index([organizationId, salesOrderId])
   @@map("stock_movements")
+}
+
+/// API 密钥（对标 Zoho CRM API 访问）：以绑定用户的身份与权限调用接口；只保存 SHA-256 哈希，原文只在创建时显示一次。
+/// API key (cf. Zoho CRM API access): calls the API as the bound user with that user's permissions; only the SHA-256
+/// hash is stored and the key is shown once on creation.
+model ApiKey {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  name           String       @db.VarChar(100)
+  /// 密钥前缀（用于识别，如 ylk_AbCd1234）/ key prefix for identification
+  prefix         String       @db.VarChar(16)
+  keyHash        String       @unique @map("key_hash") @db.Char(64)
+  userId         String       @map("user_id") @db.Uuid
+  createdById    String?      @map("created_by_id") @db.Uuid
+  expiresAt      DateTime?    @map("expires_at") @db.Timestamptz(6)
+  revokedAt      DateTime?    @map("revoked_at") @db.Timestamptz(6)
+  lastUsedAt     DateTime?    @map("last_used_at") @db.Timestamptz(6)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation("ApiKeyUser", fields: [organizationId, userId], references: [organizationId, id], onDelete: Cascade)
+  createdBy      User?        @relation("ApiKeyCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organizationId, createdAt])
+  @@map("api_keys")
+}
+
+/// Webhook（对标 Zoho Webhooks）：工作流动作把事件写入投递队列，异步发送到外部地址并用签名密钥做 HMAC-SHA256 签名。
+/// Webhook (cf. Zoho Webhooks): workflow actions queue events that are sent asynchronously to an external URL and
+/// signed with HMAC-SHA256 using the signing secret.
+model Webhook {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  name           String            @db.VarChar(100)
+  url            String            @db.VarChar(500)
+  /// 签名密钥（只在创建与重新生成时显示）/ signing secret (shown only on creation and regeneration)
+  secret         String            @db.VarChar(64)
+  isActive       Boolean           @default(true) @map("is_active")
+  createdById    String?           @map("created_by_id") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User?             @relation("WebhookCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  deliveries     WebhookDelivery[]
+
+  @@unique([organizationId, id])
+  @@map("webhooks")
+}
+
+/// 投递状态 / delivery status
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+
+  @@map("webhook_delivery_status")
+}
+
+/// Webhook 投递队列（PostgreSQL 持久化；按退避重试，最终失败可手动重试）/ webhook delivery queue (persisted; retried with backoff)
+model WebhookDelivery {
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  webhookId      String                @map("webhook_id") @db.Uuid
+  event          String                @db.VarChar(50)
+  payload        Json
+  status         WebhookDeliveryStatus @default(PENDING)
+  attempts       Int                   @default(0)
+  nextAttemptAt  DateTime              @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
+  lastStatusCode Int?                  @map("last_status_code")
+  lastError      String?               @map("last_error") @db.VarChar(500)
+  deliveredAt    DateTime?             @map("delivered_at") @db.Timestamptz(6)
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  webhook        Webhook               @relation(fields: [organizationId, webhookId], references: [organizationId, id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([organizationId, webhookId, createdAt])
+  @@map("webhook_deliveries")
 }

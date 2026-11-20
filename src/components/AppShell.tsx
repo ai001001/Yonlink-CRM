@@ -12,6 +12,7 @@ import { Avatar, Button, Dropdown, Grid, Layout, Menu, Spin, Tag, Tooltip, Typog
 import {
   AccountBookOutlined,
   AimOutlined,
+  ApiOutlined,
   AppstoreOutlined,
   AuditOutlined,
   BankOutlined,
@@ -128,6 +129,7 @@ const NAV_GROUPS: { key: string; label: string | null; icon?: React.ReactNode; i
     items: [
       { key: '/users', icon: <TeamOutlined />, label: t('nav.users'), permission: 'user.manage' },
       { key: '/workflows', icon: <ThunderboltOutlined />, label: t('nav.workflows'), permission: 'workflow.manage' },
+      { key: '/integrations', icon: <ApiOutlined />, label: t('nav.integrations'), permission: 'integration.manage' },
       { key: '/exchange-rates', icon: <DollarOutlined />, label: t('nav.rates') },
       { key: '/duplicates', icon: <BlockOutlined />, label: t('nav.duplicates') },
       { key: '/recycle-bin', icon: <DeleteOutlined />, label: t('nav.recycleBin'), permission: 'record.delete' },

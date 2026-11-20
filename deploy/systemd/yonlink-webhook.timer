@@ -1,0 +1,12 @@
+# 每分钟发送到期的 Webhook 投递；上一次未结束时不会重复启动；关机期间错过的不补做（下次触发会一并处理）
+# Send due webhook deliveries every minute; runs never overlap; missed runs are not replayed (the next run covers them)
+[Unit]
+Description=Yonlink-CRM webhook delivery every minute
+
+[Timer]
+OnCalendar=*:*:00
+AccuracySec=10s
+Persistent=false
+
+[Install]
+WantedBy=timers.target

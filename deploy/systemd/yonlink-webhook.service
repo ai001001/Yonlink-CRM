@@ -1,0 +1,19 @@
+# 永联CRM Webhook 投递，由 yonlink-webhook.timer 每分钟触发
+# Yonlink-CRM webhook delivery, triggered every minute by yonlink-webhook.timer
+[Unit]
+Description=Yonlink-CRM webhook delivery
+After=yonlink-postgres.service
+Requires=yonlink-postgres.service
+
+[Service]
+Type=oneshot
+# node 路径由 runtime.env 提供 / node path comes from runtime.env
+EnvironmentFile=%h/yonlink-deploy/shared/runtime.env
+EnvironmentFile=%h/yonlink-deploy/shared/app.env
+WorkingDirectory=%h/yonlink-deploy/current
+ExecStart=%h/yonlink-deploy/current/node_modules/.bin/tsx scripts/webhook-sweep.ts
+# 每条请求最多 10 秒；超过 5 分钟视为卡住并结束（被领取的投递 5 分钟后可再次领取）
+# each request takes at most 10 s; treat over 5 minutes as stuck (claimed deliveries become claimable again after 5 minutes)
+TimeoutStartSec=300
+Nice=10
+UMask=0077
