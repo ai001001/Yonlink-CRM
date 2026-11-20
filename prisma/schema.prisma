@@ -14,69 +14,70 @@ datasource db {
 }
 
 model Organization {
-  id                String                  @id @default(uuid()) @db.Uuid
-  name              String                  @db.VarChar(200)
-  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
-  users             User[]
-  accounts          Account[]
-  contacts          Contact[]
-  leads             Lead[]
-  deals             Deal[]
-  activities        Activity[]
-  auditLogs         AuditLog[]
-  notes             Note[]
-  products          Product[]
-  dealItems         DealLineItem[]
-  quotes            Quote[]
-  quoteItems        QuoteLineItem[]
-  tags              Tag[]
-  leadTags          LeadTag[]
-  accountTags       AccountTag[]
-  dealTags          DealTag[]
-  recycleBin        RecycleBinItem[]
-  savedViews        SavedView[]
-  viewDefaults      UserViewDefault[]
-  dashboardLayouts  UserDashboardLayout[]
-  tickets           Ticket[]
-  ticketCounters    TicketCounter[]
-  ticketComments    TicketComment[]
-  ticketSla         TicketSlaPolicy?
-  kbArticles        KbArticle[]
-  ticketArticles    TicketArticle[]
-  vendors           Vendor[]
-  purchaseOrders    PurchaseOrder[]
-  purchaseLines     PurchaseOrderLineItem[]
-  documentCounters  DocumentCounter[]
-  priceBooks        PriceBook[]
-  priceBookEntries  PriceBookEntry[]
-  priceBookTiers    PriceBookTier[]
-  webForms          WebForm[]
-  scoringRules      ScoringRule[]
-  scoringSettings   ScoringSettings[]
-  attachments       Attachment[]
-  salesTargets      SalesTarget[]
-  notifications     Notification[]
-  salesOrders       SalesOrder[]
-  salesOrderItems   SalesOrderLineItem[]
-  invoices          Invoice[]
-  invoiceItems      InvoiceLineItem[]
-  invoicePayments   InvoicePayment[]
-  exchangeRates     ExchangeRate[]
-  campaigns         Campaign[]
-  dealContactRoles  DealContactRole[]
-  dealCompetitors   DealCompetitor[]
-  assignmentRules   AssignmentRule[]
-  assignmentUsers   AssignmentRuleUser[]
-  dealStageHistory  DealStageHistory[]
-  workflowRules     WorkflowRule[]
-  quoteApprovals    QuoteApproval[]
-  approvalSettings  QuoteApprovalSettings?
-  stockMovements    StockMovement[]
-  apiKeys           ApiKey[]
-  webhooks          Webhook[]
-  webhookDeliveries WebhookDelivery[]
-  validationRules   ValidationRule[]
+  id                   String                  @id @default(uuid()) @db.Uuid
+  name                 String                  @db.VarChar(200)
+  createdAt            DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  users                User[]
+  accounts             Account[]
+  contacts             Contact[]
+  leads                Lead[]
+  deals                Deal[]
+  activities           Activity[]
+  auditLogs            AuditLog[]
+  notes                Note[]
+  products             Product[]
+  dealItems            DealLineItem[]
+  quotes               Quote[]
+  quoteItems           QuoteLineItem[]
+  tags                 Tag[]
+  leadTags             LeadTag[]
+  accountTags          AccountTag[]
+  dealTags             DealTag[]
+  recycleBin           RecycleBinItem[]
+  savedViews           SavedView[]
+  viewDefaults         UserViewDefault[]
+  dashboardLayouts     UserDashboardLayout[]
+  tickets              Ticket[]
+  ticketCounters       TicketCounter[]
+  ticketComments       TicketComment[]
+  ticketSla            TicketSlaPolicy?
+  kbArticles           KbArticle[]
+  ticketArticles       TicketArticle[]
+  vendors              Vendor[]
+  purchaseOrders       PurchaseOrder[]
+  purchaseLines        PurchaseOrderLineItem[]
+  documentCounters     DocumentCounter[]
+  priceBooks           PriceBook[]
+  priceBookEntries     PriceBookEntry[]
+  priceBookTiers       PriceBookTier[]
+  webForms             WebForm[]
+  scoringRules         ScoringRule[]
+  scoringSettings      ScoringSettings[]
+  attachments          Attachment[]
+  salesTargets         SalesTarget[]
+  notifications        Notification[]
+  salesOrders          SalesOrder[]
+  salesOrderItems      SalesOrderLineItem[]
+  invoices             Invoice[]
+  invoiceItems         InvoiceLineItem[]
+  invoicePayments      InvoicePayment[]
+  exchangeRates        ExchangeRate[]
+  campaigns            Campaign[]
+  dealContactRoles     DealContactRole[]
+  dealCompetitors      DealCompetitor[]
+  assignmentRules      AssignmentRule[]
+  assignmentUsers      AssignmentRuleUser[]
+  dealStageHistory     DealStageHistory[]
+  workflowRules        WorkflowRule[]
+  quoteApprovals       QuoteApproval[]
+  approvalSettings     QuoteApprovalSettings?
+  stockMovements       StockMovement[]
+  apiKeys              ApiKey[]
+  webhooks             Webhook[]
+  webhookDeliveries    WebhookDelivery[]
+  validationRules      ValidationRule[]
+  workflowScheduleRuns WorkflowScheduleRun[]
 
   @@map("organizations")
 }
@@ -1749,6 +1750,10 @@ enum WorkflowTrigger {
   CREATE_OR_UPDATE
   /// 指定字段变化时 / when a given field changes
   FIELD_CHANGE
+  /// 相对日期字段（之前/之后 N 天，定时检查）/ relative to a date field (N days before/after; checked on a schedule)
+  DATE_RELATIVE
+  /// 连续 N 天没有跟进（定时检查）/ no activity for N days (checked on a schedule)
+  INACTIVITY
 
   @@map("workflow_trigger")
 }
@@ -1759,24 +1764,27 @@ enum WorkflowTrigger {
 /// (field update, assign, create task, notify, add tag). conditions and actions are JSON validated server-side per
 /// entity; changes made by workflows never trigger workflows.
 model WorkflowRule {
-  id             String          @id @default(uuid()) @db.Uuid
-  organizationId String          @map("organization_id") @db.Uuid
-  name           String          @db.VarChar(100)
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  name           String                @db.VarChar(100)
   entity         WorkflowEntity
   trigger        WorkflowTrigger
   /// 字段变化触发时的字段 / the field for FIELD_CHANGE
-  triggerField   String?         @map("trigger_field") @db.VarChar(30)
-  conditions     Json            @default("[]")
+  triggerField   String?               @map("trigger_field") @db.VarChar(30)
+  /// 定时触发的天数：相对日期为偏移（负数为之前），无跟进为天数 / days for scheduled triggers: offset (negative = before) or idle days
+  triggerDays    Int?                  @map("trigger_days")
+  scheduleRuns   WorkflowScheduleRun[]
+  conditions     Json                  @default("[]")
   actions        Json
-  isActive       Boolean         @default(true) @map("is_active")
+  isActive       Boolean               @default(true) @map("is_active")
   /// 执行次数与最近执行时间 / run count and last run time
-  runCount       Int             @default(0) @map("run_count")
-  lastRunAt      DateTime?       @map("last_run_at") @db.Timestamptz(6)
-  createdById    String?         @map("created_by_id") @db.Uuid
-  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  createdBy      User?           @relation("WorkflowCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  runCount       Int                   @default(0) @map("run_count")
+  lastRunAt      DateTime?             @map("last_run_at") @db.Timestamptz(6)
+  createdById    String?               @map("created_by_id") @db.Uuid
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User?                 @relation("WorkflowCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([organizationId, id])
   @@index([organizationId, entity, isActive])
@@ -1984,4 +1992,21 @@ model ValidationRule {
 
   @@index([organizationId, entity, isActive])
   @@map("validation_rules")
+}
+
+/// 定时工作流的执行记录：同一规则对同一记录、同一触发键只执行一次（相对日期的键为日期值，无跟进的键为最近一次跟进时间）。
+/// Scheduled workflow runs: a rule runs once per record and trigger key (the date value for relative dates, the last
+/// touch time for inactivity).
+model WorkflowScheduleRun {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  ruleId         String       @map("rule_id") @db.Uuid
+  recordId       String       @map("record_id") @db.Uuid
+  key            String       @db.VarChar(40)
+  ranAt          DateTime     @default(now()) @map("ran_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rule           WorkflowRule @relation(fields: [organizationId, ruleId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([ruleId, recordId, key])
+  @@map("workflow_schedule_runs")
 }

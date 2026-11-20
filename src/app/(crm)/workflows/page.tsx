@@ -18,7 +18,10 @@ import { fmtDateTime } from '@/lib/format';
 import { useOwners, usePagedList } from '@/lib/hooks';
 
 type Entity = 'LEAD' | 'DEAL';
-type Trigger = 'CREATE' | 'UPDATE' | 'CREATE_OR_UPDATE' | 'FIELD_CHANGE';
+type Trigger = 'CREATE' | 'UPDATE' | 'CREATE_OR_UPDATE' | 'FIELD_CHANGE' | 'DATE_RELATIVE' | 'INACTIVITY';
+const TRIGGERS = ['CREATE', 'UPDATE', 'CREATE_OR_UPDATE', 'FIELD_CHANGE', 'DATE_RELATIVE', 'INACTIVITY'] as const;
+/** 相对日期的日期字段（与服务端一致）/ date fields for relative-date triggers (same as the server) */
+const DATE_FIELDS: Record<'LEAD' | 'DEAL', string[]> = { LEAD: ['createdAt'], DEAL: ['expectedCloseDate', 'createdAt'] };
 type FieldType = 'enum' | 'text' | 'number' | 'id';
 
 /** 条件字段（与服务端一致）/ condition fields (same as the server) */
@@ -88,6 +91,7 @@ interface Rule {
   entity: Entity;
   trigger: Trigger;
   triggerField: string | null;
+  triggerDays: number | null;
   conditions: Condition[];
   actions: Action[];
   isActive: boolean;
@@ -95,7 +99,7 @@ interface Rule {
   lastRunAt: string | null;
   createdBy: { id: string; name: string } | null;
 }
-type FormValues = Omit<Rule, 'id' | 'runCount' | 'lastRunAt' | 'createdBy'>;
+type FormValues = Omit<Rule, 'id' | 'runCount' | 'lastRunAt' | 'createdBy'> & { direction?: 'before' | 'after'; offset?: number };
 
 /** 字段名称 / field label */
 const fieldLabel = (f: string) => t(`workflows.field.${f}` as MessageKey);
@@ -150,24 +154,46 @@ export default function WorkflowsPage() {
         return t('workflows.actionText.WEBHOOK', { name: webhooks.find((x) => x.id === a.webhookId)?.name ?? t('workflows.webhookHidden') });
     }
   };
-  const triggerText = (r: Pick<Rule, 'trigger' | 'triggerField'>) =>
-    r.trigger === 'FIELD_CHANGE' ? t('workflows.trigger.fieldChanged', { field: fieldLabel(r.triggerField ?? '') }) : t(`workflows.trigger.${r.trigger}` as MessageKey);
+  const triggerText = (r: Pick<Rule, 'trigger' | 'triggerField' | 'triggerDays'>) => {
+    if (r.trigger === 'FIELD_CHANGE') return t('workflows.trigger.fieldChanged', { field: fieldLabel(r.triggerField ?? '') });
+    if (r.trigger === 'DATE_RELATIVE') {
+      const days = r.triggerDays ?? 0;
+      const field = fieldLabel(r.triggerField ?? '');
+      return days === 0 ? t('workflows.trigger.onDate', { field }) : t(days < 0 ? 'workflows.trigger.beforeDate' : 'workflows.trigger.afterDate', { field, n: Math.abs(days) });
+    }
+    if (r.trigger === 'INACTIVITY') return t('workflows.trigger.idleDays', { n: r.triggerDays ?? 0 });
+    return t(`workflows.trigger.${r.trigger}` as MessageKey);
+  };
 
   const openForm = (r: Rule | 'new') => {
     form.resetFields();
     form.setFieldsValue(
       r === 'new'
-        ? { name: '', entity: 'LEAD', trigger: 'CREATE', triggerField: null, conditions: [], actions: [{ type: 'NOTIFY', recipient: 'OWNER', message: '' }], isActive: true }
-        : { name: r.name, entity: r.entity, trigger: r.trigger, triggerField: r.triggerField, conditions: r.conditions, actions: r.actions, isActive: r.isActive },
+        ? { name: '', entity: 'LEAD', trigger: 'CREATE', triggerField: null, triggerDays: null, direction: 'before', offset: 3, conditions: [], actions: [{ type: 'NOTIFY', recipient: 'OWNER', message: '' }], isActive: true }
+        : {
+            name: r.name,
+            entity: r.entity,
+            trigger: r.trigger,
+            triggerField: r.triggerField,
+            triggerDays: r.trigger === 'INACTIVITY' ? r.triggerDays : null,
+            // 相对日期：带符号天数拆成“之前/之后 + 天数” / relative dates: signed days split into direction + days
+            direction: (r.triggerDays ?? 0) < 0 ? 'before' : 'after',
+            offset: Math.abs(r.triggerDays ?? 0),
+            conditions: r.conditions,
+            actions: r.actions,
+            isActive: r.isActive,
+          },
     );
     setEditing(r);
   };
 
   const save = async () => {
     const v = await form.validateFields();
+    const { direction, offset, ...rest } = v;
     const body = {
-      ...v,
-      triggerField: v.trigger === 'FIELD_CHANGE' ? v.triggerField : null,
+      ...rest,
+      triggerField: v.trigger === 'FIELD_CHANGE' || v.trigger === 'DATE_RELATIVE' ? v.triggerField : null,
+      triggerDays: v.trigger === 'DATE_RELATIVE' ? (direction === 'before' ? -1 : 1) * (offset ?? 0) : v.trigger === 'INACTIVITY' ? v.triggerDays : null,
       conditions: (v.conditions ?? []).map((c) => (NO_VALUE.has(c.op) ? { field: c.field, op: c.op } : { field: c.field, op: c.op, value: String(c.value ?? '') })),
       actions: (v.actions ?? []).map((a) => {
         switch (a.type) {
@@ -311,15 +337,39 @@ export default function WorkflowsPage() {
                 style={{ width: 120 }}
                 disabled={editing !== 'new'}
                 options={(['LEAD', 'DEAL'] as const).map((e) => ({ value: e, label: t(`workflows.entity.${e}`) }))}
-                onChange={() => form.setFieldsValue({ triggerField: null, conditions: [], actions: [{ type: 'NOTIFY', recipient: 'OWNER', message: '' }] })}
+                onChange={(e: 'LEAD' | 'DEAL') =>
+                  form.setFieldsValue({ triggerField: form.getFieldValue('trigger') === 'DATE_RELATIVE' ? DATE_FIELDS[e][0]! : null, conditions: [], actions: [{ type: 'NOTIFY', recipient: 'OWNER', message: '' }] })
+                }
               />
             </Form.Item>
             <Form.Item name="trigger" label={t('workflows.triggerLabel')}>
-              <Select style={{ width: 180 }} options={(['CREATE', 'UPDATE', 'CREATE_OR_UPDATE', 'FIELD_CHANGE'] as const).map((x) => ({ value: x, label: t(`workflows.trigger.${x}`) }))} />
+              <Select
+                style={{ width: 180 }}
+                options={TRIGGERS.map((x) => ({ value: x, label: t(`workflows.trigger.${x}`) }))}
+                onChange={(x: Trigger) => form.setFieldsValue({ triggerField: x === 'DATE_RELATIVE' ? DATE_FIELDS[formEntity][0]! : null, triggerDays: x === 'INACTIVITY' ? 7 : null })}
+              />
             </Form.Item>
             {trigger === 'FIELD_CHANGE' && (
               <Form.Item name="triggerField" label={t('workflows.triggerField')} rules={required('workflows.triggerField')}>
                 <Select style={{ width: 160 }} options={TRIGGER_FIELDS[formEntity].map((f) => ({ value: f, label: fieldLabel(f) }))} />
+              </Form.Item>
+            )}
+            {trigger === 'DATE_RELATIVE' && (
+              <>
+                <Form.Item name="triggerField" label={t('workflows.dateField')} rules={required('workflows.dateField')}>
+                  <Select style={{ width: 140 }} options={DATE_FIELDS[formEntity].map((f) => ({ value: f, label: fieldLabel(f) }))} />
+                </Form.Item>
+                <Form.Item name="direction" label={t('workflows.direction')}>
+                  <Select style={{ width: 100 }} options={(['before', 'after'] as const).map((d) => ({ value: d, label: t(`workflows.direction.${d}`) }))} />
+                </Form.Item>
+                <Form.Item name="offset" label={t('workflows.offsetDays')} rules={required('workflows.offsetDays')}>
+                  <InputNumber min={0} max={365} precision={0} suffix={t('workflows.days')} style={{ width: 120 }} />
+                </Form.Item>
+              </>
+            )}
+            {trigger === 'INACTIVITY' && (
+              <Form.Item name="triggerDays" label={t('workflows.idleDays')} rules={required('workflows.idleDays')}>
+                <InputNumber min={1} max={365} precision={0} suffix={t('workflows.days')} style={{ width: 120 }} />
               </Form.Item>
             )}
             <Form.Item name="isActive" label={t('workflows.active')} valuePropName="checked">

@@ -1325,8 +1325,10 @@ export const DEMO_ASSIGNMENT_RULES: { name: string; conditions: { field: string;
 export const DEMO_WORKFLOWS: {
   name: string;
   entity: 'LEAD' | 'DEAL';
-  trigger: 'CREATE' | 'UPDATE' | 'CREATE_OR_UPDATE' | 'FIELD_CHANGE';
+  trigger: 'CREATE' | 'UPDATE' | 'CREATE_OR_UPDATE' | 'FIELD_CHANGE' | 'DATE_RELATIVE' | 'INACTIVITY';
   triggerField?: string;
+  /** 定时触发的天数 / days for scheduled triggers */
+  triggerDays?: number;
   conditions: { field: string; op: string; value?: string }[];
   actions: ({ type: 'NOTIFY'; recipient: 'OWNER' | OwnerKey; message: string } | { type: 'CREATE_TASK'; subject: string; dueInDays: number; assignTo: 'OWNER' | OwnerKey } | { type: 'ADD_TAG'; tag: DemoTagKey })[];
   isActive: boolean;
@@ -1364,6 +1366,28 @@ export const DEMO_WORKFLOWS: {
       { field: 'amount', op: 'GTE', value: '500000' },
     ],
     actions: [{ type: 'NOTIFY', recipient: 'manager', message: '大单赢单' }],
+    isActive: true,
+  },
+  {
+    name: '【演示】预计成交日前 3 天提醒负责人',
+    entity: 'DEAL',
+    trigger: 'DATE_RELATIVE',
+    triggerField: 'expectedCloseDate',
+    triggerDays: -3,
+    conditions: [
+      { field: 'stage', op: 'NOT_EQUALS', value: 'CLOSED_WON' },
+      { field: 'stage', op: 'NOT_EQUALS', value: 'CLOSED_LOST' },
+    ],
+    actions: [{ type: 'NOTIFY', recipient: 'OWNER', message: '商机 3 天后到预计成交日，请确认进展' }],
+    isActive: true,
+  },
+  {
+    name: '【演示】高分线索 7 天无跟进提醒',
+    entity: 'LEAD',
+    trigger: 'INACTIVITY',
+    triggerDays: 7,
+    conditions: [{ field: 'score', op: 'GTE', value: '50' }],
+    actions: [{ type: 'NOTIFY', recipient: 'OWNER', message: '高分线索已 7 天没有跟进' }],
     isActive: true,
   },
   {

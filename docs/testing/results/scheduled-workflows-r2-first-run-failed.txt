@@ -1,0 +1,45 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+47 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+ ❯ tests/scheduled-workflows/scheduled-workflows.r2-integration.test.ts (4 tests | 1 failed) 9993ms
+   ❯ scheduled workflows R2 (4)
+     × 按组织运行与隔离；损坏规则不影响其他；删除规则级联；数据库约束 / isolation, corrupted rules, cascade, constraints 306ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/scheduled-workflows/scheduled-workflows.r2-integration.test.ts > scheduled workflows R2 > 按组织运行与隔离；损坏规则不影响其他；删除规则级联；数据库约束 / isolation, corrupted rules, cascade, constraints
+AssertionError: promise resolved "1" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+1
+
+ ❯ tests/scheduled-workflows/scheduled-workflows.r2-integration.test.ts:58:109
+     56|     expect(await prisma.workflowScheduleRun.count({ where: { ruleId: r…
+     57|     // 约束 / constraints
+     58|     await expect(prisma.$executeRaw`UPDATE workflow_rules SET trigger_…
+       |                                                                                                             ^
+     59|     await expect(prisma.$executeRaw`UPDATE workflow_rules SET trigger_…
+     60|     await expect(prisma.$executeRaw`UPDATE workflow_rules SET trigger …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  15:55:28
+   Duration  12.20s (tests 96%, import 3%, transform 1%)
+

@@ -1,0 +1,19 @@
+# 永联CRM 定时工作流，由 yonlink-workflow.timer 每 15 分钟触发
+# Yonlink-CRM scheduled workflows, triggered every 15 minutes by yonlink-workflow.timer
+[Unit]
+Description=Yonlink-CRM scheduled workflows
+After=yonlink-postgres.service
+Requires=yonlink-postgres.service
+
+[Service]
+Type=oneshot
+# node 路径由 runtime.env 提供 / node path comes from runtime.env
+EnvironmentFile=%h/yonlink-deploy/shared/runtime.env
+EnvironmentFile=%h/yonlink-deploy/shared/app.env
+WorkingDirectory=%h/yonlink-deploy/current
+ExecStart=%h/yonlink-deploy/current/node_modules/.bin/tsx scripts/workflow-sweep.ts
+# 超过 5 分钟视为卡住并结束；已登记的执行键不会重复执行，未处理的记录下次继续
+# treat over 5 minutes as stuck; registered run keys never repeat and unprocessed records continue next time
+TimeoutStartSec=300
+Nice=10
+UMask=0077

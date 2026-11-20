@@ -1,0 +1,13 @@
+# 每 15 分钟检查定时工作流；上一次未结束时不会重复启动；关机期间错过的不补做（相对日期最多补做 7 天，无跟进下次一并检查）
+# Check scheduled workflows every 15 minutes; runs never overlap; missed runs are not replayed (relative dates catch up
+# to 7 days, inactivity is checked on the next run)
+[Unit]
+Description=Yonlink-CRM scheduled workflows every 15 minutes
+
+[Timer]
+OnCalendar=*:0/15
+AccuracySec=30s
+Persistent=false
+
+[Install]
+WantedBy=timers.target

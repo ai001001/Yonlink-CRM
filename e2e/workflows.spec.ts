@@ -46,7 +46,9 @@ test('经理：新建工作流规则、触发执行、停用 / manager: create, 
   await nav(page, '工作流规则');
   await expect(page.getByRole('row', { name: /高分新线索/ })).toBeVisible();
   await expect(page.getByRole('row', { name: /进入商务谈判/ })).toContainText('阶段变化时');
-  await expect(page.locator('tr.ant-table-row')).toHaveCount(4);
+  // 演示规则 6 条（定时工作流功能新增 2 条定时规则）；只数演示规则，其他用例新建的规则不影响
+  // 6 demo rules (scheduled workflows added 2); count demo rules only so rules made by other specs do not interfere
+  await expect(page.locator('tr.ant-table-row').filter({ hasText: '【演示】' })).toHaveCount(6);
 
   // 新建规则 / create a rule
   await page.getByRole('button', { name: '新建工作流规则' }).click();

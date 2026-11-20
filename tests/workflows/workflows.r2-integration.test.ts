@@ -118,7 +118,7 @@ describe('workflows R2 demo', () => {
     const org = await prisma.organization.findFirstOrThrow({ where: { name: DEMO_ORG_NAME } });
     const rules = await prisma.workflowRule.findMany({ where: { organizationId: org.id }, orderBy: { createdAt: 'asc' } });
     expect(rules.map((r) => [r.name, r.isActive])).toEqual(DEMO_WORKFLOWS.map((w) => [w.name, w.isActive]));
-    for (const r of rules) expect(workflowCreateSchema.safeParse({ name: r.name, entity: r.entity, trigger: r.trigger, triggerField: r.triggerField, conditions: r.conditions, actions: r.actions, isActive: r.isActive }).success, r.name).toBe(true);
+    for (const r of rules) expect(workflowCreateSchema.safeParse({ name: r.name, entity: r.entity, trigger: r.trigger, triggerField: r.triggerField, triggerDays: r.triggerDays, conditions: r.conditions, actions: r.actions, isActive: r.isActive }).success, r.name).toBe(true);
     const manager = await prisma.user.findFirstOrThrow({ where: { organizationId: org.id, role: 'MANAGER' } });
     const deal = await prisma.deal.findFirstOrThrow({ where: { organizationId: org.id, stage: 'PROPOSAL' } });
     const ctx = { organizationId: org.id, userId: manager.id, role: 'MANAGER' } as never;

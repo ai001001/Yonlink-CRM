@@ -821,6 +821,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
             entity: w.entity,
             trigger: w.trigger,
             triggerField: w.triggerField ?? null,
+            triggerDays: w.triggerDays ?? null,
             conditions: w.conditions,
             actions,
             isActive: w.isActive,

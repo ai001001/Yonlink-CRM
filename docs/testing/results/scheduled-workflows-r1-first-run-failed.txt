@@ -1,0 +1,51 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+47 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:996497) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/scheduled-workflows/scheduled-workflows.r1-functional.test.ts (4 tests | 1 failed) 1658ms
+   ❯ scheduled workflows R1 relative dates (2)
+     × 预计成交日前 3 天：只执行一次、日期改了再触发、条件与系统身份 / before the close date 302ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/scheduled-workflows/scheduled-workflows.r1-functional.test.ts > scheduled workflows R1 relative dates > 预计成交日前 3 天：只执行一次、日期改了再触发、条件与系统身份 / before the close date
+AssertionError: expected { …(15) } to match object { …(3) }
+(12 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "actorId": null,
+-   "title": "提醒 · 三天后成交",
++   "actorId": "737a6349-52ec-4ba6-8436-e6ff0a25bc05",
++   "title": "三天后成交",
+    "userId": "c77a028b-71af-427e-b1e9-e332e75279ed",
+  }
+
+ ❯ tests/scheduled-workflows/scheduled-workflows.r1-functional.test.ts:73:15
+     71|     expect([await notes(due.id), await notes(later.id), await notes(wo…
+     72|     const n = await prisma.notification.findFirstOrThrow({ where: { de…
+     73|     expect(n).toMatchObject({ userId: rep.user.id, actorId: null, titl…
+       |               ^
+     74|     expect((await prisma.auditLog.findFirstOrThrow({ where: { action: …
+     75|     // 再次运行不重复；赢单商机的键已登记，改回进行中也不再触发 / no repeats; the won deal's key i…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  15:54:19
+   Duration  3.85s (tests 80%, import 14%, transform 5%, setup 1%)
+

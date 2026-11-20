@@ -76,6 +76,7 @@
 | 产品库存 | ✅ | ✅ | ✅ | [stock.md](stock.md) |
 | Webhook 与 API 密钥 | ✅ | ✅ | ✅ | [integrations.md](integrations.md) |
 | 字段验证规则 | ✅ | ✅ | ✅ | [validation-rules.md](validation-rules.md) |
+| 定时工作流 | ✅ | ✅ | ✅ | [scheduled-workflows.md](scheduled-workflows.md) |
 
 ## 整体回归（全部模块完成后）
 命令：`scripts/regression.sh final-mvp` → **PASS**（lint、typecheck、11 文件 181/181、静态导出、生产构建、E2E 6/6）。原始输出：[results/final-mvp-r3-regression.txt](results/final-mvp-r3-regression.txt)

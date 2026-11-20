@@ -2,6 +2,7 @@
  * 工作流规则（对标 Zoho Workflow Rules）：线索、商机新建或编辑时，按触发时机与条件自动执行动作。
  * - 触发时机：新建时、编辑时（有字段变化）、新建或编辑时、指定字段变化时（线索：状态、来源、负责人、市场活动；
  *   商机：阶段、金额、币种、负责人、预计成交日）。
+ *   另有两种定时触发：相对日期（创建日或预计成交日之前/之后 N 天）、连续 N 天无跟进，由定时任务执行（见 workflow-schedule.ts）。
  * - 条件（最多 5 条，全部满足，按记录写入后的值判断）：枚举等于/不等于；文本等于、包含、开头是、结尾是、为空、不为空；
  *   数字（金额、评分）不小于/不大于；负责人、市场活动等于、为空、不为空。
  * - 动作（1–5 个，按顺序执行）：更新字段（线索状态、来源；商机阶段）、指派负责人、创建任务（关联记录，N 天后到期，
@@ -78,6 +79,9 @@ export const TRIGGER_FIELDS: Record<WorkflowEntity, readonly string[]> = {
   DEAL: ['stage', 'amount', 'currency', 'ownerId', 'expectedCloseDate'],
 };
 
+/** 可作为“相对日期”触发的日期字段 / date fields usable for DATE_RELATIVE */
+export const DATE_FIELDS: Record<WorkflowEntity, readonly string[]> = { LEAD: ['createdAt'], DEAL: ['expectedCloseDate', 'createdAt'] };
+
 /** 编辑时比较的字段 / fields compared for "edit" */
 const TRACKED: Record<WorkflowEntity, readonly string[]> = {
   LEAD: ['name', 'company', 'title', 'phone', 'mobile', 'email', 'source', 'status', 'description', 'ownerId', 'campaignId'],
@@ -117,6 +121,7 @@ const ruleFields = {
   entity: z.enum(WorkflowEntity),
   trigger: z.enum(WorkflowTrigger),
   triggerField: z.string().max(30).nullish().transform((v) => v ?? null),
+  triggerDays: z.number().int().min(-365).max(365).nullish().transform((v) => v ?? null),
   conditions: z.array(conditionSchema).max(5).default([]),
   actions: z.array(actionSchema).min(1).max(5),
   isActive: z.boolean().default(true),
@@ -147,11 +152,19 @@ export function checkCondition(fields: Record<string, FieldDef>, c: Condition, r
  * 按对象校验触发字段、条件与动作（字段、比较方式与取值必须属于该对象的固定集合）。
  * Validate trigger field, conditions and actions per entity (fields, operators and values from fixed sets).
  */
-function checkRule(v: { entity: WorkflowEntity; trigger: WorkflowTrigger; triggerField: string | null; conditions: Condition[]; actions: Action[] }, ctx: z.RefinementCtx) {
+function checkRule(v: { entity: WorkflowEntity; trigger: WorkflowTrigger; triggerField: string | null; triggerDays: number | null; conditions: Condition[]; actions: Action[] }, ctx: z.RefinementCtx) {
   const issue = (path: (string | number)[], message: string) => ctx.addIssue({ code: 'custom', path, message });
   if (v.trigger === WorkflowTrigger.FIELD_CHANGE) {
     if (!v.triggerField || !TRIGGER_FIELDS[v.entity].includes(v.triggerField)) issue(['triggerField'], 'invalid_field');
+  } else if (v.trigger === WorkflowTrigger.DATE_RELATIVE) {
+    if (!v.triggerField || !DATE_FIELDS[v.entity].includes(v.triggerField)) issue(['triggerField'], 'invalid_field');
   } else if (v.triggerField) issue(['triggerField'], 'not_allowed');
+  // 天数：相对日期必填（−365–365），无跟进必填（1–365），其他不能填 / days: required for relative dates and inactivity only
+  if (v.trigger === WorkflowTrigger.DATE_RELATIVE) {
+    if (v.triggerDays === null) issue(['triggerDays'], 'required');
+  } else if (v.trigger === WorkflowTrigger.INACTIVITY) {
+    if (v.triggerDays === null || v.triggerDays < 1) issue(['triggerDays'], 'invalid_days');
+  } else if (v.triggerDays !== null) issue(['triggerDays'], 'not_allowed');
   v.conditions.forEach((c, i) => checkCondition(CONDITION_FIELDS[v.entity], c, (field, message) => issue(['conditions', i, field], message)));
   v.actions.forEach((a, i) => {
     if (a.type === 'UPDATE_FIELD') {
@@ -171,6 +184,7 @@ export const workflowUpdateSchema = z
     entity: z.enum(WorkflowEntity),
     trigger: z.enum(WorkflowTrigger),
     triggerField: z.string().max(30).nullable(),
+    triggerDays: z.number().int().min(-365).max(365).nullable(),
     conditions: z.array(conditionSchema).max(5),
     actions: z.array(actionSchema).min(1).max(5),
     isActive: z.boolean(),
@@ -182,7 +196,7 @@ export const workflowUpdateSchema = z
       ctx.addIssue({ code: 'custom', path: ['entity'], message: 'entity_trigger_actions_required' });
       return;
     }
-    checkRule({ entity: v.entity, trigger: v.trigger, triggerField: v.triggerField ?? null, conditions: v.conditions ?? [], actions: v.actions }, ctx);
+    checkRule({ entity: v.entity, trigger: v.trigger, triggerField: v.triggerField ?? null, triggerDays: v.triggerDays ?? null, conditions: v.conditions ?? [], actions: v.actions }, ctx);
   });
 /** 列表查询 / list query */
 export const workflowListSchema = z.strictObject({
@@ -197,6 +211,7 @@ const select = {
   entity: true,
   trigger: true,
   triggerField: true,
+  triggerDays: true,
   conditions: true,
   actions: true,
   isActive: true,
@@ -208,11 +223,12 @@ const select = {
 } satisfies Prisma.WorkflowRuleSelect;
 
 /** 审计快照 / audit snapshot */
-const snap = (r: { name: string; entity: string; trigger: string; triggerField: string | null; conditions: unknown; actions: unknown; isActive: boolean }) => ({
+const snap = (r: { name: string; entity: string; trigger: string; triggerField: string | null; triggerDays: number | null; conditions: unknown; actions: unknown; isActive: boolean }) => ({
   name: r.name,
   entity: r.entity,
   trigger: r.trigger,
   triggerField: r.triggerField,
+  triggerDays: r.triggerDays,
   conditions: r.conditions,
   actions: r.actions,
   isActive: r.isActive,
@@ -301,7 +317,7 @@ export async function updateWorkflow(ctx: AuthContext, id: string, input: z.infe
   void _entity;
   try {
     return await prisma.$transaction(async (tx) => {
-      const rule = await tx.workflowRule.update({ where: { id }, data: { ...data, triggerField: input.trigger ? (input.triggerField ?? null) : undefined }, select });
+      const rule = await tx.workflowRule.update({ where: { id }, data: { ...data, triggerField: input.trigger ? (input.triggerField ?? null) : undefined, triggerDays: input.trigger ? (input.triggerDays ?? null) : undefined }, select });
       const before = snap(current);
       const after = snap(rule);
       const fields = Object.fromEntries(
@@ -412,6 +428,10 @@ function fires(rule: { entity: WorkflowEntity; trigger: WorkflowTrigger; trigger
       return created || TRACKED[rule.entity].some(changed);
     case WorkflowTrigger.FIELD_CHANGE:
       return !!rule.triggerField && changed(rule.triggerField);
+    // 定时触发只由定时任务执行 / scheduled triggers run only from the scheduler
+    case WorkflowTrigger.DATE_RELATIVE:
+    case WorkflowTrigger.INACTIVITY:
+      return false;
   }
 }
 
@@ -432,115 +452,130 @@ export async function runWorkflows(tx: Prisma.TransactionClient, ev: WorkflowEve
   const rules = await tx.workflowRule.findMany({ where: { organizationId: org, entity: ev.entity, isActive: true }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] });
   if (!rules.length) return 0;
   const record: Record<string, unknown> & { id: string; name: string; ownerId: string | null } = { ...ev.after };
-  const target = ev.entity === WorkflowEntity.LEAD ? { leadId: record.id } : { dealId: record.id };
-  const auditEntity = ev.entity === WorkflowEntity.LEAD ? 'lead' : 'deal';
   let ran = 0;
   for (const rule of rules) {
     if (!fires(rule, ev)) continue;
-    const conditions = z.array(conditionSchema).safeParse(rule.conditions);
-    const actions = z.array(actionSchema).safeParse(rule.actions);
-    if (!conditions.success || !actions.success) continue; // 防御：保存时已校验 / defensive; validated on save
-    if (!conditions.data.every((c) => conditionHolds(ev.entity, c, record))) continue;
-    const done: string[] = [];
-    const skipped: string[] = [];
-    for (const a of actions.data) {
-      switch (a.type) {
-        case 'UPDATE_FIELD': {
-          if (ev.entity === WorkflowEntity.LEAD && a.field === 'status' && record.convertedAt) {
-            skipped.push(`UPDATE_FIELD ${a.field}: converted`);
-            break;
-          }
-          const before = norm(record[a.field]);
-          if (before === a.value) {
-            done.push(`UPDATE_FIELD ${a.field}=${a.value} (unchanged)`);
-            break;
-          }
-          if (ev.entity === WorkflowEntity.LEAD) await tx.lead.update({ where: { id: record.id }, data: { [a.field]: a.value } });
-          else await tx.deal.update({ where: { id: record.id }, data: { [a.field]: a.value } });
-          record[a.field] = a.value;
-          await audit(tx, { organizationId: org, actorId: ev.actorId, action: `${auditEntity}.update`, entityType: auditEntity, entityId: record.id, changes: { fields: { [a.field]: [before, a.value] }, workflow: rule.name }, meta: ev.meta });
-          done.push(`UPDATE_FIELD ${a.field}=${a.value}`);
-          break;
-        }
-        case 'ASSIGN_OWNER': {
-          const user = await activeUser(tx, org, a.userId);
-          if (!user) {
-            skipped.push('ASSIGN_OWNER: user_inactive');
-            break;
-          }
-          const previous = record.ownerId;
-          if (previous === user) {
-            done.push('ASSIGN_OWNER (unchanged)');
-            break;
-          }
-          if (ev.entity === WorkflowEntity.LEAD) await tx.lead.update({ where: { id: record.id }, data: { ownerId: user } });
-          else await tx.deal.update({ where: { id: record.id }, data: { ownerId: user } });
-          record.ownerId = user;
-          await audit(tx, { organizationId: org, actorId: ev.actorId, action: `${auditEntity}.update`, entityType: auditEntity, entityId: record.id, changes: { fields: { ownerId: [previous, user] }, workflow: rule.name }, meta: ev.meta });
-          if (user !== ev.actorId) {
-            await tx.notification.create({ data: { organizationId: org, userId: user, type: NotificationType.ASSIGNED, actorId: ev.actorId, ...target, title: record.name.slice(0, 200) } });
-          }
-          done.push('ASSIGN_OWNER');
-          break;
-        }
-        case 'CREATE_TASK': {
-          const owner = a.assignTo === 'OWNER' ? record.ownerId : await activeUser(tx, org, a.assignTo);
-          if (a.assignTo !== 'OWNER' && !owner) skipped.push('CREATE_TASK: user_inactive → owner');
-          const dueAt = new Date(Date.now() + a.dueInDays * 86_400_000);
-          const task = await tx.activity.create({
-            data: { organizationId: org, type: 'TASK', subject: a.subject, dueAt, ownerId: owner ?? record.ownerId, ...target },
-          });
-          await audit(tx, { organizationId: org, actorId: ev.actorId, action: 'activity.create', entityType: 'activity', entityId: task.id, changes: { after: { type: 'TASK', subject: a.subject, ownerId: task.ownerId }, workflow: rule.name }, meta: ev.meta });
-          done.push('CREATE_TASK');
-          break;
-        }
-        case 'NOTIFY': {
-          const to = a.recipient === 'OWNER' ? record.ownerId : await activeUser(tx, org, a.recipient);
-          if (!to) {
-            skipped.push(`NOTIFY: ${a.recipient === 'OWNER' ? 'no_owner' : 'user_inactive'}`);
-            break;
-          }
-          await tx.notification.create({ data: { organizationId: org, userId: to, type: NotificationType.WORKFLOW, actorId: ev.actorId, ...target, title: `${a.message} · ${record.name}`.slice(0, 200) } });
-          done.push('NOTIFY');
-          break;
-        }
-        case 'WEBHOOK': {
-          // 负载只含业务状态字段，不含邮箱、电话等个人信息 / business fields only, no emails or phone numbers
-          const fields = ev.entity === WorkflowEntity.LEAD ? WEBHOOK_FIELDS.LEAD : WEBHOOK_FIELDS.DEAL;
-          const data = {
-            rule: rule.name,
-            entity: ev.entity,
-            trigger: ev.before === null ? 'create' : 'update',
-            record: Object.fromEntries([['id', record.id], ['name', record.name], ...fields.map((f) => [f, norm(record[f])])]),
-          };
-          if (await enqueueDelivery(tx, org, a.webhookId, 'workflow.run', data)) done.push('WEBHOOK');
-          else skipped.push('WEBHOOK: webhook_inactive');
-          break;
-        }
-        case 'ADD_TAG': {
-          const tag = await tx.tag.findFirst({ where: { id: a.tagId, organizationId: org }, select: { id: true } });
-          if (!tag) {
-            skipped.push('ADD_TAG: tag_deleted');
-            break;
-          }
-          if (ev.entity === WorkflowEntity.LEAD) await tx.leadTag.createMany({ data: [{ organizationId: org, leadId: record.id, tagId: tag.id }], skipDuplicates: true });
-          else await tx.dealTag.createMany({ data: [{ organizationId: org, dealId: record.id, tagId: tag.id }], skipDuplicates: true });
-          done.push('ADD_TAG');
-          break;
-        }
-      }
-    }
-    await tx.workflowRule.update({ where: { id: rule.id }, data: { runCount: { increment: 1 }, lastRunAt: new Date() } });
-    await audit(tx, {
-      organizationId: org,
-      actorId: ev.actorId,
-      action: 'workflow.run',
-      entityType: 'workflow',
-      entityId: rule.id,
-      changes: { rule: rule.name, entity: ev.entity, recordId: record.id, record: record.name, actions: done, ...(skipped.length ? { skipped } : {}) },
-      meta: ev.meta,
-    });
-    ran += 1;
+    if (await executeRule(tx, rule, ev, record)) ran += 1;
   }
   return ran;
+}
+
+/**
+ * 对一条记录执行一条规则（条件不满足或规则数据无法识别时返回 false）；即时触发与定时触发共用。
+ * Run one rule for a record (false when conditions fail or the rule data is unrecognised); shared by instant and
+ * scheduled triggers.
+ */
+export async function executeRule(
+  tx: Prisma.TransactionClient,
+  rule: { id: string; name: string; conditions: Prisma.JsonValue; actions: Prisma.JsonValue },
+  ev: WorkflowEvent,
+  record: Record<string, unknown> & { id: string; name: string; ownerId: string | null },
+): Promise<boolean> {
+  const org = ev.after.organizationId;
+  const target = ev.entity === WorkflowEntity.LEAD ? { leadId: record.id } : { dealId: record.id };
+  const auditEntity = ev.entity === WorkflowEntity.LEAD ? 'lead' : 'deal';
+  const conditions = z.array(conditionSchema).safeParse(rule.conditions);
+  const actions = z.array(actionSchema).safeParse(rule.actions);
+  if (!conditions.success || !actions.success) return false; // 防御：保存时已校验 / defensive; validated on save
+  if (!conditions.data.every((c) => conditionHolds(ev.entity, c, record))) return false;
+  const done: string[] = [];
+  const skipped: string[] = [];
+  for (const a of actions.data) {
+    switch (a.type) {
+      case 'UPDATE_FIELD': {
+        if (ev.entity === WorkflowEntity.LEAD && a.field === 'status' && record.convertedAt) {
+          skipped.push(`UPDATE_FIELD ${a.field}: converted`);
+          break;
+        }
+        const before = norm(record[a.field]);
+        if (before === a.value) {
+          done.push(`UPDATE_FIELD ${a.field}=${a.value} (unchanged)`);
+          break;
+        }
+        if (ev.entity === WorkflowEntity.LEAD) await tx.lead.update({ where: { id: record.id }, data: { [a.field]: a.value } });
+        else await tx.deal.update({ where: { id: record.id }, data: { [a.field]: a.value } });
+        record[a.field] = a.value;
+        await audit(tx, { organizationId: org, actorId: ev.actorId, action: `${auditEntity}.update`, entityType: auditEntity, entityId: record.id, changes: { fields: { [a.field]: [before, a.value] }, workflow: rule.name }, meta: ev.meta });
+        done.push(`UPDATE_FIELD ${a.field}=${a.value}`);
+        break;
+      }
+      case 'ASSIGN_OWNER': {
+        const user = await activeUser(tx, org, a.userId);
+        if (!user) {
+          skipped.push('ASSIGN_OWNER: user_inactive');
+          break;
+        }
+        const previous = record.ownerId;
+        if (previous === user) {
+          done.push('ASSIGN_OWNER (unchanged)');
+          break;
+        }
+        if (ev.entity === WorkflowEntity.LEAD) await tx.lead.update({ where: { id: record.id }, data: { ownerId: user } });
+        else await tx.deal.update({ where: { id: record.id }, data: { ownerId: user } });
+        record.ownerId = user;
+        await audit(tx, { organizationId: org, actorId: ev.actorId, action: `${auditEntity}.update`, entityType: auditEntity, entityId: record.id, changes: { fields: { ownerId: [previous, user] }, workflow: rule.name }, meta: ev.meta });
+        if (user !== ev.actorId) {
+          await tx.notification.create({ data: { organizationId: org, userId: user, type: NotificationType.ASSIGNED, actorId: ev.actorId, ...target, title: record.name.slice(0, 200) } });
+        }
+        done.push('ASSIGN_OWNER');
+        break;
+      }
+      case 'CREATE_TASK': {
+        const owner = a.assignTo === 'OWNER' ? record.ownerId : await activeUser(tx, org, a.assignTo);
+        if (a.assignTo !== 'OWNER' && !owner) skipped.push('CREATE_TASK: user_inactive → owner');
+        const dueAt = new Date(Date.now() + a.dueInDays * 86_400_000);
+        const task = await tx.activity.create({
+          data: { organizationId: org, type: 'TASK', subject: a.subject, dueAt, ownerId: owner ?? record.ownerId, ...target },
+        });
+        await audit(tx, { organizationId: org, actorId: ev.actorId, action: 'activity.create', entityType: 'activity', entityId: task.id, changes: { after: { type: 'TASK', subject: a.subject, ownerId: task.ownerId }, workflow: rule.name }, meta: ev.meta });
+        done.push('CREATE_TASK');
+        break;
+      }
+      case 'NOTIFY': {
+        const to = a.recipient === 'OWNER' ? record.ownerId : await activeUser(tx, org, a.recipient);
+        if (!to) {
+          skipped.push(`NOTIFY: ${a.recipient === 'OWNER' ? 'no_owner' : 'user_inactive'}`);
+          break;
+        }
+        await tx.notification.create({ data: { organizationId: org, userId: to, type: NotificationType.WORKFLOW, actorId: ev.actorId, ...target, title: `${a.message} · ${record.name}`.slice(0, 200) } });
+        done.push('NOTIFY');
+        break;
+      }
+      case 'WEBHOOK': {
+        // 负载只含业务状态字段，不含邮箱、电话等个人信息 / business fields only, no emails or phone numbers
+        const fields = ev.entity === WorkflowEntity.LEAD ? WEBHOOK_FIELDS.LEAD : WEBHOOK_FIELDS.DEAL;
+        const data = {
+          rule: rule.name,
+          entity: ev.entity,
+          trigger: ev.before === null ? 'create' : 'update',
+          record: Object.fromEntries([['id', record.id], ['name', record.name], ...fields.map((f) => [f, norm(record[f])])]),
+        };
+        if (await enqueueDelivery(tx, org, a.webhookId, 'workflow.run', data)) done.push('WEBHOOK');
+        else skipped.push('WEBHOOK: webhook_inactive');
+        break;
+      }
+      case 'ADD_TAG': {
+        const tag = await tx.tag.findFirst({ where: { id: a.tagId, organizationId: org }, select: { id: true } });
+        if (!tag) {
+          skipped.push('ADD_TAG: tag_deleted');
+          break;
+        }
+        if (ev.entity === WorkflowEntity.LEAD) await tx.leadTag.createMany({ data: [{ organizationId: org, leadId: record.id, tagId: tag.id }], skipDuplicates: true });
+        else await tx.dealTag.createMany({ data: [{ organizationId: org, dealId: record.id, tagId: tag.id }], skipDuplicates: true });
+        done.push('ADD_TAG');
+        break;
+      }
+    }
+  }
+  await tx.workflowRule.update({ where: { id: rule.id }, data: { runCount: { increment: 1 }, lastRunAt: new Date() } });
+  await audit(tx, {
+    organizationId: org,
+    actorId: ev.actorId,
+    action: 'workflow.run',
+    entityType: 'workflow',
+    entityId: rule.id,
+    changes: { rule: rule.name, entity: ev.entity, recordId: record.id, record: record.name, actions: done, ...(skipped.length ? { skipped } : {}) },
+    meta: ev.meta,
+  });
+  return true;
 }
