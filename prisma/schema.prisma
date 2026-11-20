@@ -76,6 +76,7 @@ model Organization {
   apiKeys           ApiKey[]
   webhooks          Webhook[]
   webhookDeliveries WebhookDelivery[]
+  validationRules   ValidationRule[]
 
   @@map("organizations")
 }
@@ -133,6 +134,7 @@ model User {
   apiKeys            ApiKey[]                @relation("ApiKeyUser")
   apiKeysCreated     ApiKey[]                @relation("ApiKeyCreator")
   webhooksCreated    Webhook[]               @relation("WebhookCreator")
+  validationRules    ValidationRule[]        @relation("ValidationCreator")
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -1956,4 +1958,30 @@ model WebhookDelivery {
   @@index([status, nextAttemptAt])
   @@index([organizationId, webhookId, createdAt])
   @@map("webhook_deliveries")
+}
+
+/// 字段验证规则（对标 Zoho Validation Rules）：线索、商机满足“适用条件”（全部成立；为空表示总是适用）时，必须满足“要求”
+/// （全部成立），否则拒绝保存并显示自定义提示。条件为 JSON（服务端按对象校验）。
+/// Validation rule (cf. Zoho Validation Rules): when a lead or deal meets the "when" conditions (all; empty = always),
+/// it must meet the "require" conditions (all) or the save is refused with a custom message. Conditions are JSON
+/// validated per entity on the server.
+model ValidationRule {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  name           String         @db.VarChar(100)
+  entity         WorkflowEntity
+  when           Json           @default("[]")
+  require        Json
+  message        String         @db.VarChar(200)
+  /// 提示显示在哪个字段下（为空显示在表单顶部）/ the field to show the message under (null: top of the form)
+  errorField     String?        @map("error_field") @db.VarChar(30)
+  isActive       Boolean        @default(true) @map("is_active")
+  createdById    String?        @map("created_by_id") @db.Uuid
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User?          @relation("ValidationCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organizationId, entity, isActive])
+  @@map("validation_rules")
 }

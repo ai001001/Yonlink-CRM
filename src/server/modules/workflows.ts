@@ -37,8 +37,10 @@ import { enqueueDelivery } from './webhooks';
 /** 每组织最多规则数 / max rules per organization */
 export const MAX_WORKFLOWS = 100;
 
-type FieldType = 'enum' | 'text' | 'number' | 'id';
-interface FieldDef {
+/** 字段类型 / field type */
+export type FieldType = 'enum' | 'text' | 'number' | 'id' | 'date';
+/** 条件字段定义 / condition field definition */
+export interface FieldDef {
   type: FieldType;
   values?: readonly string[];
 }
@@ -92,11 +94,12 @@ const OPS: Record<FieldType, readonly string[]> = {
   enum: ['EQUALS', 'NOT_EQUALS'],
   text: ['EQUALS', 'CONTAINS', 'STARTS_WITH', 'ENDS_WITH', 'IS_EMPTY', 'NOT_EMPTY'],
   number: ['GTE', 'LTE'],
+  date: ['IS_EMPTY', 'NOT_EMPTY', 'GTE', 'LTE'],
   id: ['EQUALS', 'IS_EMPTY', 'NOT_EMPTY'],
 };
 const NO_VALUE = new Set(['IS_EMPTY', 'NOT_EMPTY']);
 
-const conditionSchema = z.strictObject({ field: z.string().max(30), op: z.string().max(20), value: z.string().trim().max(200).optional() });
+export const conditionSchema = z.strictObject({ field: z.string().max(30), op: z.string().max(20), value: z.string().trim().max(200).optional() });
 export type Condition = z.infer<typeof conditionSchema>;
 
 const actionSchema = z.discriminatedUnion('type', [
@@ -120,6 +123,27 @@ const ruleFields = {
 };
 
 /**
+ * 校验单个条件：字段、比较方式、取值须属于字段定义（验证规则也使用）。
+ * Validate one condition against the field definitions (also used by validation rules).
+ * @param report 报告问题（子路径、代码）/ report an issue (sub-path, code)
+ */
+export function checkCondition(fields: Record<string, FieldDef>, c: Condition, report: (field: 'field' | 'op' | 'value', message: string) => void): void {
+  const def = fields[c.field];
+  if (!def) return report('field', 'invalid_field');
+  if (!OPS[def.type].includes(c.op)) return report('op', 'invalid_op');
+  if (NO_VALUE.has(c.op)) {
+    if (c.value) report('value', 'not_allowed');
+    return;
+  }
+  const value = c.value ?? '';
+  if (!value) return report('value', 'required');
+  if (def.type === 'enum' && !def.values!.includes(value)) report('value', 'invalid_value');
+  if (def.type === 'number' && !/^-?\d{1,16}(\.\d{1,2})?$/.test(value)) report('value', 'invalid_number');
+  if (def.type === 'id' && !z.uuid().safeParse(value).success) report('value', 'invalid_id');
+  if (def.type === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(value)) report('value', 'invalid_date');
+}
+
+/**
  * 按对象校验触发字段、条件与动作（字段、比较方式与取值必须属于该对象的固定集合）。
  * Validate trigger field, conditions and actions per entity (fields, operators and values from fixed sets).
  */
@@ -128,20 +152,7 @@ function checkRule(v: { entity: WorkflowEntity; trigger: WorkflowTrigger; trigge
   if (v.trigger === WorkflowTrigger.FIELD_CHANGE) {
     if (!v.triggerField || !TRIGGER_FIELDS[v.entity].includes(v.triggerField)) issue(['triggerField'], 'invalid_field');
   } else if (v.triggerField) issue(['triggerField'], 'not_allowed');
-  v.conditions.forEach((c, i) => {
-    const def = CONDITION_FIELDS[v.entity][c.field];
-    if (!def) return issue(['conditions', i, 'field'], 'invalid_field');
-    if (!OPS[def.type].includes(c.op)) return issue(['conditions', i, 'op'], 'invalid_op');
-    if (NO_VALUE.has(c.op)) {
-      if (c.value) issue(['conditions', i, 'value'], 'not_allowed');
-      return;
-    }
-    const value = c.value ?? '';
-    if (!value) return issue(['conditions', i, 'value'], 'required');
-    if (def.type === 'enum' && !def.values!.includes(value)) issue(['conditions', i, 'value'], 'invalid_value');
-    if (def.type === 'number' && !/^-?\d{1,16}(\.\d{1,2})?$/.test(value)) issue(['conditions', i, 'value'], 'invalid_number');
-    if (def.type === 'id' && !z.uuid().safeParse(value).success) issue(['conditions', i, 'value'], 'invalid_id');
-  });
+  v.conditions.forEach((c, i) => checkCondition(CONDITION_FIELDS[v.entity], c, (field, message) => issue(['conditions', i, field], message)));
   v.actions.forEach((a, i) => {
     if (a.type === 'UPDATE_FIELD') {
       const values = UPDATE_FIELDS[v.entity][a.field];
@@ -352,13 +363,24 @@ function norm(v: unknown): string | null {
  * Whether one condition holds on the written values.
  */
 export function conditionHolds(entity: WorkflowEntity, c: Condition, record: Record<string, unknown>): boolean {
-  const def = CONDITION_FIELDS[entity][c.field];
+  return evaluate(CONDITION_FIELDS[entity][c.field], c, record[c.field]);
+}
+
+/**
+ * 按字段定义判断条件（工作流与验证规则共用）；日期按 YYYY-MM-DD 比较。
+ * Evaluate a condition with a field definition (shared by workflows and validation rules); dates compare as YYYY-MM-DD.
+ */
+export function evaluate(def: FieldDef | undefined, c: Condition, raw: unknown): boolean {
   if (!def) return false;
-  const raw = record[c.field];
   const actual = norm(raw);
   if (c.op === 'IS_EMPTY') return actual === null || actual.trim() === '';
   if (c.op === 'NOT_EMPTY') return actual !== null && actual.trim() !== '';
   const value = c.value ?? '';
+  if (def.type === 'date') {
+    if (actual === null) return false;
+    const d = actual.slice(0, 10);
+    return c.op === 'GTE' ? d >= value : d <= value;
+  }
   if (def.type === 'number') {
     if (actual === null) return false;
     const a = new Prisma.Decimal(actual);

@@ -17,7 +17,7 @@ import { removeOrganizationFiles, saveFile } from '../src/server/storage';
 import { toBase } from '../src/server/modules/exchange-rates';
 import { approvalReasons } from '../src/server/modules/approvals';
 import { Prisma } from '../src/generated/prisma/client';
-import { buildDemoData, dealCreatedDaysAgo, demoStagePath, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_ACCOUNT_SCORING, DEMO_CONTACT_SCORING, DEMO_DEAL_SCORING, DEMO_ASSIGNMENT_RULES, DEMO_WEB_FORMS, DEMO_WORKFLOWS, DEMO_APPROVAL, DEMO_WEBHOOK, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoStagePath, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_ACCOUNT_SCORING, DEMO_CONTACT_SCORING, DEMO_DEAL_SCORING, DEMO_ASSIGNMENT_RULES, DEMO_WEB_FORMS, DEMO_WORKFLOWS, DEMO_APPROVAL, DEMO_WEBHOOK, DEMO_VALIDATION_RULES, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -118,6 +118,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.assignmentRule.deleteMany({ where: { organizationId: o } });
         await tx.workflowRule.deleteMany({ where: { organizationId: o } });
         await tx.webhook.deleteMany({ where: { organizationId: o } });
+        await tx.validationRule.deleteMany({ where: { organizationId: o } });
         await tx.apiKey.deleteMany({ where: { organizationId: o } });
         await tx.quoteApprovalSettings.deleteMany({ where: { organizationId: o } });
         // 网页表单引用市场活动，先删除 / web forms reference campaigns, so they go first
@@ -793,6 +794,11 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         }
         await tx.quote.update({ where: { id: q.id }, data: { approvalStatus: decided === 0 ? 'APPROVED' : 'PENDING', approvalReasons: reasons } });
         decided += 1;
+      }
+
+      // 字段验证规则 / validation rules
+      for (const [i, r] of DEMO_VALIDATION_RULES.entries()) {
+        await tx.validationRule.create({ data: { organizationId: o, ...r, createdById: ids.admin, createdAt: new Date(Date.now() - (DEMO_VALIDATION_RULES.length - i) * 60_000) } });
       }
 
       // 演示 Webhook（已停用）/ demo webhook (inactive)

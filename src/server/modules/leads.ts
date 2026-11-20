@@ -18,6 +18,7 @@ import { notifyAssigned } from './notifications';
 import { recycle } from './recycle-bin';
 import { gradeRange, scoreListFields, scoreOrder } from './scoring-grades';
 import { tagFilter, tagsInclude } from './tags';
+import { assertValidRecord } from './validation-rules';
 import { runWorkflows } from './workflows';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
@@ -116,6 +117,8 @@ export async function createLead(ctx: AuthContext, input: z.infer<typeof leadCre
   assertOwnerAssignable(ctx, ownerId);
   await assertCampaign(ctx.organizationId, data.campaignId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
+  // 字段验证规则（按写入后的值）/ validation rules on the values as written
+  await assertValidRecord(ctx.organizationId, 'LEAD', { ...data, ownerId: owner });
   return prisma.$transaction(async (tx) => {
     const lead = await tx.lead.create({ data: { ...data, organizationId: ctx.organizationId, ownerId: owner }, include });
     await audit(tx, { ...by(ctx), action: 'lead.create', entityType: 'lead', entityId: lead.id, changes: { after: snapshot('lead', lead) } });
@@ -142,6 +145,7 @@ export async function updateLead(ctx: AuthContext, id: string, input: z.infer<ty
     throw new ApiError(409, 'CONFLICT', 'Lead already converted', { status: ['Converted leads keep their status'] });
   }
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
+  await assertValidRecord(ctx.organizationId, 'LEAD', { ...current, ...data, ownerId: owner });
   return prisma.$transaction(async (tx) => {
     const lead = await tx.lead.update({ where: { id: current.id }, data: { ...data, ownerId: owner }, include });
     await notifyAssigned(tx, ctx, { entity: 'lead', id: lead.id }, lead.name, lead.ownerId, current.ownerId);

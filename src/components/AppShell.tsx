@@ -32,6 +32,7 @@ import {
   NotificationOutlined,
   ReadOutlined,
   RiseOutlined,
+  SafetyOutlined,
   ScheduleOutlined,
   SettingOutlined,
   ShopOutlined,
@@ -129,6 +130,7 @@ const NAV_GROUPS: { key: string; label: string | null; icon?: React.ReactNode; i
     items: [
       { key: '/users', icon: <TeamOutlined />, label: t('nav.users'), permission: 'user.manage' },
       { key: '/workflows', icon: <ThunderboltOutlined />, label: t('nav.workflows'), permission: 'workflow.manage' },
+      { key: '/validation-rules', icon: <SafetyOutlined />, label: t('nav.validationRules'), permission: 'validation.manage' },
       { key: '/integrations', icon: <ApiOutlined />, label: t('nav.integrations'), permission: 'integration.manage' },
       { key: '/exchange-rates', icon: <DollarOutlined />, label: t('nav.rates') },
       { key: '/duplicates', icon: <BlockOutlined />, label: t('nav.duplicates') },

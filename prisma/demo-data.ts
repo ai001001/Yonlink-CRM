@@ -1390,3 +1390,27 @@ export const DEMO_APPROVAL = { maxDiscountPercent: '5', minTotal: '1000000', com
  * Demo webhook (demo data, inactive; example.com is a reserved domain, so nothing reaches a real system).
  */
 export const DEMO_WEBHOOK = { name: '【演示】ERP 订单同步（已停用）', url: 'https://example.com/yonlink-demo-webhook' } as const;
+
+/**
+ * 演示字段验证规则（演示数据）：金额达到 100 万的商机必须填写预计成交日；输单的商机必须在描述中填写原因。
+ * Demo validation rules (demo data): deals of 1,000,000 or more need an expected close date; lost deals need a reason
+ * in the description.
+ */
+export const DEMO_VALIDATION_RULES: { name: string; entity: 'LEAD' | 'DEAL'; when: { field: string; op: string; value?: string }[]; require: { field: string; op: string; value?: string }[]; message: string; errorField: string }[] = [
+  {
+    name: '【演示】大额商机须填预计成交日',
+    entity: 'DEAL',
+    when: [{ field: 'amount', op: 'GTE', value: '1000000' }],
+    require: [{ field: 'expectedCloseDate', op: 'NOT_EMPTY' }],
+    message: '金额达到 100 万的商机必须填写预计成交日',
+    errorField: 'expectedCloseDate',
+  },
+  {
+    name: '【演示】输单须填写原因',
+    entity: 'DEAL',
+    when: [{ field: 'stage', op: 'EQUALS', value: 'CLOSED_LOST' }],
+    require: [{ field: 'description', op: 'NOT_EMPTY' }],
+    message: '输单时请在描述中填写输单原因',
+    errorField: 'description',
+  },
+];

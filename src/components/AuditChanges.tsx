@@ -323,8 +323,8 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     // API 密钥与 Webhook：名称、前缀或地址（从不记录密钥）/ keys and webhooks: name, prefix or URL (never secrets)
     lines.push(`${t('integrations.name')}${t('common.colon')}${c.name}${typeof c.prefix === 'string' ? ` · ${c.prefix}…` : ''}${typeof c.url === 'string' ? ` · ${c.url}` : ''}`);
   }
-  if (entry.entityType === 'workflow') {
-    // 工作流：执行结果；规则快照只显示名称、对象、触发时机；修改只列出变化的项
+  if (entry.entityType === 'workflow' || entry.entityType === 'validation') {
+    // 工作流与验证规则：执行结果；规则快照只显示名称、对象、触发时机；修改只列出变化的项
     // workflows: run results; rule snapshots show name, module and trigger; updates list the changed items
     const list = (v: unknown) => (Array.isArray(v) ? v.join(t('common.listSep')) : '');
     if (entry.action === 'workflow.run') {
@@ -333,9 +333,11 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
       if (Array.isArray(c.skipped)) lines.push(t('workflows.auditSkipped', { list: list(c.skipped) }));
     } else if (snap) {
       lines.push(`${t('workflows.name')}${t('common.colon')}${String(snap.name ?? '')}`);
-      lines.push(`${t('workflows.entityLabel')}${t('common.colon')}${tEnum('workflows.entity', String(snap.entity ?? ''))} · ${tEnum('workflows.trigger', String(snap.trigger ?? ''))}`);
+      const trigger = typeof snap.trigger === 'string' ? ` · ${tEnum('workflows.trigger', snap.trigger)}` : '';
+      lines.push(`${t('workflows.entityLabel')}${t('common.colon')}${tEnum('workflows.entity', String(snap.entity ?? ''))}${trigger}`);
+      if (typeof snap.message === 'string') lines.push(`${t('validationRules.message')}${t('common.colon')}${snap.message}`);
     } else if (fields) {
-      const LABEL: Record<string, MessageKey> = { name: 'workflows.name', trigger: 'workflows.triggerLabel', triggerField: 'workflows.triggerField', conditions: 'workflows.conditions', actions: 'workflows.actions', isActive: 'workflows.active' };
+      const LABEL: Record<string, MessageKey> = { name: 'workflows.name', trigger: 'workflows.triggerLabel', triggerField: 'workflows.triggerField', conditions: 'workflows.conditions', actions: 'workflows.actions', isActive: 'workflows.active', when: 'validationRules.when', require: 'validationRules.require', message: 'validationRules.message', errorField: 'validationRules.errorField' };
       // 条件、动作显示条数；触发时机显示名称 / conditions and actions show counts; the trigger shows its name
       const show = (f: string, v: unknown) => (Array.isArray(v) ? t('workflows.auditCount', { n: v.length }) : f === 'trigger' ? tEnum('workflows.trigger', String(v)) : value(f, v, users));
       for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${LABEL[f] ? t(LABEL[f]) : f}${t('common.colon')}${show(f, b)} → ${show(f, a)}`);

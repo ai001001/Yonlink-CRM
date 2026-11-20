@@ -18,6 +18,7 @@ import { notifyAssigned } from './notifications';
 import { recycle } from './recycle-bin';
 import { gradeRange, scoreListFields, scoreOrder } from './scoring-grades';
 import { tagFilter, tagsInclude } from './tags';
+import { assertValidRecord } from './validation-rules';
 import { runWorkflows } from './workflows';
 import { containsText, listQuery, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
@@ -150,6 +151,8 @@ export async function createDeal(ctx: AuthContext, input: z.infer<typeof dealCre
   await assertCampaign(ctx.organizationId, data.campaignId);
   await assertAccount(ctx, data.accountId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
+  // 字段验证规则（按写入后的值）/ validation rules on the values as written
+  await assertValidRecord(ctx.organizationId, 'DEAL', { ...data, ownerId: owner });
   return prisma.$transaction(async (tx) => {
     await setActor(tx, ctx);
     const deal = await tx.deal.create({ data: { ...data, organizationId: ctx.organizationId, ownerId: owner }, include });
@@ -186,6 +189,7 @@ export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<ty
   }
   if (data.accountId) await assertAccount(ctx, data.accountId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
+  await assertValidRecord(ctx.organizationId, 'DEAL', { ...current, ...data, ownerId: owner });
   return prisma.$transaction(async (tx) => {
     await setActor(tx, ctx);
     const deal = await tx.deal.update({ where: { id: current.id }, data: { ...data, ownerId: owner }, include });
