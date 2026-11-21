@@ -72,6 +72,7 @@ model Organization {
   workflowRules        WorkflowRule[]
   quoteApprovals       QuoteApproval[]
   approvalSettings     QuoteApprovalSettings?
+  approvalLevels       QuoteApprovalLevel[]
   stockMovements       StockMovement[]
   apiKeys              ApiKey[]
   webhooks             Webhook[]
@@ -549,6 +550,10 @@ model Quote {
   approvalStatus  ApprovalStatus? @map("approval_status")
   /// 提交审批时命中的原因 / reasons that required approval at submission
   approvalReasons Json?           @map("approval_reasons")
+  /// 当前审批级别（从 0 开始，仅待审批时有值）/ current approval level (0-based; only while pending)
+  approvalStep    Int?            @map("approval_step")
+  /// 提交时确定的审批级别快照 [{ name, role }] / levels fixed at submission [{ name, role }]
+  approvalSteps   Json?           @map("approval_steps")
   approvals       QuoteApproval[]
 
   @@unique([organizationId, id])
@@ -1839,6 +1844,8 @@ model QuoteApproval {
   actorId        String         @map("actor_id") @db.Uuid
   comment        String?        @db.VarChar(500)
   reasons        Json?
+  /// 审批发生在第几级（从 0 开始）/ the level a decision was made at (0-based)
+  step           Int?
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   quote          Quote          @relation(fields: [organizationId, quoteId], references: [organizationId, id], onDelete: Cascade)
@@ -2009,4 +2016,23 @@ model WorkflowScheduleRun {
 
   @@unique([ruleId, recordId, key])
   @@map("workflow_schedule_runs")
+}
+
+/// 报价单审批级别（多级审批，按顺序，最多 5 级）：每级指定审批角色（经理或管理员），可设只在折扣超过或金额达到时适用；
+/// 都不设则该级总是适用。没有设置任何级别时为一级审批（任一有审批权限的人）。
+/// Quote approval level (multi-level approval, in order, at most 5): each names an approver role (manager or admin) and
+/// may apply only above a discount or at an amount; with neither set it always applies. Without levels, one approval
+/// by anyone with quote.approve is needed.
+model QuoteApprovalLevel {
+  id                 String       @id @default(uuid()) @db.Uuid
+  organizationId     String       @map("organization_id") @db.Uuid
+  position           Int
+  name               String       @db.VarChar(50)
+  approverRole       UserRole     @map("approver_role")
+  minDiscountPercent Decimal?     @map("min_discount_percent") @db.Decimal(5, 2)
+  minTotal           Decimal?     @map("min_total") @db.Decimal(18, 2)
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, position])
+  @@map("quote_approval_levels")
 }

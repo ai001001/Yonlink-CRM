@@ -1407,7 +1407,16 @@ export const DEMO_WORKFLOWS: {
  * drafts (creation order) needing approval, the first was submitted and approved by the admin, the second is pending,
  * and the rest stay unsubmitted.
  */
-export const DEMO_APPROVAL = { maxDiscountPercent: '5', minTotal: '1000000', comments: { submit: '【演示】客户批量采购，申请特殊折扣', approve: '【演示】同意，注意回款节点' } } as const;
+export const DEMO_APPROVAL = {
+  maxDiscountPercent: '5',
+  minTotal: '1000000',
+  comments: { submit: '【演示】客户批量采购，申请特殊折扣', approve: '【演示】同意，注意回款节点' },
+  /** 多级审批：折扣超过 5% 由经理审批；折合 100 万以上由管理员复核 / levels: managers above 5 % discount, admins at 1,000,000 */
+  levels: [
+    { name: '经理审批', approverRole: 'MANAGER', minDiscountPercent: '5', minTotal: null },
+    { name: '管理员复核', approverRole: 'ADMIN', minDiscountPercent: null, minTotal: '1000000' },
+  ],
+} as const;
 
 /**
  * 演示 Webhook（演示数据，已停用；地址为保留域名 example.com，不会发送到真实系统）。

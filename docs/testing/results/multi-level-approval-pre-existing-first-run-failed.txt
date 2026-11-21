@@ -1,0 +1,104 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+49 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:1036430) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/quotes/quotes.r1-functional.test.ts (12 tests | 1 failed) 5533ms
+   ❯ quotes R1 demo data (1)
+     × 演示报价单：明细 = 商机明细，金额一致，编号按创建时间递增 / demo quotes are consistent 1958ms
+(node:1036537) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/approvals/approvals.r2-integration.test.ts (7 tests | 1 failed) 5258ms
+   ❯ approvals R2 demo (1)
+     × 演示数据：规则、已批准与待审批的报价单、原因与计算一致；经理可审批待审批单并通知提交人 / demo data 1991ms
+(node:1036627) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ tests/approvals/approvals.r1-functional.test.ts (6 tests | 1 failed) 2750ms
+   ❯ approvals R1 flow (5)
+     × 完整流程：发送被拦、提交锁定、驳回需意见、修改再提交、批准、发送 / the whole flow 312ms
+(node:1036677) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/approvals/approvals.r1-functional.test.ts > approvals R1 flow > 完整流程：发送被拦、提交锁定、驳回需意见、修改再提交、批准、发送 / the whole flow
+AssertionError: expected { approvalStatus: 'PENDING', …(3) } to deeply equal { approvalStatus: 'PENDING', …(2) }
+
+- Expected
++ Received
+
+@@ -2,6 +2,12 @@
+    "approvalStatus": "PENDING",
+    "notified": 2,
+    "reasons": [
+      "discount:15>10",
+    ],
++   "steps": [
++     {
++       "name": null,
++       "role": null,
++     },
++   ],
+  }
+
+ ❯ tests/approvals/approvals.r1-functional.test.ts:97:20
+     95|
+     96|     const s = await doSubmit(q.id);
+     97|     expect(s.json).toEqual({ approvalStatus: 'PENDING', reasons: ['dis…
+       |                    ^
+     98|     // 通知管理员与经理（不含提交人）/ admins and managers are notified, not the subm…
+     99|     const notes = await prisma.notification.findMany({ where: { type: …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/approvals/approvals.r2-integration.test.ts > approvals R2 demo > 演示数据：规则、已批准与待审批的报价单、原因与计算一致；经理可审批待审批单并通知提交人 / demo data
+PrismaClientKnownRequestError: 
+Invalid `prisma.quote.update()` invocation:
+
+
+Database error. Code: `23514`. Message: `new row for relation "quotes" violates check constraint "quotes_approval_step_check"`
+ ❯ vn.handleRequestError node_modules/@prisma/client/src/runtime/RequestHandler.ts:238:13
+ ❯ vn.handleAndLogRequestError node_modules/@prisma/client/src/runtime/RequestHandler.ts:184:12
+ ❯ vn.request node_modules/@prisma/client/src/runtime/RequestHandler.ts:153:12
+ ❯ a node_modules/@prisma/client/src/runtime/getPrismaClient.ts:1012:24
+ ❯ prisma.$transaction.timeout prisma/seed-demo.ts:795:9
+
+ ❯ Proxy._transactionWithCallback node_modules/@prisma/client/src/runtime/getPrismaClient.ts:859:18
+ ❯ seedDemo prisma/seed-demo.ts:78:3
+ ❯ tests/approvals/approvals.r2-integration.test.ts:144:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/quotes/quotes.r1-functional.test.ts > quotes R1 demo data > 演示报价单：明细 = 商机明细，金额一致，编号按创建时间递增 / demo quotes are consistent
+PrismaClientKnownRequestError: 
+Invalid `prisma.quote.update()` invocation:
+
+
+Database error. Code: `23514`. Message: `new row for relation "quotes" violates check constraint "quotes_approval_step_check"`
+ ❯ vn.handleRequestError node_modules/@prisma/client/src/runtime/RequestHandler.ts:238:13
+ ❯ vn.handleAndLogRequestError node_modules/@prisma/client/src/runtime/RequestHandler.ts:184:12
+ ❯ vn.request node_modules/@prisma/client/src/runtime/RequestHandler.ts:153:12
+ ❯ a node_modules/@prisma/client/src/runtime/getPrismaClient.ts:1012:24
+ ❯ prisma.$transaction.timeout prisma/seed-demo.ts:795:9
+
+ ❯ Proxy._transactionWithCallback node_modules/@prisma/client/src/runtime/getPrismaClient.ts:859:18
+ ❯ seedDemo prisma/seed-demo.ts:78:3
+ ❯ tests/quotes/quotes.r1-functional.test.ts:177:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  3 failed | 1 passed (4)
+      Tests  3 failed | 47 passed (50)
+   Start at  23:21:57
+   Duration  24.05s (tests 93%, import 6%, transform 1%)
+

@@ -51,11 +51,30 @@ export function approvalError(err: unknown): string | null {
   return t(`approvals.error.${codes[0]}` as Parameters<typeof t>[0]);
 }
 
+/** 审批级别快照 / level snapshot */
+export interface Step {
+  name: string | null;
+  role: 'ADMIN' | 'MANAGER' | null;
+}
+
+/**
+ * 当前级别的显示，如“第 1/2 级 · 经理审批（经理）”。
+ * Display the current level, e.g. "Level 1/2 · Manager approval (manager)".
+ */
+export function levelText(steps: Step[] | null | undefined, step: number | null | undefined): string {
+  const list = steps?.length ? steps : [{ name: null, role: null }];
+  const s = list[step ?? 0];
+  const name = s?.name ?? t('approvals.anyApprover');
+  const role = s?.role ? t('common.parens', { text: t(`approvals.role.${s.role}`) }) : '';
+  return `${t('approvals.levelOf', { n: (step ?? 0) + 1, total: list.length })} · ${name}${role}`;
+}
+
 interface HistoryItem {
   id: string;
   action: 'SUBMIT' | 'APPROVE' | 'REJECT' | 'RECALL';
   comment: string | null;
   reasons: string[] | null;
+  step: number | null;
   createdAt: string;
   actor: { id: string; name: string };
 }
@@ -86,7 +105,12 @@ export function QuoteApprovalPanel({ quote, editable, onChanged }: { quote: Quot
   const submitter = history.find((h) => h.action === 'SUBMIT')?.actor.id;
   const draft = quote.status === 'DRAFT';
   const canSubmit = editable && draft && status !== 'PENDING' && status !== 'APPROVED';
-  const canDecide = status === 'PENDING' && perm.can('quote.approve') && submitter !== perm.meId;
+  // 当前级别的审批角色；本次提交中已批准过的人不能再批 / the level's role; people who already approved cannot again
+  const currentRole = quote.approvalSteps?.[quote.approvalStep ?? 0]?.role ?? null;
+  const roleOk = currentRole === null || currentRole === 'MANAGER' ? perm.can('quote.approve') : perm.role === 'ADMIN';
+  const lastSubmit = history.findIndex((h) => h.action === 'SUBMIT');
+  const approvedAlready = history.slice(0, lastSubmit < 0 ? history.length : lastSubmit).some((h) => h.action === 'APPROVE' && h.actor.id === perm.meId);
+  const canDecide = status === 'PENDING' && perm.can('quote.approve') && submitter !== perm.meId && roleOk && !approvedAlready;
   const canRecall = status === 'PENDING' && (submitter === perm.meId || perm.can('quote.approve'));
 
   const call = async (path: string, body: object, ok: string) => {
@@ -106,7 +130,10 @@ export function QuoteApprovalPanel({ quote, editable, onChanged }: { quote: Quot
 
   const confirm = () => {
     if (dialog === 'SUBMIT') void call('submit', { comment: comment.trim() || null }, t('approvals.submitted'));
-    else if (dialog) void call('decide', { decision: dialog, comment: comment.trim() || null }, t(dialog === 'APPROVE' ? 'approvals.approved' : 'approvals.rejected'));
+    else if (dialog) {
+      const more = dialog === 'APPROVE' && (quote.approvalStep ?? 0) < (quote.approvalSteps?.length ?? 1) - 1;
+      void call('decide', { decision: dialog, comment: comment.trim() || null }, t(more ? 'approvals.advanced' : dialog === 'APPROVE' ? 'approvals.approved' : 'approvals.rejected'));
+    }
   };
 
   if (!status && !history.length && !canSubmit) return null;
@@ -115,6 +142,11 @@ export function QuoteApprovalPanel({ quote, editable, onChanged }: { quote: Quot
       <Typography.Title level={5}>{t('approvals.title')}</Typography.Title>
       <Descriptions column={1} bordered size="small" style={{ marginBottom: 12 }}>
         <Descriptions.Item label={t('approvals.status')}>{status ? <ApprovalTag status={status} /> : t('approvals.notSubmitted')}</Descriptions.Item>
+        {status === 'PENDING' && (
+          <Descriptions.Item label={t('approvals.currentLevel')}>
+            <span data-testid="approval-level">{levelText(quote.approvalSteps, quote.approvalStep)}</span>
+          </Descriptions.Item>
+        )}
         {!!quote.approvalReasons?.length && <Descriptions.Item label={t('approvals.reasons')}>{quote.approvalReasons.map(reasonText).join(t('common.listSep'))}</Descriptions.Item>}
       </Descriptions>
       <Space wrap style={{ marginBottom: 12 }}>
@@ -147,7 +179,8 @@ export function QuoteApprovalPanel({ quote, editable, onChanged }: { quote: Quot
             color: h.action === 'APPROVE' ? 'green' : h.action === 'REJECT' ? 'red' : h.action === 'SUBMIT' ? 'blue' : 'gray',
             content: (
               <div>
-                <Typography.Text strong>{t(`approvals.action.${h.action}`)}</Typography.Text> · {h.actor.name} · {fmtDateTime(h.createdAt)}
+                <Typography.Text strong>{t(`approvals.action.${h.action}`)}</Typography.Text>
+                {h.step !== null && ` · ${t('approvals.levelOf', { n: h.step + 1, total: quote.approvalSteps?.length ?? h.step + 1 })}`} · {h.actor.name} · {fmtDateTime(h.createdAt)}
                 {h.comment && <div style={{ whiteSpace: 'pre-wrap' }}>{h.comment}</div>}
                 {!!h.reasons?.length && <Typography.Text type="secondary">{h.reasons.map(reasonText).join(t('common.listSep'))}</Typography.Text>}
               </div>

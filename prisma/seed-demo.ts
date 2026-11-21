@@ -15,7 +15,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
 import { toBase } from '../src/server/modules/exchange-rates';
-import { approvalReasons } from '../src/server/modules/approvals';
+import { approvalReasons, approvalSteps } from '../src/server/modules/approvals';
 import { Prisma } from '../src/generated/prisma/client';
 import { buildDemoData, dealCreatedDaysAgo, demoStagePath, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_ACCOUNT_SCORING, DEMO_CONTACT_SCORING, DEMO_DEAL_SCORING, DEMO_ASSIGNMENT_RULES, DEMO_WEB_FORMS, DEMO_WORKFLOWS, DEMO_APPROVAL, DEMO_WEBHOOK, DEMO_VALIDATION_RULES, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
@@ -121,6 +121,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.validationRule.deleteMany({ where: { organizationId: o } });
         await tx.apiKey.deleteMany({ where: { organizationId: o } });
         await tx.quoteApprovalSettings.deleteMany({ where: { organizationId: o } });
+        await tx.quoteApprovalLevel.deleteMany({ where: { organizationId: o } });
         // 网页表单引用市场活动，先删除 / web forms reference campaigns, so they go first
         await tx.webForm.deleteMany({ where: { organizationId: o } });
         // 线索、商机已删除，活动可删 / leads and deals are gone, so campaigns can go
@@ -781,6 +782,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
       // 报价单审批：规则 + 需要审批的草稿（第 1 张已批准、第 2 张待审批）；原因用与系统相同的计算
       // quote approvals: the policy plus drafts needing approval (1st approved, 2nd pending); reasons use the system's calculation
       await tx.quoteApprovalSettings.create({ data: { organizationId: o, enabled: true, maxDiscountPercent: DEMO_APPROVAL.maxDiscountPercent, minTotal: DEMO_APPROVAL.minTotal, updatedById: ids.admin } });
+      await tx.quoteApprovalLevel.createMany({ data: DEMO_APPROVAL.levels.map((l, position) => ({ organizationId: o, position, ...l })) });
       const drafts = await tx.quote.findMany({ where: { organizationId: o, status: 'DRAFT' }, include: { lines: { select: { discountPercent: true } } }, orderBy: { quoteNumber: 'asc' } });
       let decided = 0;
       for (const q of drafts) {
@@ -789,10 +791,20 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         const submitter = q.createdById ?? ids.manager;
         const submittedAt = new Date(Date.now() - (2 - decided) * DAY);
         await tx.quoteApproval.create({ data: { organizationId: o, quoteId: q.id, action: 'SUBMIT', actorId: submitter, comment: DEMO_APPROVAL.comments.submit, reasons, createdAt: submittedAt } });
+        // 级别快照与系统计算一致；第 1 张由各级审批人逐级批准（演示中每级由不同的人批准）
+        // the level snapshot uses the system's calculation; the first quote is approved level by level by different people
+        const steps = await approvalSteps(tx, o, q);
         if (decided === 0) {
-          await tx.quoteApproval.create({ data: { organizationId: o, quoteId: q.id, action: 'APPROVE', actorId: ids.admin, comment: DEMO_APPROVAL.comments.approve, createdAt: new Date(submittedAt.getTime() + 3 * 3600_000) } });
+          const approvers = steps.map((st, k) => (st.role === 'ADMIN' || submitter === ids.manager ? ids.admin : k === 0 ? ids.manager : ids.admin));
+          if (new Set(approvers).size !== approvers.length) throw new Error('demo approval needs distinct approvers per level');
+          for (const [k, actorId] of approvers.entries()) {
+            await tx.quoteApproval.create({ data: { organizationId: o, quoteId: q.id, action: 'APPROVE', actorId, step: k, comment: DEMO_APPROVAL.comments.approve, createdAt: new Date(submittedAt.getTime() + (k + 1) * 3 * 3600_000) } });
+          }
         }
-        await tx.quote.update({ where: { id: q.id }, data: { approvalStatus: decided === 0 ? 'APPROVED' : 'PENDING', approvalReasons: reasons } });
+        await tx.quote.update({
+          where: { id: q.id },
+          data: { approvalStatus: decided === 0 ? 'APPROVED' : 'PENDING', approvalReasons: reasons, approvalStep: decided === 0 ? null : 0, approvalSteps: steps as unknown as Prisma.InputJsonValue },
+        });
         decided += 1;
       }
 

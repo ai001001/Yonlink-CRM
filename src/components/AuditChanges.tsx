@@ -318,6 +318,10 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     // 报价单提交审批：原因 / quote approval submission: reasons
     lines.push(t('approvals.auditReasons', { list: (c.reasons as string[]).map(reasonText).join(t('common.listSep')) }));
   }
+  if ((entry.action === 'quote.approve' || entry.action === 'quote.reject') && typeof c.step === 'number' && typeof c.of === 'number') {
+    // 多级审批：第几级 · 级别名称 / multi-level: which level and its name
+    lines.push(`${t('approvals.levelOf', { n: c.step, total: c.of })}${typeof c.level === 'string' ? ` · ${c.level}` : ''}`);
+  }
   if (typeof c.approvalCleared === 'string') lines.push(t('approvals.auditCleared', { status: tEnum('approvalStatus', c.approvalCleared) }));
   if ((entry.entityType === 'apikey' || entry.entityType === 'webhook') && typeof c.name === 'string') {
     // API 密钥与 Webhook：名称、前缀或地址（从不记录密钥）/ keys and webhooks: name, prefix or URL (never secrets)

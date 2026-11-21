@@ -94,7 +94,8 @@ describe('approvals R1 flow', () => {
     expect(blocked.json.error.details).toEqual({ approvalStatus: ['required', 'discount:15>10'] });
 
     const s = await doSubmit(q.id);
-    expect(s.json).toEqual({ approvalStatus: 'PENDING', reasons: ['discount:15>10'], notified: 2 });
+    // 未设置级别：一级、任一审批人（多级审批功能起返回级别快照）/ no levels: one level, any approver (steps returned since multi-level)
+    expect(s.json).toEqual({ approvalStatus: 'PENDING', reasons: ['discount:15>10'], steps: [{ name: null, role: null }], notified: 2 });
     // 通知管理员与经理（不含提交人）/ admins and managers are notified, not the submitter
     const notes = await prisma.notification.findMany({ where: { type: 'APPROVAL_REQUEST' }, select: { userId: true, dealId: true, actorId: true } });
     expect(notes.map((n) => n.userId).sort()).toEqual([a.user.id, mgr.user.id].sort());
@@ -109,7 +110,7 @@ describe('approvals R1 flow', () => {
     // 销售不能审批；驳回需意见 / reps cannot decide; rejections need a comment
     expect((await doDecide(q.id, 'APPROVE', null, rep.token)).status).toBe(403);
     expect((await doDecide(q.id, 'REJECT', null)).status).toBe(400);
-    expect((await doDecide(q.id, 'REJECT', '折扣太大')).json).toEqual({ approvalStatus: 'REJECTED' });
+    expect((await doDecide(q.id, 'REJECT', '折扣太大')).json).toEqual({ approvalStatus: 'REJECTED', step: null, steps: [{ name: null, role: null }] });
     expect(await prisma.notification.count({ where: { type: 'APPROVAL_DECIDED', userId: rep.user.id } })).toBe(1);
     expect((await send(q.id)).json.error.details).toEqual({ approvalStatus: ['required', 'discount:15>10'] });
     expect((await doDecide(q.id, 'APPROVE', null)).json.error.details).toEqual({ approvalStatus: ['not_pending'] });
@@ -118,7 +119,7 @@ describe('approvals R1 flow', () => {
     expect((await call(quoteItem.PATCH, { token: rep.token, params: { id: q.id }, body: { subject: '修改后' }, method: 'PATCH' })).status).toBe(200);
     expect(await status(q.id)).toBeNull();
     expect((await doSubmit(q.id, rep.token, null)).status).toBe(200);
-    expect((await doDecide(q.id, 'APPROVE', null)).json).toEqual({ approvalStatus: 'APPROVED' });
+    expect((await doDecide(q.id, 'APPROVE', null)).json).toEqual({ approvalStatus: 'APPROVED', step: null, steps: [{ name: null, role: null }] });
     expect((await doSubmit(q.id)).json.error.details).toEqual({ approvalStatus: ['approved'] });
     expect((await send(q.id)).status).toBe(200);
     // 发送后仍显示已批准 / stays approved after sending

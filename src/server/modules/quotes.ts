@@ -212,7 +212,7 @@ async function lockDraft(tx: Prisma.TransactionClient, id: string): Promise<void
 
 /** 已有审批结果的草稿被修改时清空结果 / clear the decision when a decided draft changes */
 const clearDecision = (status: ApprovalStatus | null) =>
-  status === ApprovalStatus.APPROVED || status === ApprovalStatus.REJECTED ? { approvalStatus: null, approvalReasons: Prisma.DbNull } : {};
+  status === ApprovalStatus.APPROVED || status === ApprovalStatus.REJECTED ? { approvalStatus: null, approvalReasons: Prisma.DbNull, approvalSteps: Prisma.DbNull } : {};
 
 /** 审批结果被清空时的审计附注 / audit note when the decision is cleared */
 function decisionCleared(status: ApprovalStatus | null) {

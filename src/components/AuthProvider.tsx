@@ -111,5 +111,7 @@ export function usePermissions() {
     canDelete: can('record.delete'),
     canAssign: can('owner.assign'),
     meId: me?.id ?? null,
+    /** 当前角色（界面显示用）/ current role (for display decisions) */
+    role: me?.role ?? null,
   };
 }

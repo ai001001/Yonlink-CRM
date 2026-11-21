@@ -312,6 +312,7 @@ export async function restoreItem(ctx: AuthContext, itemId: string) {
         const data = revive<Prisma.QuoteUncheckedCreateInput>(quote, org);
         // 可空 JSON 字段的空值须写为数据库 NULL / a null nullable-JSON field must be written as database NULL
         if (data.approvalReasons === null) data.approvalReasons = Prisma.DbNull;
+        if (data.approvalSteps === null) data.approvalSteps = Prisma.DbNull;
         await tx.quote.create({ data });
         await tx.quoteLineItem.createMany({ data: lines.map((l) => revive<Prisma.QuoteLineItemCreateManyInput>(l, org)) });
         // 审批历史一并恢复（旧快照没有）/ restore the approval history too (absent in older snapshots)

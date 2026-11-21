@@ -170,6 +170,9 @@ export interface Quote {
   approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
   /** 提交审批时的原因 / reasons recorded at submission */
   approvalReasons?: string[] | null;
+  /** 当前审批级别与级别快照 / current level and the level snapshot */
+  approvalStep?: number | null;
+  approvalSteps?: { name: string | null; role: 'ADMIN' | 'MANAGER' | null }[] | null;
   createdAt: string;
   updatedAt: string;
   createdBy: { id: string; name: string } | null;
