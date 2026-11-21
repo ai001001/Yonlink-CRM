@@ -10,6 +10,9 @@ import { prisma } from '../db';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, can, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
 import { customDiff, customInput, resolveCustom } from './custom-fields';
+import { INDUSTRIES } from './dictionaries';
+import { resolveTerritory, territoryIdsFor } from './territory-rules';
+import { territoryFilter, territoryInput } from './territory-input';
 import { detachSharedActivities } from './activities';
 import { notifyAssigned } from './notifications';
 import { recycle } from './recycle-bin';
@@ -17,19 +20,8 @@ import { gradeRange, scoreListFields, scoreOrder } from './scoring-grades';
 import { tagFilter, tagsInclude } from './tags';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
-/** 行业字典 / Industry dictionary */
-export const INDUSTRIES = [
-  'MANUFACTURING',
-  'IT',
-  'FINANCE',
-  'RETAIL',
-  'EDUCATION',
-  'HEALTHCARE',
-  'CONSTRUCTION',
-  'LOGISTICS',
-  'GOVERNMENT',
-  'OTHER',
-] as const;
+/** 行业字典（定义在 dictionaries，此处转出以兼容旧引用）/ industry dictionary (re-exported from dictionaries) */
+export { INDUSTRIES };
 
 const accountFields = {
   name: requiredText(200),
@@ -41,6 +33,8 @@ const accountFields = {
   ownerId: optionalUuid.optional(),
   /** 自定义字段的值 / custom field values */
   custom: customInput,
+  /** 区域：ID 或 null 为手工指定，AUTO 为按规则（需 territory.manage）/ territory: an id or null sets it by hand, AUTO uses rules (territory.manage) */
+  territoryId: territoryInput,
 };
 
 /** 新建客户 / Create account */
@@ -52,6 +46,8 @@ export const accountListSchema = listQuery.extend({
   industry: z.enum(INDUSTRIES).optional(),
   ownerId: z.uuid().optional(),
   tagId: z.uuid().optional(),
+  /** 区域（含下级）、NONE 或 MINE / territory (with descendants), NONE or MINE */
+  territoryId: territoryFilter,
   ...scoreListFields,
 });
 
@@ -87,6 +83,7 @@ function listInclude(ctx: AuthContext) {
   const dealScope: Prisma.DealWhereInput = can(ctx, 'record.read.all') ? {} : { ownerId: ctx.userId };
   return {
     owner: { select: { id: true, name: true } },
+    territory: { select: { id: true, name: true } },
     tags: tagsInclude,
     _count: { select: { contacts: true, deals: { where: dealScope } } },
   } satisfies Prisma.AccountInclude;
@@ -98,8 +95,14 @@ const contactOrder: Prisma.ContactOrderByWithRelationInput[] = [{ isPrimary: 'de
  * 列表与导出共用的查询条件（可见范围 + 筛选 + 搜索）。
  * Query conditions shared by the list and the export (visibility + filters + search).
  */
-export function accountWhere(ctx: AuthContext, query: Omit<z.infer<typeof accountListSchema>, 'page' | 'pageSize'>, score?: Prisma.IntFilter): Prisma.AccountWhereInput {
-  const where: Prisma.AccountWhereInput = { AND: [visible(ctx), { industry: query.industry, ownerId: query.ownerId, score }, tagFilter(query.tagId)] };
+export function accountWhere(
+  ctx: AuthContext,
+  query: Omit<z.infer<typeof accountListSchema>, 'page' | 'pageSize'>,
+  score?: Prisma.IntFilter,
+  territories?: string[] | null,
+): Prisma.AccountWhereInput {
+  const territory = territories === undefined ? {} : { territoryId: territories === null ? null : { in: territories } };
+  const where: Prisma.AccountWhereInput = { AND: [visible(ctx), { industry: query.industry, ownerId: query.ownerId, score, ...territory }, tagFilter(query.tagId)] };
   if (query.q) {
     const c = containsText(query.q);
     where.OR = [{ name: c }, { phone: c }, { website: c }, { address: c }, { contacts: { some: { name: c } } }];
@@ -112,7 +115,7 @@ export function accountWhere(ctx: AuthContext, query: Omit<z.infer<typeof accoun
  * Search accounts with pagination (name, phone, website, address, contact name).
  */
 export async function listAccounts(ctx: AuthContext, query: z.infer<typeof accountListSchema>): Promise<Page<unknown>> {
-  const where = accountWhere(ctx, query, await gradeRange(ctx.organizationId, 'ACCOUNT', query.grade));
+  const where = accountWhere(ctx, query, await gradeRange(ctx.organizationId, 'ACCOUNT', query.grade), await territoryIdsFor(ctx, query.territoryId));
   const [items, total] = await prisma.$transaction([
     prisma.account.findMany({
       where,
@@ -144,13 +147,14 @@ export async function getAccount(ctx: AuthContext, id: string) {
  * Create an account.
  */
 export async function createAccount(ctx: AuthContext, input: z.infer<typeof accountCreateSchema>) {
-  const { ownerId, custom, ...data } = input;
+  const { ownerId, custom, territoryId, ...data } = input;
   requirePermission(ctx, 'record.create');
   assertOwnerAssignable(ctx, ownerId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
   const cf = await resolveCustom(ctx.organizationId, 'ACCOUNT', custom, null);
+  const territory = await resolveTerritory(ctx, territoryId, { ...data, ownerId: owner }, null);
   const created = await prisma.$transaction(async (tx) => {
-    const account = await tx.account.create({ data: { ...data, custom: cf.values as Prisma.InputJsonValue, organizationId: ctx.organizationId, ownerId: owner } });
+    const account = await tx.account.create({ data: { ...data, ...territory, custom: cf.values as Prisma.InputJsonValue, organizationId: ctx.organizationId, ownerId: owner } });
     const customChanges = customDiff(cf.defs, null, cf.values);
     await audit(tx, { ...by(ctx), action: 'account.create', entityType: 'account', entityId: account.id, changes: { after: snapshot('account', account), ...(Object.keys(customChanges).length ? { custom: customChanges } : {}) } });
     await notifyAssigned(tx, ctx, { entity: 'account', id: account.id }, account.name, account.ownerId, null);
@@ -166,12 +170,13 @@ export async function createAccount(ctx: AuthContext, input: z.infer<typeof acco
 export async function updateAccount(ctx: AuthContext, id: string, input: z.infer<typeof accountUpdateSchema>) {
   const current = await getAccount(ctx, id);
   assertCanUpdate(ctx, current);
-  const { ownerId, custom, ...data } = input;
+  const { ownerId, custom, territoryId, ...data } = input;
   assertOwnerAssignable(ctx, ownerId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
   const cf = custom === undefined ? null : await resolveCustom(ctx.organizationId, 'ACCOUNT', custom, current.custom);
+  const territory = await resolveTerritory(ctx, territoryId, { ...current, ...data, ownerId: owner }, current);
   await prisma.$transaction(async (tx) => {
-    const updated = await tx.account.update({ where: { id: current.id }, data: { ...data, ownerId: owner, ...(cf ? { custom: cf.values as Prisma.InputJsonValue } : {}) } });
+    const updated = await tx.account.update({ where: { id: current.id }, data: { ...data, ...territory, ownerId: owner, ...(cf ? { custom: cf.values as Prisma.InputJsonValue } : {}) } });
     await notifyAssigned(tx, ctx, { entity: 'account', id }, updated.name, updated.ownerId, current.ownerId);
     const fields = diff('account', current, updated);
     const customChanges = cf ? customDiff(cf.defs, current.custom, cf.values) : {};

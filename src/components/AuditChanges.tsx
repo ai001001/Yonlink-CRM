@@ -22,6 +22,8 @@ export interface AuditLogEntry {
 
 // 字段 → 文案 key / field → message key
 const FIELD_LABELS: Record<string, MessageKey> = {
+  territoryId: 'territories.territory',
+  territoryManual: 'territories.manual',
   name: 'leads.name',
   company: 'leads.company',
   title: 'leads.jobTitle',
@@ -328,6 +330,17 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     const list = Object.entries(c.custom as Record<string, unknown>).map(([label, v]) => (Array.isArray(v) ? `${label}${t('common.colon')}${show(v[0])} → ${show(v[1])}` : `${label}${t('common.colon')}${show(v)}`));
     if (list.length) lines.push(t('customFields.audit', { list: list.join(t('common.listSep')) }));
   }
+  if (entry.entityType === 'territory') {
+    // 区域：名称；修改列出变化项；删除与重新分配显示客户数 / territory: name; updates list changes; delete and apply show counts
+    const name = typeof c.name === 'string' ? c.name : typeof snap?.name === 'string' ? snap.name : null;
+    if (name) lines.push(t('territories.auditName', { name }));
+    if (fields) {
+      const LABEL: Record<string, MessageKey> = { name: 'territories.name', parentId: 'territories.parent', managerId: 'territories.manager', priority: 'territories.priority', match: 'territories.match', conditions: 'territories.rules', memberIds: 'territories.members' };
+      lines.push(t('territories.auditChanged', { list: Object.keys(fields).map((f) => (LABEL[f] ? t(LABEL[f]) : f)).join(t('common.listSep')) }));
+    }
+    if (typeof c.clearedAccounts === 'number') lines.push(t('territories.auditCleared', { count: c.clearedAccounts }));
+    if (entry.action === 'territory.apply') lines.push(t('territories.auditApplied', { checked: Number(c.checked ?? 0), changed: Number(c.changed ?? 0) }));
+  }
   if (entry.entityType === 'customfield') {
     // 自定义字段定义：对象、名称、类型；修改列出变化项 / definitions: entity, name, type; updates list changes
     const d = (c.after ?? c.before) as { entity?: string; label?: string; type?: string } | undefined;
@@ -358,9 +371,9 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
       const show = (f: string, v: unknown) => (Array.isArray(v) ? t('workflows.auditCount', { n: v.length }) : f === 'trigger' ? tEnum('workflows.trigger', String(v)) : value(f, v, users));
       for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${LABEL[f] ? t(LABEL[f]) : f}${t('common.colon')}${show(f, b)} → ${show(f, a)}`);
     }
-  } else if (fields) {
+  } else if (fields && entry.entityType !== 'territory') {
     for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, b, users, entry.entityType)} → ${value(f, a, users, entry.entityType)}`);
-  } else if (snap && entry.entityType !== 'customfield') {
+  } else if (snap && entry.entityType !== 'customfield' && entry.entityType !== 'territory') {
     for (const [f, v] of Object.entries(snap)) if (v !== null) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, v, users, entry.entityType)}`);
   } else if (typeof c.reason === 'string') {
     lines.push(tEnum('auditReason', c.reason));

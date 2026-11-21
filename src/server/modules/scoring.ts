@@ -132,6 +132,8 @@ export async function saveScoring(ctx: AuthContext, entity: ScoringEntity, input
   requirePermission(ctx, 'scoring.manage');
   const before = await getScoring(ctx, entity);
   const org = ctx.organizationId;
+  // 重算全部记录可能超过默认的 5 秒事务时限（记录多或负载高时），放宽到 60 秒
+  // rescoring every record may exceed the default 5 s transaction limit (many records or high load); allow 60 s
   const rescored = await prisma.$transaction(async (tx) => {
     // 同一组织同一对象的保存串行执行，避免并发保存交错 / serialize saves per organization and entity
     await tx.$queryRaw`SELECT 1 AS ok FROM pg_advisory_xact_lock(hashtextextended(${`scoring:${org}:${entity}`}, 0))`;
@@ -173,7 +175,7 @@ export async function saveScoring(ctx: AuthContext, entity: ScoringEntity, input
     if (before.warmScore !== input.warmScore) changes.warmScore = [before.warmScore, input.warmScore];
     await audit(tx, { ...by(ctx), action: 'scoring.update', entityType: 'scoring', entityId: null, changes });
     return count;
-  });
+  }, { timeout: 60_000 });
   return { ...(await getScoring(ctx, entity)), rescored };
 }
 

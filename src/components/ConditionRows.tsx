@@ -58,6 +58,7 @@ export function conditionText(fields: Record<string, FieldDef>, c: Condition, us
  * @param name 表单列表名 / form list name
  * @param prefix 无障碍标签前缀（区分多组条件）/ accessible-label prefix (tells groups apart)
  * @param min 至少几条 / minimum rows
+ * @param max 最多几条 / maximum rows
  */
 export function ConditionRows({
   form,
@@ -67,6 +68,7 @@ export function ConditionRows({
   prefix,
   emptyText,
   min = 0,
+  max = 5,
   testId,
 }: {
   form: FormInstance;
@@ -76,6 +78,7 @@ export function ConditionRows({
   prefix: string;
   emptyText: string;
   min?: number;
+  max?: number;
   testId: string;
 }) {
   const conditions = (Form.useWatch(name, form) ?? []) as Condition[];
@@ -126,7 +129,7 @@ export function ConditionRows({
               </Space>
             );
           })}
-          {rows.length < 5 && (
+          {rows.length < max && (
             <Button size="small" type="dashed" icon={<PlusOutlined />} data-testid={`${testId}-add`} onClick={() => add({ field: Object.keys(fields)[0], op: OPS[fields[Object.keys(fields)[0]!]!.type][0] })}>
               {t('workflows.addCondition')}
             </Button>

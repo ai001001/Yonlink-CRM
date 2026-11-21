@@ -72,6 +72,10 @@ export interface Account {
   score: number;
   /** 默认价格表（仅详情返回）/ default price book (detail only) */
   priceBook?: { id: string; name: string; isActive: boolean } | null;
+  /** 区域与是否手工指定 / territory and whether it was set by hand */
+  territoryId?: string | null;
+  territoryManual?: boolean;
+  territory?: Ref | null;
   createdAt: string;
   updatedAt: string;
 }

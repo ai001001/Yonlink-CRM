@@ -1461,3 +1461,44 @@ export const DEMO_CUSTOM_FIELDS: { entity: 'LEAD' | 'ACCOUNT' | 'CONTACT' | 'DEA
   { entity: 'CONTACT', label: '【演示】微信号', type: 'TEXT', value: (i) => `demo_wx_${String(i + 1).padStart(3, '0')}` },
   { entity: 'DEAL', label: '【演示】交付方式', type: 'PICKLIST', options: ['海运', '空运', '快递'], value: (i) => ['海运', '空运', '快递'][i % 3] },
 ];
+
+/**
+ * 演示区域（演示数据）：国内（华东为下级）与海外（北美、欧洲为下级）；规则按地址前缀或城市匹配，下级优先级更高。
+ * Demo territories (demo data): domestic (with East China) and overseas (with North America and Europe); rules match
+ * address prefixes or cities, and children take priority.
+ */
+export const DEMO_TERRITORIES: {
+  key: string;
+  parent?: string;
+  name: string;
+  description: string;
+  manager?: OwnerKey;
+  members: OwnerKey[];
+  priority: number;
+  match: 'ALL' | 'ANY';
+  conditions: { field: 'address'; op: 'STARTS_WITH' | 'CONTAINS'; value: string }[];
+}[] = [
+  { key: 'cn', name: '【演示】国内', description: '国内客户（演示数据）', manager: 'manager', members: ['sales2'], priority: 50, match: 'ALL', conditions: [{ field: 'address', op: 'STARTS_WITH', value: '国内' }] },
+  {
+    key: 'east',
+    parent: 'cn',
+    name: '【演示】华东',
+    description: '华东城市（演示数据）',
+    members: ['sales2'],
+    priority: 10,
+    match: 'ANY',
+    conditions: ['杭州', '常州', '厦门', '济南'].map((value) => ({ field: 'address' as const, op: 'CONTAINS' as const, value })),
+  },
+  {
+    key: 'intl',
+    name: '【演示】海外',
+    description: '海外客户（演示数据）',
+    manager: 'manager',
+    members: ['sales1'],
+    priority: 50,
+    match: 'ANY',
+    conditions: ['北美', '欧洲', '东南亚', '中东', '南美', '非洲'].map((value) => ({ field: 'address' as const, op: 'STARTS_WITH' as const, value })),
+  },
+  { key: 'na', parent: 'intl', name: '【演示】北美', description: '北美客户（演示数据）', manager: 'sales1', members: ['sales1'], priority: 10, match: 'ALL', conditions: [{ field: 'address', op: 'STARTS_WITH', value: '北美' }] },
+  { key: 'eu', parent: 'intl', name: '【演示】欧洲', description: '欧洲客户（演示数据）', members: ['sales1'], priority: 10, match: 'ALL', conditions: [{ field: 'address', op: 'STARTS_WITH', value: '欧洲' }] },
+];

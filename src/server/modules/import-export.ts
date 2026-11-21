@@ -25,6 +25,7 @@ import { activityListSchema, activityWhere } from './activities';
 import { fieldsOf, normalize } from './custom-fields';
 import { assignByRules } from './assignment-rules';
 import { dealListSchema, dealWhere } from './deals';
+import { territoryIdsFor, territoryMatcher } from './territory-rules';
 import { leadCreateSchema, leadListSchema, leadWhere } from './leads';
 import { gradeRange } from './scoring-grades';
 import { OPEN_STATUSES, ticketListSchema, ticketWhere } from './tickets';
@@ -273,8 +274,8 @@ async function exportList(ctx: AuthContext, entity: ExportEntity, input: Record<
   if (entity === 'accounts') {
     const query = accountListSchema.parse(params);
     const rows = await prisma.account.findMany({
-      where: accountWhere(ctx, query, await gradeRange(ctx.organizationId, 'ACCOUNT', query.grade)),
-      include: { owner: { select: { name: true, email: true } }, contacts: { where: { isPrimary: true }, take: 1 }, _count: { select: { contacts: true } } },
+      where: accountWhere(ctx, query, await gradeRange(ctx.organizationId, 'ACCOUNT', query.grade), await territoryIdsFor(ctx, query.territoryId)),
+      include: { owner: { select: { name: true, email: true } }, territory: { select: { name: true } }, contacts: { where: { isPrimary: true }, take: 1 }, _count: { select: { contacts: true } } },
       orderBy,
       take,
     });
@@ -287,8 +288,8 @@ async function exportList(ctx: AuthContext, entity: ExportEntity, input: Record<
       'account',
       query,
       'accounts',
-      [t('accounts.name'), t('accounts.industry'), t('accounts.phone'), t('accounts.website'), t('accounts.address'), t('common.owner'), t('import.ownerEmail'), t('contacts.isPrimary'), t('accounts.contactCount'), TIME_HEADER(t('common.createdAt')), t('common.description')],
-      data.map((a) => [a.name, tEnum('industry', a.industry), a.phone, a.website, a.address, a.owner?.name, a.owner?.email, a.contacts[0]?.name, a._count.contacts, fmtTime(a.createdAt), a.description]),
+      [t('accounts.name'), t('accounts.industry'), t('accounts.phone'), t('accounts.website'), t('accounts.address'), t('common.owner'), t('import.ownerEmail'), t('contacts.isPrimary'), t('accounts.contactCount'), TIME_HEADER(t('common.createdAt')), t('common.description'), t('territories.territory')],
+      data.map((a) => [a.name, tEnum('industry', a.industry), a.phone, a.website, a.address, a.owner?.name, a.owner?.email, a.contacts[0]?.name, a._count.contacts, fmtTime(a.createdAt), a.description, a.territory?.name]),
       truncated,
       { 8: 'int' },
       { entity: 'ACCOUNT', values: data.map((r) => r.custom) },
@@ -298,7 +299,7 @@ async function exportList(ctx: AuthContext, entity: ExportEntity, input: Record<
   if (entity === 'deals') {
     const query = dealListSchema.parse(params);
     const rows = await prisma.deal.findMany({
-      where: dealWhere(ctx, query, await gradeRange(ctx.organizationId, 'DEAL', query.grade)),
+      where: dealWhere(ctx, query, await gradeRange(ctx.organizationId, 'DEAL', query.grade), await territoryIdsFor(ctx, query.territoryId)),
       include: { owner: { select: { name: true, email: true } }, account: { select: { name: true } } },
       orderBy,
       take,
@@ -599,6 +600,7 @@ export async function importCsv(ctx: AuthContext, entity: ImportEntity, input: z
 
   await prisma.$transaction(
     async (tx) => {
+      const territoryOf = entity === 'accounts' ? await territoryMatcher(ctx.organizationId, tx) : null;
       for (const item of toCreate) {
         const { ownerId, ...data } = item.data as { ownerId?: string | null } & Record<string, unknown>;
         // 文件中指定的负责人优先；否则按规则（选择时）；最后归导入人 / the file's owner first, then the rules (when chosen), then the importer
@@ -615,7 +617,9 @@ export async function importCsv(ctx: AuthContext, entity: ImportEntity, input: z
           });
           if (assigned) report.assignedByRule += 1;
         } else {
-          const account = await tx.account.create({ data: { ...(data as Omit<Prisma.AccountUncheckedCreateInput, 'organizationId'>), organizationId: ctx.organizationId, ownerId: owner } });
+          const account = await tx.account.create({
+            data: { ...(data as Omit<Prisma.AccountUncheckedCreateInput, 'organizationId'>), ...territoryOf!({ ...data, ownerId: owner }), organizationId: ctx.organizationId, ownerId: owner },
+          });
           await audit(tx, { ...by(ctx), action: 'account.create', entityType: 'account', entityId: account.id, changes: { after: snapshot('account', account), via: 'account.import' } });
           if (item.contact) {
             const c = await tx.contact.create({

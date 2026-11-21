@@ -20,6 +20,8 @@ import { gradeRange, scoreListFields, scoreOrder } from './scoring-grades';
 import { tagFilter, tagsInclude } from './tags';
 import { assertValidRecord } from './validation-rules';
 import { customDiff, customInput, resolveCustom } from './custom-fields';
+import { territoryIdsFor } from './territory-rules';
+import { territoryFilter } from './territory-input';
 import { runWorkflows } from './workflows';
 import { containsText, listQuery, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
@@ -71,6 +73,8 @@ export const dealListSchema = listQuery.extend({
   ownerId: z.uuid().optional(),
   tagId: z.uuid().optional(),
   campaignId: z.uuid().optional(),
+  /** 客户所在区域（含下级）、NONE 或 MINE / the account's territory (with descendants), NONE or MINE */
+  territoryId: territoryFilter,
   ...scoreListFields,
 });
 
@@ -95,8 +99,14 @@ async function assertAccount(ctx: AuthContext, accountId: string): Promise<void>
  * 列表与导出共用的查询条件（可见范围 + 筛选 + 搜索）。
  * Query conditions shared by the list and the export (visibility + filters + search).
  */
-export function dealWhere(ctx: AuthContext, query: Omit<z.infer<typeof dealListSchema>, 'page' | 'pageSize'>, score?: Prisma.IntFilter): Prisma.DealWhereInput {
-  const where: Prisma.DealWhereInput = { AND: [visible(ctx), { stage: query.stage, accountId: query.accountId, ownerId: query.ownerId, campaignId: query.campaignId, score }, tagFilter(query.tagId)] };
+export function dealWhere(
+  ctx: AuthContext,
+  query: Omit<z.infer<typeof dealListSchema>, 'page' | 'pageSize'>,
+  score?: Prisma.IntFilter,
+  territories?: string[] | null,
+): Prisma.DealWhereInput {
+  const territory: Prisma.DealWhereInput = territories === undefined ? {} : { account: { territoryId: territories === null ? null : { in: territories } } };
+  const where: Prisma.DealWhereInput = { AND: [visible(ctx), { stage: query.stage, accountId: query.accountId, ownerId: query.ownerId, campaignId: query.campaignId, score }, tagFilter(query.tagId), territory] };
   if (query.q) {
     const c = containsText(query.q);
     where.OR = [{ name: c }, { account: { name: c } }];
@@ -112,7 +122,7 @@ export async function listDeals(
   ctx: AuthContext,
   query: z.infer<typeof dealListSchema>,
 ): Promise<Page<unknown> & { sums: { currency: string; amount: string }[] }> {
-  const where = dealWhere(ctx, query, await gradeRange(ctx.organizationId, 'DEAL', query.grade));
+  const where = dealWhere(ctx, query, await gradeRange(ctx.organizationId, 'DEAL', query.grade), await territoryIdsFor(ctx, query.territoryId));
   const [items, total, sums] = await prisma.$transaction([
     prisma.deal.findMany({
       where,

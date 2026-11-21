@@ -27,6 +27,7 @@ import { fmtDateTime } from '@/lib/format';
 import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch, useSelection } from '@/lib/hooks';
 import type { Account } from '@/lib/types';
 import { CustomFieldItems, CustomFieldValues, useCustomFields } from '@/components/CustomFields';
+import { TerritoryFilter, TerritoryFormItem, TerritoryLabel, territoryFormValue, territorySubmitValue, useTerritoryOptions } from '@/components/Territories';
 
 const INDUSTRIES = ['MANUFACTURING', 'IT', 'FINANCE', 'RETAIL', 'EDUCATION', 'HEALTHCARE', 'CONSTRUCTION', 'LOGISTICS', 'GOVERNMENT', 'OTHER'];
 const industryOptions = INDUSTRIES.map((v) => ({ value: v, label: tEnum('industry', v) }));
@@ -39,9 +40,12 @@ export default function AccountsPage() {
   const q = search.q;
   const [tagId, setTagId] = useState<string>();
   const [industry, setIndustry] = useState<string>();
+  const [territoryId, setTerritoryId] = useState<string>();
+  const territoryItems = useTerritoryOptions();
+  const canTerritory = perm.can('territory.manage');
   const [grade, setGrade] = useState<string>();
   const [sort, setSort] = useState<string>();
-  const { data, loading, reload, pagination } = usePagedList<Account>('/api/accounts', { q, industry, tagId, grade, sort });
+  const { data, loading, reload, pagination } = usePagedList<Account>('/api/accounts', { q, industry, tagId, grade, sort, territoryId });
   const scoring = useScoring('account');
   const [scoringOpen, setScoringOpen] = useState(false);
   /** 套用视图（null 恢复列表默认筛选）/ apply a saved view (null resets the list filters) */
@@ -49,6 +53,7 @@ export default function AccountsPage() {
     search.set(f?.q ?? '');
     setIndustry(f?.industry);
     setTagId(f?.tagId);
+    setTerritoryId(f?.territoryId);
   };
   const sel = useSelection(data.items, perm.can('record.update.own') || perm.canDelete);
 
@@ -75,11 +80,13 @@ export default function AccountsPage() {
   const openForm = (account: Account | 'new') => {
     form.resetFields();
     if (account !== 'new') form.setFieldsValue(account);
+    form.setFieldsValue({ territoryId: territoryFormValue(account === 'new' ? null : account) });
     setEditing(account);
   };
 
   const save = async () => {
-    const values = await form.validateFields();
+    const v = await form.validateFields();
+    const values = 'territoryId' in v ? { ...v, territoryId: territorySubmitValue(v.territoryId) } : v;
     setSaving(true);
     try {
       const saved =
@@ -124,7 +131,7 @@ export default function AccountsPage() {
           <Button icon={<StarOutlined />} onClick={() => setScoringOpen(true)}>
             {t('scoring.title')}
           </Button>
-          <ExportButton excel resource="accounts" filters={{ q, industry, grade }} />
+          <ExportButton excel resource="accounts" filters={{ q, industry, grade, territoryId }} />
           {perm.canCreate && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
               {t('accounts.new')}
@@ -138,6 +145,7 @@ export default function AccountsPage() {
         <Input.Search allowClear placeholder={t('accounts.searchPlaceholder')} style={{ width: 320 }} {...search.inputProps} />
         <TagFilter value={tagId} onChange={setTagId} onManaged={() => void reload()} />
         <Select allowClear aria-label={t('accounts.industry')} placeholder={t('accounts.industry')} style={{ width: 140 }} options={industryOptions} value={industry} onChange={setIndustry} />
+        <TerritoryFilter items={territoryItems} value={territoryId} onChange={setTerritoryId} />
         <ScoreFilters grade={grade} onGrade={setGrade} sort={sort} onSort={setSort} />
       </Space>
       <BulkBar
@@ -169,6 +177,7 @@ export default function AccountsPage() {
           },
           { title: t('accounts.industry'), dataIndex: 'industry', render: (v: string | null) => tEnum('industry', v) },
           { title: t('accounts.phone'), dataIndex: 'phone' },
+          { title: t('territories.territory'), render: (_, r) => r.territory?.name ?? '—' },
           { title: t('accounts.contactCount'), render: (_, r) => r._count.contacts },
           { title: t('accounts.dealCount'), render: (_, r) => r._count.deals },
           { title: t('scoring.score'), dataIndex: 'score', render: (v: number) => <ScoreTag score={v} config={scoring.config} /> },
@@ -235,6 +244,7 @@ export default function AccountsPage() {
           <Form.Item name="address" label={t('accounts.address')}>
             <Input maxLength={500} />
           </Form.Item>
+          {canTerritory && <TerritoryFormItem items={territoryItems} />}
           <CustomFieldItems defs={customDefs} />
           <Form.Item name="description" label={t('common.description')}>
             <Input.TextArea rows={3} maxLength={5000} />
@@ -273,6 +283,9 @@ export default function AccountsPage() {
                         )}
                       </Descriptions.Item>
                       <Descriptions.Item label={t('common.owner')}>{detail.owner?.name ?? t('common.unassigned')}</Descriptions.Item>
+                      <Descriptions.Item label={t('territories.territory')}>
+                        <TerritoryLabel territory={detail.territory} manual={detail.territoryManual} />
+                      </Descriptions.Item>
                       <Descriptions.Item label={t('accounts.dealCount')}>{detail._count.deals}</Descriptions.Item>
                       <Descriptions.Item label={t('scoring.score')} span={2}>
                         <Space orientation="vertical" size={4}>

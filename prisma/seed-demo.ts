@@ -16,8 +16,9 @@ import { prisma } from '../src/server/db';
 import { removeOrganizationFiles, saveFile } from '../src/server/storage';
 import { toBase } from '../src/server/modules/exchange-rates';
 import { approvalReasons, approvalSteps } from '../src/server/modules/approvals';
+import { matchTerritory } from '../src/server/modules/territory-rules';
 import { Prisma } from '../src/generated/prisma/client';
-import { buildDemoData, dealCreatedDaysAgo, demoStagePath, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_ACCOUNT_SCORING, DEMO_CONTACT_SCORING, DEMO_DEAL_SCORING, DEMO_ASSIGNMENT_RULES, DEMO_WEB_FORMS, DEMO_WORKFLOWS, DEMO_APPROVAL, DEMO_WEBHOOK, DEMO_VALIDATION_RULES, DEMO_CUSTOM_FIELDS, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoStagePath, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_ACCOUNT_SCORING, DEMO_CONTACT_SCORING, DEMO_DEAL_SCORING, DEMO_ASSIGNMENT_RULES, DEMO_WEB_FORMS, DEMO_WORKFLOWS, DEMO_APPROVAL, DEMO_WEBHOOK, DEMO_VALIDATION_RULES, DEMO_CUSTOM_FIELDS, DEMO_TERRITORIES, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -102,6 +103,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.ticketSlaPolicy.deleteMany({ where: { organizationId: o } });
         await tx.contact.deleteMany({ where: { organizationId: o } });
         await tx.account.deleteMany({ where: { organizationId: o } });
+        await tx.territory.deleteMany({ where: { organizationId: o } });
         await tx.lead.deleteMany({ where: { organizationId: o } });
         // 明细已随商机级联删除，产品随后可删 / line items cascaded with deals, so products can go
         // 库存流水限制删除产品，先删除 / stock movements restrict product deletion, so they go first
@@ -823,6 +825,29 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         }
       }
 
+      // 区域（上级先建），再按规则为全部客户分配区域 / territories (parents first), then assign every account by the rules
+      const territoryIds: Record<string, string> = {};
+      for (const tr of DEMO_TERRITORIES) {
+        const created = await tx.territory.create({
+          data: {
+            organizationId: o,
+            parentId: tr.parent ? territoryIds[tr.parent] : null,
+            name: tr.name,
+            description: tr.description,
+            managerId: tr.manager ? ids[tr.manager] : null,
+            priority: tr.priority,
+            match: tr.match,
+            conditions: tr.conditions,
+          },
+        });
+        await tx.territoryMember.createMany({ data: tr.members.map((m) => ({ organizationId: o, territoryId: created.id, userId: ids[m] })) });
+        territoryIds[tr.key] = created.id;
+      }
+      const ruleTerritories = await tx.territory.findMany({ where: { organizationId: o }, select: { id: true, name: true, priority: true, match: true, conditions: true } });
+      for (const a of await tx.account.findMany({ where: { organizationId: o }, select: { id: true, name: true, industry: true, address: true, phone: true, website: true, ownerId: true } })) {
+        await tx.account.update({ where: { id: a.id }, data: { territoryId: matchTerritory(ruleTerritories, a) } });
+      }
+
       // 字段验证规则 / validation rules
       for (const [i, r] of DEMO_VALIDATION_RULES.entries()) {
         await tx.validationRule.create({ data: { organizationId: o, ...r, createdById: ids.admin, createdAt: new Date(Date.now() - (DEMO_VALIDATION_RULES.length - i) * 60_000) } });
@@ -911,7 +936,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length + 1} 客户（含 1 条重复）、${data.accounts.reduce((n, a) => n + a.contacts.length, 0) + 2} 联系人、` +
-      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单（${Object.values(DEMO_TICKET_COMMENTS).flat().length} 条处理记录）、${DEMO_KB_ARTICLES.length} 篇知识库文章、${DEMO_VENDORS.length} 个供应商、${DEMO_PURCHASE_ORDERS.length} 张采购单、${DEMO_PRICE_BOOKS.length} 张价格表、${DEMO_WEB_FORMS.length} 个网页表单、${DEMO_ASSIGNMENT_RULES.length} 条分配规则、${DEMO_WORKFLOWS.length} 条工作流规则、${DEMO_SCORING.rules.length + DEMO_ACCOUNT_SCORING.rules.length + DEMO_CONTACT_SCORING.rules.length + DEMO_DEAL_SCORING.rules.length} 条评分规则、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
+      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单（${Object.values(DEMO_TICKET_COMMENTS).flat().length} 条处理记录）、${DEMO_KB_ARTICLES.length} 篇知识库文章、${DEMO_VENDORS.length} 个供应商、${DEMO_PURCHASE_ORDERS.length} 张采购单、${DEMO_PRICE_BOOKS.length} 张价格表、${DEMO_WEB_FORMS.length} 个网页表单、${DEMO_ASSIGNMENT_RULES.length} 条分配规则、${DEMO_WORKFLOWS.length} 条工作流规则、${DEMO_TERRITORIES.length} 个区域、${DEMO_SCORING.rules.length + DEMO_ACCOUNT_SCORING.rules.length + DEMO_CONTACT_SCORING.rules.length + DEMO_DEAL_SCORING.rules.length} 条评分规则、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
   );
 }
 

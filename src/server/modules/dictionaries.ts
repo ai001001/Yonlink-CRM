@@ -8,3 +8,17 @@ export const LEAD_SOURCES = ['WEBSITE', 'REFERRAL', 'EXHIBITION', 'COLD_CALL', '
 
 /** 支持的币种 / Supported currencies */
 export const CURRENCIES = ['CNY', 'USD', 'EUR', 'HKD', 'JPY'] as const;
+
+/** 行业字典 / Industry dictionary */
+export const INDUSTRIES = [
+  'MANUFACTURING',
+  'IT',
+  'FINANCE',
+  'RETAIL',
+  'EDUCATION',
+  'HEALTHCARE',
+  'CONSTRUCTION',
+  'LOGISTICS',
+  'GOVERNMENT',
+  'OTHER',
+] as const;

@@ -20,6 +20,7 @@ import { gradeRange, scoreListFields, scoreOrder } from './scoring-grades';
 import { tagFilter, tagsInclude } from './tags';
 import { assertValidRecord } from './validation-rules';
 import { customDiff, customInput, resolveCustom } from './custom-fields';
+import { territoryMatcher } from './territory-rules';
 import { runWorkflows } from './workflows';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
@@ -233,9 +234,8 @@ export async function convertLead(ctx: AuthContext, id: string, input: z.infer<t
       account = found;
     } else {
       isNewAccount = true;
-      const created = await tx.account.create({
-        data: { organizationId: org, ownerId, name: input.account.name ?? lead.company ?? lead.name, phone: lead.phone },
-      });
+      const data = { ownerId, name: input.account.name ?? lead.company ?? lead.name, phone: lead.phone };
+      const created = await tx.account.create({ data: { ...data, ...(await territoryMatcher(org, tx))(data), organizationId: org } });
       account = { id: created.id, name: created.name };
       await audit(tx, { ...by(ctx), action: 'account.create', entityType: 'account', entityId: created.id, changes: { after: snapshot('account', created), via: 'lead.convert' } });
     }

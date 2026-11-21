@@ -284,6 +284,12 @@ export async function restoreItem(ctx: AuthContext, itemId: string) {
         rec.priceBookId = null;
         skipped.push('priceBook');
       }
+      // 区域已删除时置空并恢复自动分配 / clear a deleted territory and return to automatic assignment
+      if (rec.territoryId && (await tx.territory.count({ where: { id: rec.territoryId, organizationId: org } })) === 0) {
+        rec.territoryId = null;
+        rec.territoryManual = false;
+        skipped.push('territory');
+      }
       await tx.account.create({ data: rec });
       await tx.contact.createMany({ data: (p.contacts ?? []).map((c) => revive<Prisma.ContactCreateManyInput>(c, org)) });
     } else {

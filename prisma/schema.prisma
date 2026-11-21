@@ -74,6 +74,8 @@ model Organization {
   approvalSettings     QuoteApprovalSettings?
   approvalLevels       QuoteApprovalLevel[]
   customFields         CustomField[]
+  territories          Territory[]
+  territoryMembers     TerritoryMember[]
   stockMovements       StockMovement[]
   apiKeys              ApiKey[]
   webhooks             Webhook[]
@@ -138,6 +140,8 @@ model User {
   apiKeysCreated     ApiKey[]                @relation("ApiKeyCreator")
   webhooksCreated    Webhook[]               @relation("WebhookCreator")
   validationRules    ValidationRule[]        @relation("ValidationCreator")
+  territoriesManaged Territory[]             @relation("TerritoryManager")
+  territoryMembers   TerritoryMember[]
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -273,8 +277,15 @@ model Account {
   /// 自定义字段的值（按字段键保存，服务端按定义校验）/ custom field values keyed by field key, validated server-side
   custom Json @default("{}")
 
+  /// 所属区域（按区域规则自动分配，或手工指定）/ territory (assigned by territory rules, or set by hand)
+  territoryId     String?    @map("territory_id") @db.Uuid
+  territory       Territory? @relation(fields: [organizationId, territoryId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  /// 手工指定的区域不被规则覆盖 / a hand-set territory is not overridden by rules
+  territoryManual Boolean    @default(false) @map("territory_manual")
+
   @@unique([organizationId, id])
   @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, territoryId])
   @@index([organizationId, priceBookId])
   @@index([organizationId, score(sort: Desc)])
   @@map("accounts")
@@ -2098,4 +2109,54 @@ model CustomField {
   @@unique([organizationId, entity, key])
   @@index([organizationId, entity, position])
   @@map("custom_fields")
+}
+
+/// 区域匹配方式 / territory rule match mode
+enum TerritoryMatch {
+  ALL
+  ANY
+
+  @@map("territory_match")
+}
+
+/// 销售区域（树形，最多 3 级）；规则按客户字段自动分配客户 / sales territory (tree of up to 3 levels); rules assign accounts by account fields
+model Territory {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  parentId       String?           @map("parent_id") @db.Uuid
+  name           String            @db.VarChar(100)
+  description    String?           @db.VarChar(500)
+  managerId      String?           @map("manager_id") @db.Uuid
+  /// 规则优先级（小的先匹配）/ rule priority (lower matches first)
+  priority       Int               @default(100)
+  match          TerritoryMatch    @default(ALL)
+  /// 规则条件（空数组表示不自动分配）/ rule conditions (empty means no automatic assignment)
+  conditions     Json              @default("[]")
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent         Territory?        @relation("TerritoryTree", fields: [organizationId, parentId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  children       Territory[]       @relation("TerritoryTree")
+  manager        User?             @relation("TerritoryManager", fields: [organizationId, managerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  members        TerritoryMember[]
+  accounts       Account[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, parentId])
+  @@map("territories")
+}
+
+/// 区域成员 / territory member
+model TerritoryMember {
+  organizationId String       @map("organization_id") @db.Uuid
+  territoryId    String       @map("territory_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  territory      Territory    @relation(fields: [organizationId, territoryId], references: [organizationId, id], onDelete: Cascade)
+  user           User         @relation(fields: [organizationId, userId], references: [organizationId, id], onDelete: Cascade)
+
+  @@id([territoryId, userId])
+  @@index([organizationId, userId])
+  @@map("territory_members")
 }

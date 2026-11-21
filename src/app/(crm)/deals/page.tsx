@@ -33,6 +33,7 @@ import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
 import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch, useSelection, type PageResult } from '@/lib/hooks';
 import type { Deal } from '@/lib/types';
 import { CustomFieldItems, CustomFieldValues, useCustomFields } from '@/components/CustomFields';
+import { TerritoryFilter, useTerritoryOptions } from '@/components/Territories';
 
 const DEAL_STAGES = ['QUALIFICATION', 'NEEDS_ANALYSIS', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST'] as const;
 const STAGE_COLOR: Record<string, string> = {
@@ -63,7 +64,9 @@ export default function DealsPage() {
   const [stage, setStage] = useState<string>();
   const [grade, setGrade] = useState<string>();
   const [sort, setSort] = useState<string>();
-  const { data, loading, reload, pagination } = usePagedList<Deal>('/api/deals', { q, stage, tagId, campaignId, grade, sort });
+  const [territoryId, setTerritoryId] = useState<string>();
+  const territoryItems = useTerritoryOptions();
+  const { data, loading, reload, pagination } = usePagedList<Deal>('/api/deals', { q, stage, tagId, campaignId, grade, sort, territoryId });
   const scoring = useScoring('deal');
   const [scoringOpen, setScoringOpen] = useState(false);
   /** 套用视图（null 恢复列表默认筛选）/ apply a saved view (null resets the list filters) */
@@ -71,6 +74,7 @@ export default function DealsPage() {
     search.set(f?.q ?? '');
     setStage(f?.stage);
     setTagId(f?.tagId);
+    setTerritoryId(f?.territoryId);
   };
   const sel = useSelection(data.items, perm.can('record.update.own') || perm.canDelete);
   // 列表与看板一起刷新 / refresh both the list and the board
@@ -152,7 +156,7 @@ export default function DealsPage() {
           <Button icon={<StarOutlined />} onClick={() => setScoringOpen(true)}>
             {t('scoring.title')}
           </Button>
-          <ExportButton excel resource="deals" filters={{ q, stage, campaignId, grade }} />
+          <ExportButton excel resource="deals" filters={{ q, stage, campaignId, grade, territoryId }} />
           {perm.canCreate && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
               {t('deals.new')}
@@ -174,6 +178,7 @@ export default function DealsPage() {
           {view === 'list' && <SavedViews entity="deals" filters={{ q, stage, tagId }} onApply={applyView} />}
           <Input.Search allowClear placeholder={t('deals.searchPlaceholder')} style={{ width: 280 }} {...search.inputProps} />
           {view === 'list' && <TagFilter value={tagId} onChange={setTagId} onManaged={() => refresh()} />}
+          {view === 'list' && <TerritoryFilter items={territoryItems} value={territoryId} onChange={setTerritoryId} />}
           {view === 'list' && (
             <CampaignSelect aria-label={t('campaigns.filter')} placeholder={t('campaigns.filter')} style={{ width: 180 }} value={campaignId} onChange={(v) => setCampaignId(v ?? undefined)} />
           )}
