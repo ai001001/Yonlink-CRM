@@ -19,6 +19,7 @@ import { recycle } from './recycle-bin';
 import { gradeRange, scoreListFields, scoreOrder } from './scoring-grades';
 import { tagFilter, tagsInclude } from './tags';
 import { assertValidRecord } from './validation-rules';
+import { customDiff, customInput, resolveCustom } from './custom-fields';
 import { runWorkflows } from './workflows';
 import { containsText, listQuery, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
@@ -51,6 +52,8 @@ const fields = {
     .transform((v) => (v ? new Date(`${v}T00:00:00Z`) : null)),
   description: optionalText(5000),
   ownerId: optionalUuid.optional(),
+  /** 自定义字段的值 / custom field values */
+  custom: customInput,
   /** 来源市场活动 / source campaign */
   campaignId: optionalUuid.optional(),
 };
@@ -145,7 +148,7 @@ export async function getDeal(ctx: AuthContext, id: string) {
  * Create a deal.
  */
 export async function createDeal(ctx: AuthContext, input: z.infer<typeof dealCreateSchema>) {
-  const { ownerId, ...data } = input;
+  const { ownerId, custom, ...data } = input;
   requirePermission(ctx, 'record.create');
   assertOwnerAssignable(ctx, ownerId);
   await assertCampaign(ctx.organizationId, data.campaignId);
@@ -153,10 +156,12 @@ export async function createDeal(ctx: AuthContext, input: z.infer<typeof dealCre
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
   // 字段验证规则（按写入后的值）/ validation rules on the values as written
   await assertValidRecord(ctx.organizationId, 'DEAL', { ...data, ownerId: owner });
+  const cf = await resolveCustom(ctx.organizationId, 'DEAL', custom, null);
   return prisma.$transaction(async (tx) => {
     await setActor(tx, ctx);
-    const deal = await tx.deal.create({ data: { ...data, organizationId: ctx.organizationId, ownerId: owner }, include });
-    await audit(tx, { ...by(ctx), action: 'deal.create', entityType: 'deal', entityId: deal.id, changes: { after: snapshot('deal', deal) } });
+    const deal = await tx.deal.create({ data: { ...data, custom: cf.values as Prisma.InputJsonValue, organizationId: ctx.organizationId, ownerId: owner }, include });
+    const customChanges = customDiff(cf.defs, null, cf.values);
+    await audit(tx, { ...by(ctx), action: 'deal.create', entityType: 'deal', entityId: deal.id, changes: { after: snapshot('deal', deal), ...(Object.keys(customChanges).length ? { custom: customChanges } : {}) } });
     await notifyAssigned(tx, ctx, { entity: 'deal', id: deal.id }, deal.name, deal.ownerId, null);
     // 工作流可能改动记录，执行后返回最新数据 / workflows may change the record; return the latest
     if (await runWorkflows(tx, { entity: 'DEAL', before: null, after: deal, actorId: ctx.userId, meta: ctx.meta })) {
@@ -173,7 +178,7 @@ export async function createDeal(ctx: AuthContext, input: z.infer<typeof dealCre
 export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<typeof dealUpdateSchema>) {
   const current = await getDeal(ctx, id);
   assertCanUpdate(ctx, current);
-  const { ownerId, ...data } = input;
+  const { ownerId, custom, ...data } = input;
   assertOwnerAssignable(ctx, ownerId);
   await assertCampaign(ctx.organizationId, data.campaignId);
   // 有产品明细时金额由明细计算，币种需与明细一致 / with line items the amount is computed and the currency is locked
@@ -190,13 +195,15 @@ export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<ty
   if (data.accountId) await assertAccount(ctx, data.accountId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
   await assertValidRecord(ctx.organizationId, 'DEAL', { ...current, ...data, ownerId: owner });
+  const cf = custom === undefined ? null : await resolveCustom(ctx.organizationId, 'DEAL', custom, current.custom);
   return prisma.$transaction(async (tx) => {
     await setActor(tx, ctx);
-    const deal = await tx.deal.update({ where: { id: current.id }, data: { ...data, ownerId: owner }, include });
+    const deal = await tx.deal.update({ where: { id: current.id }, data: { ...data, ownerId: owner, ...(cf ? { custom: cf.values as Prisma.InputJsonValue } : {}) }, include });
     await notifyAssigned(tx, ctx, { entity: 'deal', id: deal.id }, deal.name, deal.ownerId, current.ownerId);
     const fields = diff('deal', current, deal);
-    if (Object.keys(fields).length) {
-      await audit(tx, { ...by(ctx), action: 'deal.update', entityType: 'deal', entityId: deal.id, changes: { fields } });
+    const customChanges = cf ? customDiff(cf.defs, current.custom, cf.values) : {};
+    if (Object.keys(fields).length || Object.keys(customChanges).length) {
+      await audit(tx, { ...by(ctx), action: 'deal.update', entityType: 'deal', entityId: deal.id, changes: { fields, ...(Object.keys(customChanges).length ? { custom: customChanges } : {}) } });
     }
     // 换客户：移除不属于新客户的联系人角色 / account changed: drop roles of contacts outside the new account
     if (deal.accountId !== current.accountId) await removeStaleRoles(tx, ctx, deal.id, deal.accountId);

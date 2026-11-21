@@ -11,6 +11,7 @@ import { t } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { toFormErrors } from '@/lib/hooks';
 import type { Contact } from '@/lib/types';
+import { CustomFieldItems, useCustomFields } from './CustomFields';
 
 interface Props {
   accountId: string;
@@ -23,6 +24,7 @@ interface Props {
 export function ContactsPanel({ accountId, editable, contacts, onChanged }: Props) {
   const { message } = App.useApp();
   const [form] = Form.useForm();
+  const customDefs = useCustomFields('CONTACT');
   const [editing, setEditing] = useState<Contact | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -139,6 +141,7 @@ export function ContactsPanel({ accountId, editable, contacts, onChanged }: Prop
               <Input maxLength={254} />
             </Form.Item>
           </div>
+          <CustomFieldItems defs={customDefs} />
           <Form.Item name="isPrimary" valuePropName="checked">
             <Checkbox>{t('contacts.isPrimary')}</Checkbox>
           </Form.Item>

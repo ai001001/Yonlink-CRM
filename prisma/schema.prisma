@@ -73,6 +73,7 @@ model Organization {
   quoteApprovals       QuoteApproval[]
   approvalSettings     QuoteApprovalSettings?
   approvalLevels       QuoteApprovalLevel[]
+  customFields         CustomField[]
   stockMovements       StockMovement[]
   apiKeys              ApiKey[]
   webhooks             Webhook[]
@@ -222,6 +223,9 @@ model Lead {
   webFormId String?  @map("web_form_id") @db.Uuid
   webForm   WebForm? @relation(fields: [webFormId], references: [id], onDelete: SetNull)
 
+  /// 自定义字段的值（按字段键保存，服务端按定义校验）/ custom field values keyed by field key, validated server-side
+  custom Json @default("{}")
+
   @@unique([organizationId, id])
   @@index([organizationId, campaignId])
   @@index([webFormId])
@@ -266,6 +270,9 @@ model Account {
   priceBookId String?    @map("price_book_id") @db.Uuid
   priceBook   PriceBook? @relation(fields: [organizationId, priceBookId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
 
+  /// 自定义字段的值（按字段键保存，服务端按定义校验）/ custom field values keyed by field key, validated server-side
+  custom Json @default("{}")
+
   @@unique([organizationId, id])
   @@index([organizationId, createdAt(sort: Desc)])
   @@index([organizationId, priceBookId])
@@ -292,6 +299,9 @@ model Contact {
   convertedLeads Lead[]            @relation("LeadConvertedContact")
   dealRoles      DealContactRole[]
   tickets        Ticket[]
+
+  /// 自定义字段的值（按字段键保存，服务端按定义校验）/ custom field values keyed by field key, validated server-side
+  custom Json @default("{}")
 
   @@unique([organizationId, id])
   @@index([organizationId, accountId])
@@ -347,6 +357,9 @@ model Deal {
 
   // 来源市场活动；有关联记录的活动不能删除 / source campaign; campaigns with linked records cannot be deleted
   campaign Campaign? @relation(fields: [organizationId, campaignId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  /// 自定义字段的值（按字段键保存，服务端按定义校验）/ custom field values keyed by field key, validated server-side
+  custom Json @default("{}")
 
   @@unique([organizationId, id])
   @@index([organizationId, campaignId])
@@ -2035,4 +2048,54 @@ model QuoteApprovalLevel {
 
   @@unique([organizationId, position])
   @@map("quote_approval_levels")
+}
+
+/// 可添加自定义字段的对象 / entities that take custom fields
+enum CustomEntity {
+  LEAD
+  ACCOUNT
+  CONTACT
+  DEAL
+
+  @@map("custom_entity")
+}
+
+/// 自定义字段类型 / custom field types
+enum CustomFieldType {
+  TEXT
+  TEXTAREA
+  NUMBER
+  DATE
+  PICKLIST
+  CHECKBOX
+  URL
+  EMAIL
+
+  @@map("custom_field_type")
+}
+
+/// 自定义字段（对标 Zoho Custom Fields）：管理员为线索、客户、联系人、商机添加字段；值保存在记录的 custom 列中。
+/// key 由服务端生成（cf_ + 8 位），创建后不变；停用的字段不显示、不能填写，值保留；删除字段时同时清除各记录的值。
+/// Custom field (cf. Zoho Custom Fields): admins add fields to leads, accounts, contacts and deals; values live in the
+/// record's custom column. The key is server-generated (cf_ + 8 chars) and immutable; inactive fields are hidden and
+/// read-only with values kept; deleting a field also removes its values from every record.
+model CustomField {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  entity         CustomEntity
+  key            String          @db.VarChar(30)
+  label          String          @db.VarChar(50)
+  type           CustomFieldType
+  /// 下拉选项 / picklist options
+  options        Json            @default("[]")
+  required       Boolean         @default(false)
+  isActive       Boolean         @default(true) @map("is_active")
+  position       Int
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, entity, key])
+  @@index([organizationId, entity, position])
+  @@map("custom_fields")
 }

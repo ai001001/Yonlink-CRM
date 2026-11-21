@@ -11,6 +11,7 @@
  */
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
+import type { CustomEntity } from '@/generated/prisma/enums';
 import { allTranslations, DEFAULT_LOCALE, enumCodes, isLocale, LOCALES, tEnumIn, translate, type Locale, type MessageKey } from '@/i18n';
 import { audit, by, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
@@ -21,6 +22,7 @@ import { can, requirePermission } from '../permissions';
 import { toXlsx, type Cell, type NumberFormat } from '../xlsx';
 import { accountCreateSchema, accountListSchema, accountWhere, contactCreateSchema, contactListSchema, contactWhere } from './accounts';
 import { activityListSchema, activityWhere } from './activities';
+import { fieldsOf, normalize } from './custom-fields';
 import { assignByRules } from './assignment-rules';
 import { dealListSchema, dealWhere } from './deals';
 import { leadCreateSchema, leadListSchema, leadWhere } from './leads';
@@ -114,7 +116,17 @@ async function finish(
   rows: unknown[][],
   truncated: boolean,
   formats: Record<number, NumberFormat> = {},
+  custom?: { entity: CustomEntity; values: Prisma.JsonValue[] },
 ): Promise<ExportResult | ListXlsxResult> {
+  // 自定义字段（启用的）追加在最后几列 / active custom fields are appended as the last columns
+  if (custom) {
+    const defs = (await fieldsOf(ctx.organizationId, custom.entity)).filter((d) => d.isActive);
+    header = [...header, ...defs.map((d) => d.label)];
+    rows = rows.map((r, i) => {
+      const v = (custom.values[i] ?? {}) as Record<string, unknown>;
+      return [...r, ...defs.map((d) => (typeof v[d.key] === 'boolean' ? translate(locale, v[d.key] ? 'common.yes' : 'common.no') : (v[d.key] ?? null)))];
+    });
+  }
   const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   if (format === 'csv') {
     await auditExport(ctx, auditEntity, query, rows.length, truncated);
@@ -164,6 +176,8 @@ async function exportList(ctx: AuthContext, entity: ExportEntity, input: Record<
       [t('leads.name'), t('leads.company'), t('leads.jobTitle'), t('leads.phone'), t('leads.mobile'), t('leads.email'), t('leads.source'), t('leads.status'), t('common.owner'), t('import.ownerEmail'), TIME_HEADER(t('common.createdAt')), t('common.description')],
       data.map((l) => [l.name, l.company, l.title, l.phone, l.mobile, l.email, tEnum('leadSource', l.source), tEnum('leadStatus', l.status), l.owner?.name, l.owner?.email, fmtTime(l.createdAt), l.description]),
       truncated,
+      {},
+      { entity: 'LEAD', values: data.map((r) => r.custom) },
     );
   }
 
@@ -251,6 +265,8 @@ async function exportList(ctx: AuthContext, entity: ExportEntity, input: Record<
       [t('contacts.name'), t('contacts.title'), t('contacts.phone'), t('contacts.email'), t('contacts.isPrimary'), t('contacts.account'), t('common.owner'), TIME_HEADER(t('common.createdAt'))],
       data.map((c) => [c.name, c.title, c.phone, c.email, c.isPrimary ? t('common.yes') : t('common.no'), c.account.name, c.account.owner?.name, fmtTime(c.createdAt)]),
       truncated,
+      {},
+      { entity: 'CONTACT', values: data.map((r) => r.custom) },
     );
   }
 
@@ -275,6 +291,7 @@ async function exportList(ctx: AuthContext, entity: ExportEntity, input: Record<
       data.map((a) => [a.name, tEnum('industry', a.industry), a.phone, a.website, a.address, a.owner?.name, a.owner?.email, a.contacts[0]?.name, a._count.contacts, fmtTime(a.createdAt), a.description]),
       truncated,
       { 8: 'int' },
+      { entity: 'ACCOUNT', values: data.map((r) => r.custom) },
     );
   }
 
@@ -299,6 +316,7 @@ async function exportList(ctx: AuthContext, entity: ExportEntity, input: Record<
       data.map((d) => [d.name, d.account.name, d.amount.toFixed(2), d.currency, tEnum('dealStage', d.stage), fmtDate(d.expectedCloseDate), d.owner?.name, d.owner?.email, fmtTime(d.createdAt), d.description]),
       truncated,
       { 2: 'money' },
+      { entity: 'DEAL', values: data.map((r) => r.custom) },
     );
   }
 
@@ -477,10 +495,17 @@ export async function importCsv(ctx: AuthContext, entity: ImportEntity, input: z
   const defs = COLUMNS[entity];
   const indexOf: Record<string, number> = {};
   const unknownColumns: string[] = [];
+  // 表头与启用的自定义字段名称相同的列作为自定义字段导入 / columns named like active custom fields import into them
+  const customDefs = (await fieldsOf(ctx.organizationId, entity === 'leads' ? 'LEAD' : 'ACCOUNT')).filter((d) => d.isActive);
+  const customCols: { def: (typeof customDefs)[number]; index: number }[] = [];
   header.forEach((h, i) => {
     const def = defs.find((d) => [...allTranslations(d.label), d.field].some((x) => x.toLowerCase() === h.toLowerCase()));
     if (def) indexOf[def.field] ??= i;
-    else if (h) unknownColumns.push(h);
+    else {
+      const cdef = customDefs.find((d) => d.label.toLowerCase() === h.toLowerCase());
+      if (cdef && !customCols.some((c) => c.def.id === cdef.id)) customCols.push({ def: cdef, index: i });
+      else if (h) unknownColumns.push(h);
+    }
   });
   const missing = defs.filter((d) => d.required && indexOf[d.field] === undefined);
   if (missing.length) throw new ApiError(400, 'VALIDATION_ERROR', 'Missing required column', { csv: missing.map((d) => `missing_column:${translate(input.lang ?? DEFAULT_LOCALE, d.label)}`) });
@@ -537,11 +562,29 @@ export async function importCsv(ctx: AuthContext, entity: ImportEntity, input: z
       else for (const issue of c.error.issues) errors.push({ row: rowNo, field: `contact.${String(issue.path[0] ?? '')}`, reason: reasonOf(issue) });
     }
 
+    // 自定义字段：按类型校验；勾选接受是/否、yes/no、true/false、1/0；必填字段必须有值
+    // custom fields: validated per type; checkboxes accept 是/否, yes/no, true/false, 1/0; required ones must have a value
+    const custom: Record<string, unknown> = {};
+    for (const { def, index } of customCols) {
+      let raw: unknown = uncsvCell(cells[index] ?? '').trim();
+      if (def.type === 'CHECKBOX' && raw !== '') {
+        const v = String(raw).toLowerCase();
+        raw = ['是', 'yes', 'true', '1'].includes(v) ? true : ['否', 'no', 'false', '0'].includes(v) ? false : raw;
+      }
+      try {
+        const v = normalize(def, raw);
+        if (v !== undefined) custom[def.key] = v;
+      } catch {
+        errors.push({ row: rowNo, field: def.label, reason: 'invalid_value' });
+      }
+    }
+    for (const d of customDefs) if (d.required && custom[d.key] === undefined && !errors.some((e) => e.field === d.label)) errors.push({ row: rowNo, field: d.label, reason: 'required' });
+
     if (errors.length || !parsed.success) {
       report.errors.push(...errors);
       return;
     }
-    const data = parsed.data as Record<string, unknown>;
+    const data: Record<string, unknown> = { ...(parsed.data as Record<string, unknown>), custom };
     const key = entity === 'leads' ? (data.email as string | null)?.toLowerCase() : String(data.name).trim().toLowerCase();
     if (key && existing.has(key)) {
       report.duplicates.push({ row: rowNo, value: entity === 'leads' ? String(data.email) : String(data.name) });

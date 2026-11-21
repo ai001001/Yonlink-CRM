@@ -19,6 +19,7 @@ import { recycle } from './recycle-bin';
 import { gradeRange, scoreListFields, scoreOrder } from './scoring-grades';
 import { tagFilter, tagsInclude } from './tags';
 import { assertValidRecord } from './validation-rules';
+import { customDiff, customInput, resolveCustom } from './custom-fields';
 import { runWorkflows } from './workflows';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
@@ -37,6 +38,8 @@ const fields = {
   status: z.enum(LeadStatus).exclude([LeadStatus.CONVERTED]).default(LeadStatus.NEW),
   description: optionalText(5000),
   ownerId: optionalUuid.optional(),
+  /** 自定义字段的值 / custom field values */
+  custom: customInput,
   /** 来源市场活动 / source campaign */
   campaignId: optionalUuid.optional(),
 };
@@ -112,16 +115,18 @@ export async function getLead(ctx: AuthContext, id: string) {
  * Create a lead; the owner defaults to the current user.
  */
 export async function createLead(ctx: AuthContext, input: z.infer<typeof leadCreateSchema>) {
-  const { ownerId, ...data } = input;
+  const { ownerId, custom, ...data } = input;
   requirePermission(ctx, 'record.create');
   assertOwnerAssignable(ctx, ownerId);
   await assertCampaign(ctx.organizationId, data.campaignId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
   // 字段验证规则（按写入后的值）/ validation rules on the values as written
   await assertValidRecord(ctx.organizationId, 'LEAD', { ...data, ownerId: owner });
+  const cf = await resolveCustom(ctx.organizationId, 'LEAD', custom, null);
   return prisma.$transaction(async (tx) => {
-    const lead = await tx.lead.create({ data: { ...data, organizationId: ctx.organizationId, ownerId: owner }, include });
-    await audit(tx, { ...by(ctx), action: 'lead.create', entityType: 'lead', entityId: lead.id, changes: { after: snapshot('lead', lead) } });
+    const lead = await tx.lead.create({ data: { ...data, custom: cf.values as Prisma.InputJsonValue, organizationId: ctx.organizationId, ownerId: owner }, include });
+    const customChanges = customDiff(cf.defs, null, cf.values);
+    await audit(tx, { ...by(ctx), action: 'lead.create', entityType: 'lead', entityId: lead.id, changes: { after: snapshot('lead', lead), ...(Object.keys(customChanges).length ? { custom: customChanges } : {}) } });
     await notifyAssigned(tx, ctx, { entity: 'lead', id: lead.id }, lead.name, lead.ownerId, null);
     // 工作流可能改动记录，执行后返回最新数据 / workflows may change the record; return the latest
     if (await runWorkflows(tx, { entity: 'LEAD', before: null, after: lead, actorId: ctx.userId, meta: ctx.meta })) {
@@ -138,7 +143,7 @@ export async function createLead(ctx: AuthContext, input: z.infer<typeof leadCre
 export async function updateLead(ctx: AuthContext, id: string, input: z.infer<typeof leadUpdateSchema>) {
   const current = await getLead(ctx, id);
   assertCanUpdate(ctx, current);
-  const { ownerId, ...data } = input;
+  const { ownerId, custom, ...data } = input;
   assertOwnerAssignable(ctx, ownerId);
   await assertCampaign(ctx.organizationId, data.campaignId);
   if (current.convertedAt && data.status !== undefined) {
@@ -146,12 +151,14 @@ export async function updateLead(ctx: AuthContext, id: string, input: z.infer<ty
   }
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
   await assertValidRecord(ctx.organizationId, 'LEAD', { ...current, ...data, ownerId: owner });
+  const cf = custom === undefined ? null : await resolveCustom(ctx.organizationId, 'LEAD', custom, current.custom);
   return prisma.$transaction(async (tx) => {
-    const lead = await tx.lead.update({ where: { id: current.id }, data: { ...data, ownerId: owner }, include });
+    const lead = await tx.lead.update({ where: { id: current.id }, data: { ...data, ownerId: owner, ...(cf ? { custom: cf.values as Prisma.InputJsonValue } : {}) }, include });
     await notifyAssigned(tx, ctx, { entity: 'lead', id: lead.id }, lead.name, lead.ownerId, current.ownerId);
     const fields = diff('lead', current, lead);
-    if (Object.keys(fields).length) {
-      await audit(tx, { ...by(ctx), action: 'lead.update', entityType: 'lead', entityId: lead.id, changes: { fields } });
+    const customChanges = cf ? customDiff(cf.defs, current.custom, cf.values) : {};
+    if (Object.keys(fields).length || Object.keys(customChanges).length) {
+      await audit(tx, { ...by(ctx), action: 'lead.update', entityType: 'lead', entityId: lead.id, changes: { fields, ...(Object.keys(customChanges).length ? { custom: customChanges } : {}) } });
     }
     if (await runWorkflows(tx, { entity: 'LEAD', before: current, after: lead, actorId: ctx.userId, meta: ctx.meta })) {
       return tx.lead.findUniqueOrThrow({ where: { id: lead.id }, include });

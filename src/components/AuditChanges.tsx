@@ -322,6 +322,18 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     // 多级审批：第几级 · 级别名称 / multi-level: which level and its name
     lines.push(`${t('approvals.levelOf', { n: c.step, total: c.of })}${typeof c.level === 'string' ? ` · ${c.level}` : ''}`);
   }
+  if (c.custom && typeof c.custom === 'object' && !Array.isArray(c.custom)) {
+    // 记录的自定义字段变化（文本类已脱敏）/ custom field changes on a record (text-like values redacted)
+    const show = (v: unknown) => (v === null || v === undefined ? '—' : v === '[redacted]' ? t('audit.redacted') : typeof v === 'boolean' ? t(v ? 'common.yes' : 'common.no') : String(v));
+    const list = Object.entries(c.custom as Record<string, unknown>).map(([label, v]) => (Array.isArray(v) ? `${label}${t('common.colon')}${show(v[0])} → ${show(v[1])}` : `${label}${t('common.colon')}${show(v)}`));
+    if (list.length) lines.push(t('customFields.audit', { list: list.join(t('common.listSep')) }));
+  }
+  if (entry.entityType === 'customfield') {
+    // 自定义字段定义：对象、名称、类型；修改列出变化项 / definitions: entity, name, type; updates list changes
+    const d = (c.after ?? c.before) as { entity?: string; label?: string; type?: string } | undefined;
+    if (d) lines.push(`${tEnum('customFields.entity', d.entity ?? '')} · ${d.label ?? ''} · ${tEnum('customFields.type', d.type ?? '')}`);
+    if (typeof c.cleared === 'number') lines.push(t('customFields.deleted', { n: c.cleared }));
+  }
   if (typeof c.approvalCleared === 'string') lines.push(t('approvals.auditCleared', { status: tEnum('approvalStatus', c.approvalCleared) }));
   if ((entry.entityType === 'apikey' || entry.entityType === 'webhook') && typeof c.name === 'string') {
     // API 密钥与 Webhook：名称、前缀或地址（从不记录密钥）/ keys and webhooks: name, prefix or URL (never secrets)
@@ -348,7 +360,7 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     }
   } else if (fields) {
     for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, b, users, entry.entityType)} → ${value(f, a, users, entry.entityType)}`);
-  } else if (snap) {
+  } else if (snap && entry.entityType !== 'customfield') {
     for (const [f, v] of Object.entries(snap)) if (v !== null) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, v, users, entry.entityType)}`);
   } else if (typeof c.reason === 'string') {
     lines.push(tEnum('auditReason', c.reason));

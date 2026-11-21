@@ -19,6 +19,7 @@ import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
 import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch } from '@/lib/hooks';
 import type { ContactRow } from '@/lib/types';
+import { CustomFieldItems, CustomFieldValues, useCustomFields } from '@/components/CustomFields';
 
 type Primary = 'true' | 'false';
 
@@ -40,6 +41,7 @@ export default function ContactsPage() {
   const [editing, setEditing] = useState<ContactRow | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm();
+  const customDefs = useCustomFields('CONTACT');
 
   const openDetail = useCallback(
     (id: string) => {
@@ -57,7 +59,7 @@ export default function ContactsPage() {
   const openForm = (c: ContactRow | 'new') => {
     form.resetFields();
     if (c === 'new') form.setFieldsValue({ accountId: accountId ?? undefined, isPrimary: false });
-    else form.setFieldsValue({ name: c.name, title: c.title, phone: c.phone, email: c.email, isPrimary: c.isPrimary });
+    else form.setFieldsValue({ name: c.name, title: c.title, phone: c.phone, email: c.email, isPrimary: c.isPrimary, custom: c.custom ?? {} });
     setEditing(c);
   };
 
@@ -215,6 +217,7 @@ export default function ContactsPage() {
                 </Space>
               </Descriptions.Item>
             </Descriptions>
+            <CustomFieldValues defs={customDefs} values={detail.custom} />
           </div>
         )}
       </Drawer>
@@ -253,6 +256,7 @@ export default function ContactsPage() {
           <Form.Item name="email" label={t('contacts.email')} rules={[{ type: 'email', message: t('error.VALIDATION_ERROR') }]}>
             <Input maxLength={254} />
           </Form.Item>
+          <CustomFieldItems defs={customDefs} />
           <Form.Item name="isPrimary" valuePropName="checked">
             <Checkbox>{t('contacts.isPrimary')}</Checkbox>
           </Form.Item>

@@ -31,6 +31,8 @@ export interface Activity {
 
 /** 联系人 / Contact */
 export interface Contact {
+  /** 自定义字段的值 / custom field values */
+  custom?: Record<string, unknown>;
   id: string;
   accountId: string;
   name: string;
@@ -52,6 +54,8 @@ export interface ContactRow extends Contact {
 
 /** 客户 / Account */
 export interface Account {
+  /** 自定义字段的值 / custom field values */
+  custom?: Record<string, unknown>;
   id: string;
   name: string;
   industry: string | null;
@@ -77,6 +81,8 @@ export type ActivityRelation = { accountId: string } | { leadId: string } | { de
 
 /** 商机 / Deal */
 export interface Deal {
+  /** 自定义字段的值 / custom field values */
+  custom?: Record<string, unknown>;
   id: string;
   name: string;
   accountId: string;

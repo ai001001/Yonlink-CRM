@@ -17,7 +17,7 @@ import { removeOrganizationFiles, saveFile } from '../src/server/storage';
 import { toBase } from '../src/server/modules/exchange-rates';
 import { approvalReasons, approvalSteps } from '../src/server/modules/approvals';
 import { Prisma } from '../src/generated/prisma/client';
-import { buildDemoData, dealCreatedDaysAgo, demoStagePath, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_ACCOUNT_SCORING, DEMO_CONTACT_SCORING, DEMO_DEAL_SCORING, DEMO_ASSIGNMENT_RULES, DEMO_WEB_FORMS, DEMO_WORKFLOWS, DEMO_APPROVAL, DEMO_WEBHOOK, DEMO_VALIDATION_RULES, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoStagePath, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_ACCOUNT_SCORING, DEMO_CONTACT_SCORING, DEMO_DEAL_SCORING, DEMO_ASSIGNMENT_RULES, DEMO_WEB_FORMS, DEMO_WORKFLOWS, DEMO_APPROVAL, DEMO_WEBHOOK, DEMO_VALIDATION_RULES, DEMO_CUSTOM_FIELDS, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -119,6 +119,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         await tx.workflowRule.deleteMany({ where: { organizationId: o } });
         await tx.webhook.deleteMany({ where: { organizationId: o } });
         await tx.validationRule.deleteMany({ where: { organizationId: o } });
+        await tx.customField.deleteMany({ where: { organizationId: o } });
         await tx.apiKey.deleteMany({ where: { organizationId: o } });
         await tx.quoteApprovalSettings.deleteMany({ where: { organizationId: o } });
         await tx.quoteApprovalLevel.deleteMany({ where: { organizationId: o } });
@@ -806,6 +807,20 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
           data: { approvalStatus: decided === 0 ? 'APPROVED' : 'PENDING', approvalReasons: reasons, approvalStep: decided === 0 ? null : 0, approvalSteps: steps as unknown as Prisma.InputJsonValue },
         });
         decided += 1;
+      }
+
+      // 自定义字段：定义与各记录的值（按创建顺序）/ custom fields: definitions and values (in creation order)
+      for (const [position, f] of DEMO_CUSTOM_FIELDS.entries()) {
+        const key = `cf_${createHash('sha256').update(`${o}:${f.label}`).digest('hex').slice(0, 8)}`;
+        await tx.customField.create({ data: { organizationId: o, entity: f.entity, key, label: f.label, type: f.type, options: f.options ?? [], position } });
+        const table = { LEAD: tx.lead, ACCOUNT: tx.account, CONTACT: tx.contact, DEAL: tx.deal }[f.entity] as unknown as {
+          findMany: (a: object) => Promise<{ id: string; custom: Prisma.JsonValue }[]>;
+          update: (a: object) => Promise<unknown>;
+        };
+        const records = await table.findMany({ where: { organizationId: o }, select: { id: true, custom: true }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] });
+        for (const [i, r] of records.entries()) {
+          await table.update({ where: { id: r.id }, data: { custom: { ...(r.custom as Record<string, unknown>), [key]: f.value(i) } } });
+        }
       }
 
       // 字段验证规则 / validation rules

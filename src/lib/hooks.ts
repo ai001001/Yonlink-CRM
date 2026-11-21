@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { App } from 'antd';
+import { t, type MessageKey } from '@/i18n';
 import { api, qs } from './api';
 import { OPEN_RECORD } from './notifications';
 
@@ -93,7 +94,11 @@ export function useOwners(): UserOption[] {
  * Map server field errors onto an antd Form.
  */
 export function toFormErrors(details: Record<string, string[]> | undefined) {
-  return Object.entries(details ?? {}).map(([name, errors]) => ({ name, errors }));
+  // 自定义字段的错误键为 custom.<字段键>，对应表单路径 ['custom', 字段键]，错误代码翻译为提示
+  // custom-field errors use custom.<key>, mapped to the form path ['custom', key] with translated codes
+  return Object.entries(details ?? {}).map(([name, errors]) =>
+    name.startsWith('custom.') ? { name: ['custom', name.slice(7)], errors: errors.map((e) => t(`customFields.error.${e}` as MessageKey)) } : { name, errors },
+  );
 }
 
 /**

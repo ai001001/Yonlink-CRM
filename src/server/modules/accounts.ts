@@ -9,6 +9,7 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, can, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
+import { customDiff, customInput, resolveCustom } from './custom-fields';
 import { detachSharedActivities } from './activities';
 import { notifyAssigned } from './notifications';
 import { recycle } from './recycle-bin';
@@ -38,6 +39,8 @@ const accountFields = {
   address: optionalText(500),
   description: optionalText(5000),
   ownerId: optionalUuid.optional(),
+  /** 自定义字段的值 / custom field values */
+  custom: customInput,
 };
 
 /** 新建客户 / Create account */
@@ -58,6 +61,8 @@ const contactFields = {
   phone: optionalText(50),
   email: optionalEmail,
   isPrimary: z.boolean().default(false),
+  /** 自定义字段的值 / custom field values */
+  custom: customInput,
 };
 /** 新建联系人 / Create contact */
 export const contactCreateSchema = z.strictObject(contactFields);
@@ -139,13 +144,15 @@ export async function getAccount(ctx: AuthContext, id: string) {
  * Create an account.
  */
 export async function createAccount(ctx: AuthContext, input: z.infer<typeof accountCreateSchema>) {
-  const { ownerId, ...data } = input;
+  const { ownerId, custom, ...data } = input;
   requirePermission(ctx, 'record.create');
   assertOwnerAssignable(ctx, ownerId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
+  const cf = await resolveCustom(ctx.organizationId, 'ACCOUNT', custom, null);
   const created = await prisma.$transaction(async (tx) => {
-    const account = await tx.account.create({ data: { ...data, organizationId: ctx.organizationId, ownerId: owner } });
-    await audit(tx, { ...by(ctx), action: 'account.create', entityType: 'account', entityId: account.id, changes: { after: snapshot('account', account) } });
+    const account = await tx.account.create({ data: { ...data, custom: cf.values as Prisma.InputJsonValue, organizationId: ctx.organizationId, ownerId: owner } });
+    const customChanges = customDiff(cf.defs, null, cf.values);
+    await audit(tx, { ...by(ctx), action: 'account.create', entityType: 'account', entityId: account.id, changes: { after: snapshot('account', account), ...(Object.keys(customChanges).length ? { custom: customChanges } : {}) } });
     await notifyAssigned(tx, ctx, { entity: 'account', id: account.id }, account.name, account.ownerId, null);
     return account;
   });
@@ -159,15 +166,17 @@ export async function createAccount(ctx: AuthContext, input: z.infer<typeof acco
 export async function updateAccount(ctx: AuthContext, id: string, input: z.infer<typeof accountUpdateSchema>) {
   const current = await getAccount(ctx, id);
   assertCanUpdate(ctx, current);
-  const { ownerId, ...data } = input;
+  const { ownerId, custom, ...data } = input;
   assertOwnerAssignable(ctx, ownerId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
+  const cf = custom === undefined ? null : await resolveCustom(ctx.organizationId, 'ACCOUNT', custom, current.custom);
   await prisma.$transaction(async (tx) => {
-    const updated = await tx.account.update({ where: { id: current.id }, data: { ...data, ownerId: owner } });
+    const updated = await tx.account.update({ where: { id: current.id }, data: { ...data, ownerId: owner, ...(cf ? { custom: cf.values as Prisma.InputJsonValue } : {}) } });
     await notifyAssigned(tx, ctx, { entity: 'account', id }, updated.name, updated.ownerId, current.ownerId);
     const fields = diff('account', current, updated);
-    if (Object.keys(fields).length) {
-      await audit(tx, { ...by(ctx), action: 'account.update', entityType: 'account', entityId: id, changes: { fields } });
+    const customChanges = cf ? customDiff(cf.defs, current.custom, cf.values) : {};
+    if (Object.keys(fields).length || Object.keys(customChanges).length) {
+      await audit(tx, { ...by(ctx), action: 'account.update', entityType: 'account', entityId: id, changes: { fields, ...(Object.keys(customChanges).length ? { custom: customChanges } : {}) } });
     }
   });
   return getAccount(ctx, id);
@@ -291,12 +300,15 @@ export async function listContacts(ctx: AuthContext, accountId: string) {
 export async function createContact(ctx: AuthContext, accountId: string, input: z.infer<typeof contactCreateSchema>) {
   // 联系人属于客户资料，按客户编辑权限判断 / contacts are part of the account: account edit rights apply
   assertCanUpdate(ctx, await requireAccount(ctx, accountId));
+  const { custom, ...data } = input;
+  const cf = await resolveCustom(ctx.organizationId, 'CONTACT', custom, null);
   return prisma.$transaction(async (tx) => {
-    if (input.isPrimary) {
+    if (data.isPrimary) {
       await tx.contact.updateMany({ where: { organizationId: ctx.organizationId, accountId }, data: { isPrimary: false } });
     }
-    const contact = await tx.contact.create({ data: { ...input, organizationId: ctx.organizationId, accountId } });
-    await audit(tx, { ...by(ctx), action: 'contact.create', entityType: 'contact', entityId: contact.id, changes: { after: snapshot('contact', contact) } });
+    const contact = await tx.contact.create({ data: { ...data, custom: cf.values as Prisma.InputJsonValue, organizationId: ctx.organizationId, accountId } });
+    const customChanges = customDiff(cf.defs, null, cf.values);
+    await audit(tx, { ...by(ctx), action: 'contact.create', entityType: 'contact', entityId: contact.id, changes: { after: snapshot('contact', contact), ...(Object.keys(customChanges).length ? { custom: customChanges } : {}) } });
     return contact;
   });
 }
@@ -308,17 +320,20 @@ export async function createContact(ctx: AuthContext, accountId: string, input: 
 export async function updateContact(ctx: AuthContext, id: string, input: z.infer<typeof contactUpdateSchema>) {
   const { account, ...contact } = await requireContact(ctx, id);
   assertCanUpdate(ctx, account);
+  const { custom, ...data } = input;
+  const cf = custom === undefined ? null : await resolveCustom(ctx.organizationId, 'CONTACT', custom, contact.custom);
   return prisma.$transaction(async (tx) => {
-    if (input.isPrimary) {
+    if (data.isPrimary) {
       await tx.contact.updateMany({
         where: { organizationId: ctx.organizationId, accountId: contact.accountId, id: { not: id } },
         data: { isPrimary: false },
       });
     }
-    const updated = await tx.contact.update({ where: { id }, data: input });
+    const updated = await tx.contact.update({ where: { id }, data: { ...data, ...(cf ? { custom: cf.values as Prisma.InputJsonValue } : {}) } });
     const fields = diff('contact', contact, updated);
-    if (Object.keys(fields).length) {
-      await audit(tx, { ...by(ctx), action: 'contact.update', entityType: 'contact', entityId: id, changes: { fields } });
+    const customChanges = cf ? customDiff(cf.defs, contact.custom, cf.values) : {};
+    if (Object.keys(fields).length || Object.keys(customChanges).length) {
+      await audit(tx, { ...by(ctx), action: 'contact.update', entityType: 'contact', entityId: id, changes: { fields, ...(Object.keys(customChanges).length ? { custom: customChanges } : {}) } });
     }
     return updated;
   });

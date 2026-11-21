@@ -26,6 +26,7 @@ import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
 import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch, useSelection } from '@/lib/hooks';
 import type { Account } from '@/lib/types';
+import { CustomFieldItems, CustomFieldValues, useCustomFields } from '@/components/CustomFields';
 
 const INDUSTRIES = ['MANUFACTURING', 'IT', 'FINANCE', 'RETAIL', 'EDUCATION', 'HEALTHCARE', 'CONSTRUCTION', 'LOGISTICS', 'GOVERNMENT', 'OTHER'];
 const industryOptions = INDUSTRIES.map((v) => ({ value: v, label: tEnum('industry', v) }));
@@ -52,6 +53,7 @@ export default function AccountsPage() {
   const sel = useSelection(data.items, perm.can('record.update.own') || perm.canDelete);
 
   const [form] = Form.useForm();
+  const customDefs = useCustomFields('ACCOUNT');
   const [editing, setEditing] = useState<Account | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<Account | null>(null);
@@ -233,6 +235,7 @@ export default function AccountsPage() {
           <Form.Item name="address" label={t('accounts.address')}>
             <Input maxLength={500} />
           </Form.Item>
+          <CustomFieldItems defs={customDefs} />
           <Form.Item name="description" label={t('common.description')}>
             <Input.TextArea rows={3} maxLength={5000} />
           </Form.Item>
@@ -253,46 +256,49 @@ export default function AccountsPage() {
                 key: 'profile',
                 label: t('accounts.tabProfile'),
                 children: (
-                  <Descriptions column={2} bordered size="small">
-                    <Descriptions.Item label={t('accounts.name')}>{detail.name}</Descriptions.Item>
-                    <Descriptions.Item label={t('accounts.industry')}>{tEnum('industry', detail.industry)}</Descriptions.Item>
-                    <Descriptions.Item label={t('accounts.phone')}>{detail.phone}</Descriptions.Item>
-                    <Descriptions.Item label={t('accounts.website')}>{detail.website}</Descriptions.Item>
-                    <Descriptions.Item label={t('accounts.address')} span={2}>
-                      {detail.address}
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('contacts.isPrimary')}>
-                      {primary(detail) && (
-                        <Tag icon={<StarFilled />} color="gold">
-                          {primary(detail)?.name}
-                        </Tag>
-                      )}
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('common.owner')}>{detail.owner?.name ?? t('common.unassigned')}</Descriptions.Item>
-                    <Descriptions.Item label={t('accounts.dealCount')}>{detail._count.deals}</Descriptions.Item>
-                    <Descriptions.Item label={t('scoring.score')} span={2}>
-                      <Space orientation="vertical" size={4}>
-                        <ScoreTag score={detail.score} config={scoring.config} />
-                        <ScoreDetail entity="account" id={detail.id} version={`${detail.updatedAt}:${detail.score}`} />
-                      </Space>
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('priceBooks.accountBook')} span={2}>
-                      {detail.priceBook ? (
-                        <Link href={`/price-books?id=${detail.priceBook.id}`} data-testid="account-price-book">
-                          {detail.priceBook.name}
-                        </Link>
-                      ) : (
-                        t('priceBooks.none')
-                      )}
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('common.createdAt')}>{fmtDateTime(detail.createdAt)}</Descriptions.Item>
-                    <Descriptions.Item label={t('tags.title')} span={2}>
-                      <TagEditor key={`tags-${detail.id}`} path="/api/accounts" record={detail} onChanged={() => void reload()} />
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('common.description')} span={2}>
-                      {detail.description}
-                    </Descriptions.Item>
-                  </Descriptions>
+                  <>
+                    <Descriptions column={2} bordered size="small">
+                      <Descriptions.Item label={t('accounts.name')}>{detail.name}</Descriptions.Item>
+                      <Descriptions.Item label={t('accounts.industry')}>{tEnum('industry', detail.industry)}</Descriptions.Item>
+                      <Descriptions.Item label={t('accounts.phone')}>{detail.phone}</Descriptions.Item>
+                      <Descriptions.Item label={t('accounts.website')}>{detail.website}</Descriptions.Item>
+                      <Descriptions.Item label={t('accounts.address')} span={2}>
+                        {detail.address}
+                      </Descriptions.Item>
+                      <Descriptions.Item label={t('contacts.isPrimary')}>
+                        {primary(detail) && (
+                          <Tag icon={<StarFilled />} color="gold">
+                            {primary(detail)?.name}
+                          </Tag>
+                        )}
+                      </Descriptions.Item>
+                      <Descriptions.Item label={t('common.owner')}>{detail.owner?.name ?? t('common.unassigned')}</Descriptions.Item>
+                      <Descriptions.Item label={t('accounts.dealCount')}>{detail._count.deals}</Descriptions.Item>
+                      <Descriptions.Item label={t('scoring.score')} span={2}>
+                        <Space orientation="vertical" size={4}>
+                          <ScoreTag score={detail.score} config={scoring.config} />
+                          <ScoreDetail entity="account" id={detail.id} version={`${detail.updatedAt}:${detail.score}`} />
+                        </Space>
+                      </Descriptions.Item>
+                      <Descriptions.Item label={t('priceBooks.accountBook')} span={2}>
+                        {detail.priceBook ? (
+                          <Link href={`/price-books?id=${detail.priceBook.id}`} data-testid="account-price-book">
+                            {detail.priceBook.name}
+                          </Link>
+                        ) : (
+                          t('priceBooks.none')
+                        )}
+                      </Descriptions.Item>
+                      <Descriptions.Item label={t('common.createdAt')}>{fmtDateTime(detail.createdAt)}</Descriptions.Item>
+                      <Descriptions.Item label={t('tags.title')} span={2}>
+                        <TagEditor key={`tags-${detail.id}`} path="/api/accounts" record={detail} onChanged={() => void reload()} />
+                      </Descriptions.Item>
+                      <Descriptions.Item label={t('common.description')} span={2}>
+                        {detail.description}
+                      </Descriptions.Item>
+                    </Descriptions>
+                    <CustomFieldValues defs={customDefs} values={detail.custom} />
+                  </>
                 ),
               },
               {

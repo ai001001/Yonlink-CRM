@@ -32,6 +32,7 @@ import { api, ClientApiError } from '@/lib/api';
 import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
 import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch, useSelection, type PageResult } from '@/lib/hooks';
 import type { Deal } from '@/lib/types';
+import { CustomFieldItems, CustomFieldValues, useCustomFields } from '@/components/CustomFields';
 
 const DEAL_STAGES = ['QUALIFICATION', 'NEEDS_ANALYSIS', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST'] as const;
 const STAGE_COLOR: Record<string, string> = {
@@ -80,6 +81,7 @@ export default function DealsPage() {
   const sums = (data as PageResult<Deal> & { sums?: { currency: string; amount: string }[] }).sums ?? [];
 
   const [form] = Form.useForm<FormValues>();
+  const customDefs = useCustomFields('DEAL');
   const [editing, setEditing] = useState<Deal | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<Deal | null>(null);
@@ -303,6 +305,7 @@ export default function DealsPage() {
           <Form.Item name="campaignId" label={t('campaigns.source')}>
             <CampaignSelect key={editing && editing !== 'new' ? editing.id : 'new'} />
           </Form.Item>
+          <CustomFieldItems defs={customDefs} />
           <Form.Item name="description" label={t('common.description')}>
             <Input.TextArea rows={3} maxLength={5000} />
           </Form.Item>
@@ -324,41 +327,44 @@ export default function DealsPage() {
                 key: 'profile',
                 label: t('accounts.tabProfile'),
                 children: (
-                  <Descriptions column={2} bordered size="small">
-                    <Descriptions.Item label={t('deals.name')} span={2}>
-                      {detail.name}
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('deals.account')}>{detail.account.name}</Descriptions.Item>
-                    <Descriptions.Item label={t('deals.amount')}>{fmtMoney(detail.amount, detail.currency)}</Descriptions.Item>
-                    <Descriptions.Item label={t('deals.stage')}>
-                      <Tag color={STAGE_COLOR[detail.stage]}>{tEnum('dealStage', detail.stage)}</Tag>
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('scoring.score')} span={2}>
-                      <Space orientation="vertical" size={4}>
-                        <ScoreTag score={detail.score} config={scoring.config} />
-                        <ScoreDetail entity="deal" id={detail.id} version={`${detail.updatedAt}:${detail.score}`} />
-                      </Space>
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('deals.expectedCloseDate')}>
-                      {fmtDate(detail.expectedCloseDate?.slice(0, 10))}
-                      {isOverdue(detail) && (
-                        <Tag color="red" style={{ marginLeft: 8 }}>
-                          {t('deals.overdueClose')}
-                        </Tag>
-                      )}
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('common.owner')}>{detail.owner?.name ?? t('common.unassigned')}</Descriptions.Item>
-                    <Descriptions.Item label={t('campaigns.source')}>
-                      {detail.campaign ? <Link href={`/campaigns?id=${detail.campaign.id}`}>{detail.campaign.name}</Link> : null}
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('common.createdAt')}>{fmtDateTime(detail.createdAt)}</Descriptions.Item>
-                    <Descriptions.Item label={t('tags.title')} span={2}>
-                      <TagEditor key={`tags-${detail.id}`} path="/api/deals" record={detail} onChanged={() => refresh()} />
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('common.description')} span={2}>
-                      {detail.description}
-                    </Descriptions.Item>
-                  </Descriptions>
+                  <>
+                    <Descriptions column={2} bordered size="small">
+                      <Descriptions.Item label={t('deals.name')} span={2}>
+                        {detail.name}
+                      </Descriptions.Item>
+                      <Descriptions.Item label={t('deals.account')}>{detail.account.name}</Descriptions.Item>
+                      <Descriptions.Item label={t('deals.amount')}>{fmtMoney(detail.amount, detail.currency)}</Descriptions.Item>
+                      <Descriptions.Item label={t('deals.stage')}>
+                        <Tag color={STAGE_COLOR[detail.stage]}>{tEnum('dealStage', detail.stage)}</Tag>
+                      </Descriptions.Item>
+                      <Descriptions.Item label={t('scoring.score')} span={2}>
+                        <Space orientation="vertical" size={4}>
+                          <ScoreTag score={detail.score} config={scoring.config} />
+                          <ScoreDetail entity="deal" id={detail.id} version={`${detail.updatedAt}:${detail.score}`} />
+                        </Space>
+                      </Descriptions.Item>
+                      <Descriptions.Item label={t('deals.expectedCloseDate')}>
+                        {fmtDate(detail.expectedCloseDate?.slice(0, 10))}
+                        {isOverdue(detail) && (
+                          <Tag color="red" style={{ marginLeft: 8 }}>
+                            {t('deals.overdueClose')}
+                          </Tag>
+                        )}
+                      </Descriptions.Item>
+                      <Descriptions.Item label={t('common.owner')}>{detail.owner?.name ?? t('common.unassigned')}</Descriptions.Item>
+                      <Descriptions.Item label={t('campaigns.source')}>
+                        {detail.campaign ? <Link href={`/campaigns?id=${detail.campaign.id}`}>{detail.campaign.name}</Link> : null}
+                      </Descriptions.Item>
+                      <Descriptions.Item label={t('common.createdAt')}>{fmtDateTime(detail.createdAt)}</Descriptions.Item>
+                      <Descriptions.Item label={t('tags.title')} span={2}>
+                        <TagEditor key={`tags-${detail.id}`} path="/api/deals" record={detail} onChanged={() => refresh()} />
+                      </Descriptions.Item>
+                      <Descriptions.Item label={t('common.description')} span={2}>
+                        {detail.description}
+                      </Descriptions.Item>
+                    </Descriptions>
+                    <CustomFieldValues defs={customDefs} values={detail.custom} />
+                  </>
                 ),
               },
               {

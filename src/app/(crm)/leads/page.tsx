@@ -27,9 +27,12 @@ import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { ConvertLeadModal } from '@/components/ConvertLeadModal';
 import { RelatedActivities } from '@/components/RelatedActivities';
 import type { RecordTags, Ref } from '@/lib/types';
+import { CustomFieldItems, CustomFieldValues, useCustomFields } from '@/components/CustomFields';
 
 /** 线索 / Lead */
 interface Lead {
+  /** 自定义字段的值 / custom field values */
+  custom?: Record<string, unknown>;
   id: string;
   name: string;
   company: string | null;
@@ -94,6 +97,7 @@ export default function LeadsPage() {
   const sel = useSelection(data.items, perm.can('record.update.own') || perm.canDelete);
 
   const [form] = Form.useForm();
+  const customDefs = useCustomFields('LEAD');
   const [editing, setEditing] = useState<Lead | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<Lead | null>(null);
@@ -296,6 +300,7 @@ export default function LeadsPage() {
           <Form.Item name="campaignId" label={t('campaigns.source')}>
             <CampaignSelect key={editing && editing !== 'new' ? editing.id : 'new'} />
           </Form.Item>
+          <CustomFieldItems defs={customDefs} />
           <Form.Item name="description" label={t('common.description')}>
             <Input.TextArea rows={3} maxLength={5000} />
           </Form.Item>
@@ -356,6 +361,7 @@ export default function LeadsPage() {
                 {detail.description}
               </Descriptions.Item>
             </Descriptions>
+            <CustomFieldValues defs={customDefs} values={detail.custom} />
             {detail.convertedAt && (
               <Descriptions column={1} bordered size="small" title={t('convert.result')} style={{ marginTop: 24 }} data-testid="conversion-result">
                 <Descriptions.Item label={t('convert.convertedAt')}>{fmtDateTime(detail.convertedAt)}</Descriptions.Item>

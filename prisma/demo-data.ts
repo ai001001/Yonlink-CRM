@@ -1447,3 +1447,17 @@ export const DEMO_VALIDATION_RULES: { name: string; entity: 'LEAD' | 'DEAL'; whe
     errorField: 'description',
   },
 ];
+
+/**
+ * 演示自定义字段（演示数据）：线索意向产品线（下拉）、客户年采购预算（数字，万元）与是否经销商（勾选）、
+ * 联系人微信号（文本）、商机交付方式（下拉）。值按记录顺序生成。
+ * Demo custom fields (demo data): lead product interest (picklist), account annual budget (number, 10k CNY) and dealer
+ * flag (checkbox), contact WeChat id (text) and deal delivery mode (picklist). Values follow the record order.
+ */
+export const DEMO_CUSTOM_FIELDS: { entity: 'LEAD' | 'ACCOUNT' | 'CONTACT' | 'DEAL'; label: string; type: 'TEXT' | 'NUMBER' | 'PICKLIST' | 'CHECKBOX'; options?: string[]; value: (i: number) => unknown }[] = [
+  { entity: 'LEAD', label: '【演示】意向产品线', type: 'PICKLIST', options: ['柴油机增压器', '汽油机增压器', '核心部件', '维修工具'], value: (i) => ['柴油机增压器', '汽油机增压器', '核心部件', '维修工具'][i % 4] },
+  { entity: 'ACCOUNT', label: '【演示】年采购预算（万元）', type: 'NUMBER', value: (i) => String(50 + ((i * 37) % 450)) },
+  { entity: 'ACCOUNT', label: '【演示】是否经销商', type: 'CHECKBOX', value: (i) => i % 3 === 0 },
+  { entity: 'CONTACT', label: '【演示】微信号', type: 'TEXT', value: (i) => `demo_wx_${String(i + 1).padStart(3, '0')}` },
+  { entity: 'DEAL', label: '【演示】交付方式', type: 'PICKLIST', options: ['海运', '空运', '快递'], value: (i) => ['海运', '空运', '快递'][i % 3] },
+];
