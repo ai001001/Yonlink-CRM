@@ -80,6 +80,7 @@
 | 多级审批 | ✅ | ✅ | ✅ | [multi-level-approval.md](multi-level-approval.md) |
 | 自定义字段 | ✅ | ✅ | ✅ | [custom-fields.md](custom-fields.md) |
 | 区域管理 | ✅ | ✅ | ✅ | [territories.md](territories.md) |
+| 宏 | ✅ | ✅ | ✅ | [macros.md](macros.md) |
 
 ## 整体回归（全部模块完成后）
 命令：`scripts/regression.sh final-mvp` → **PASS**（lint、typecheck、11 文件 181/181、静态导出、生产构建、E2E 6/6）。原始输出：[results/final-mvp-r3-regression.txt](results/final-mvp-r3-regression.txt)

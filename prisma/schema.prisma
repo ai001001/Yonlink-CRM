@@ -75,6 +75,7 @@ model Organization {
   approvalLevels       QuoteApprovalLevel[]
   customFields         CustomField[]
   territories          Territory[]
+  macros               Macro[]
   territoryMembers     TerritoryMember[]
   stockMovements       StockMovement[]
   apiKeys              ApiKey[]
@@ -141,6 +142,7 @@ model User {
   webhooksCreated    Webhook[]               @relation("WebhookCreator")
   validationRules    ValidationRule[]        @relation("ValidationCreator")
   territoriesManaged Territory[]             @relation("TerritoryManager")
+  macrosCreated      Macro[]                 @relation("MacroCreator")
   territoryMembers   TerritoryMember[]
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
@@ -2159,4 +2161,35 @@ model TerritoryMember {
   @@id([territoryId, userId])
   @@index([organizationId, userId])
   @@map("territory_members")
+}
+
+/// 宏的范围：个人（仅创建人可见）或共享 / macro scope: personal (creator only) or shared
+enum MacroScope {
+  PERSONAL
+  SHARED
+
+  @@map("macro_scope")
+}
+
+/// 宏：一键对选中的线索或商机执行一组动作 / macro: a set of actions run on chosen leads or deals in one click
+model Macro {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  name           String         @db.VarChar(100)
+  description    String?        @db.VarChar(500)
+  entity         WorkflowEntity
+  scope          MacroScope
+  /// 动作（1–5 个）/ actions (1–5)
+  actions        Json
+  createdById    String         @map("created_by_id") @db.Uuid
+  runCount       Int            @default(0) @map("run_count")
+  lastRunAt      DateTime?      @map("last_run_at") @db.Timestamptz(6)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User           @relation("MacroCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId, entity])
+  @@index([organizationId, createdById])
+  @@map("macros")
 }

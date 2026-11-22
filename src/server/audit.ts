@@ -16,7 +16,7 @@ export interface RequestMeta {
 }
 
 /** 审计对象类型 / Audited entity types */
-export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'order' | 'invoice' | 'report' | 'rate' | 'campaign' | 'ticket' | 'sla' | 'scoring' | 'assignment' | 'workflow' | 'approval' | 'apikey' | 'webhook' | 'validation' | 'customfield' | 'territory' | 'article' | 'vendor' | 'purchase' | 'pricebook' | 'webform' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
+export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'order' | 'invoice' | 'report' | 'rate' | 'campaign' | 'ticket' | 'sla' | 'scoring' | 'assignment' | 'workflow' | 'approval' | 'apikey' | 'webhook' | 'validation' | 'customfield' | 'territory' | 'macro' | 'article' | 'vendor' | 'purchase' | 'pricebook' | 'webform' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
 
 /** 字段策略 / Field policy */
 type Policy = 'plain' | 'mask' | 'redact';
@@ -93,6 +93,7 @@ export const AUDIT_FIELDS: Record<Exclude<AuditEntity, 'auth'>, Record<string, P
   // 自定义字段审计直接记录定义与变化 / custom-field audits record definitions and changes directly
   customfield: {},
   territory: {},
+  macro: {},
   // 汇率审计直接记录币种、日期与汇率 / rate audits record currency, date and rate directly
   rate: {},
   invoice: {

@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useCallback, useState } from 'react';
+import { Fragment, useCallback, useState } from 'react';
 import { App, Button, Card, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import Link from 'next/link';
 import { ApartmentOutlined, PlusOutlined, StarOutlined, SwapOutlined, UploadOutlined } from '@ant-design/icons';
@@ -16,6 +16,7 @@ import { AuditTrail } from '@/components/AuditTrail';
 import { usePermissions } from '@/components/AuthProvider';
 import { AssignmentRulesModal } from '@/components/AssignmentRules';
 import { BulkBar } from '@/components/BulkBar';
+import { MacroRunner } from '@/components/Macros';
 import { CampaignSelect } from '@/components/CampaignSelect';
 import { SavedViews } from '@/components/SavedViews';
 import { TagEditor, TagFilter, TagList, tagsOf } from '@/components/Tags';
@@ -101,6 +102,18 @@ export default function LeadsPage() {
   const [editing, setEditing] = useState<Lead | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<Lead | null>(null);
+  /** 宏执行后递增，使详情内的面板重新加载 / bumped after a macro run so the detail panels reload */
+  const [detailVersion, setDetailVersion] = useState(0);
+  /** 重新读取详情并刷新列表（宏执行后）/ reload the detail and the list (after a macro run) */
+  const refreshDetail = async (id: string) => {
+    try {
+      setDetail(await api<Lead>(`/api/leads/${id}`));
+      setDetailVersion((v) => v + 1);
+    } catch {
+      setDetail(null);
+    }
+    void reload();
+  };
   const [converting, setConverting] = useState<Lead | null>(null);
   const [importing, setImporting] = useState(false);
   const editingConverted = editing !== null && editing !== 'new' && editing.convertedAt !== null;
@@ -192,6 +205,7 @@ export default function LeadsPage() {
         path="/api/leads"
         taggable
         ruleAssignable
+        macroEntity="LEAD"
         selected={sel.selected}
         names={Object.fromEntries(data.items.map((r) => [r.id, r.name]))}
         valueChange={{ action: 'status', field: 'status', options: editableStatusOptions }}
@@ -320,13 +334,14 @@ export default function LeadsPage() {
                   {t('convert.action')}
                 </Button>
               )}
+              {perm.canEdit(detail) && <MacroRunner entity="LEAD" ids={[detail.id]} names={{ [detail.id]: detail.name }} onDone={() => void refreshDetail(detail.id)} />}
               {perm.canEdit(detail) && <Button onClick={() => openForm(detail)}>{t('common.edit')}</Button>}
             </Space>
           )
         }
       >
         {detail && (
-          <>
+          <Fragment key={detailVersion}>
             <Descriptions column={2} bordered size="small">
               <Descriptions.Item label={t('leads.name')}>{detail.name}</Descriptions.Item>
               <Descriptions.Item label={t('leads.company')}>{detail.company}</Descriptions.Item>
@@ -390,7 +405,7 @@ export default function LeadsPage() {
               {t('audit.trail')}
             </Typography.Title>
             <AuditTrail entityType="lead" entityId={detail.id} version={`${detail.updatedAt}${detail.convertedAt ?? ''}`} />
-          </>
+          </Fragment>
         )}
       </Drawer>
       <ConvertLeadModal

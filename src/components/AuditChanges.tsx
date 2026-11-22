@@ -341,6 +341,20 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     if (typeof c.clearedAccounts === 'number') lines.push(t('territories.auditCleared', { count: c.clearedAccounts }));
     if (entry.action === 'territory.apply') lines.push(t('territories.auditApplied', { checked: Number(c.checked ?? 0), changed: Number(c.changed ?? 0) }));
   }
+  if (entry.entityType === 'macro') {
+    // 宏：名称、对象与范围；修改列出变化项；执行显示成功与失败条数 / macro: name, module and scope; updates list changes; runs show counts
+    const name = typeof c.name === 'string' ? c.name : typeof snap?.name === 'string' ? snap.name : '';
+    if (entry.action === 'macro.run') {
+      lines.push(t('macros.audit', { name, ok: Number(c.succeeded ?? 0), fail: Number(c.failed ?? 0) }));
+    } else {
+      lines.push(t('macros.auditName', { name }));
+      if (snap) lines.push(`${tEnum('workflows.entity', String(snap.entity ?? ''))} · ${tEnum('macros.scope', String(snap.scope ?? ''))} · ${t('workflows.auditCount', { n: Array.isArray(snap.actions) ? snap.actions.length : 0 })}`);
+      if (fields) {
+        const LABEL: Record<string, MessageKey> = { name: 'macros.name', scope: 'macros.scope', actions: 'macros.actions', entity: 'macros.entity' };
+        lines.push(t('macros.auditChanged', { list: Object.keys(fields).map((f) => (LABEL[f] ? t(LABEL[f]) : f)).join(t('common.listSep')) }));
+      }
+    }
+  }
   if (entry.entityType === 'customfield') {
     // 自定义字段定义：对象、名称、类型；修改列出变化项 / definitions: entity, name, type; updates list changes
     const d = (c.after ?? c.before) as { entity?: string; label?: string; type?: string } | undefined;
@@ -371,9 +385,9 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
       const show = (f: string, v: unknown) => (Array.isArray(v) ? t('workflows.auditCount', { n: v.length }) : f === 'trigger' ? tEnum('workflows.trigger', String(v)) : value(f, v, users));
       for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${LABEL[f] ? t(LABEL[f]) : f}${t('common.colon')}${show(f, b)} → ${show(f, a)}`);
     }
-  } else if (fields && entry.entityType !== 'territory') {
+  } else if (fields && entry.entityType !== 'territory' && entry.entityType !== 'macro') {
     for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, b, users, entry.entityType)} → ${value(f, a, users, entry.entityType)}`);
-  } else if (snap && entry.entityType !== 'customfield' && entry.entityType !== 'territory') {
+  } else if (snap && entry.entityType !== 'customfield' && entry.entityType !== 'territory' && entry.entityType !== 'macro') {
     for (const [f, v] of Object.entries(snap)) if (v !== null) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, v, users, entry.entityType)}`);
   } else if (typeof c.reason === 'string') {
     lines.push(tEnum('auditReason', c.reason));

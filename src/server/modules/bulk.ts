@@ -68,7 +68,7 @@ export interface BulkResult {
  * 逐条执行，收集成功与失败（每条记录独立事务，互不影响）。
  * Run per record and collect successes and failures (each record has its own transaction).
  */
-async function runBulk(list: string[], fn: (id: string) => Promise<unknown>): Promise<BulkResult> {
+export async function runBulk(list: string[], fn: (id: string) => Promise<unknown>): Promise<BulkResult> {
   const result: BulkResult = { succeeded: [], failed: [] };
   for (const id of list) {
     try {

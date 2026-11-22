@@ -8,6 +8,8 @@ import { closeDrawer, nav, pickRecord, searchList, selectOption, signIn } from '
 const SAVE = /保\s*存/;
 
 test('商机完整业务流程 / full deals flow', async ({ page }) => {
+  // 完整流程步骤多，单次约 30 秒，接近默认时限 / the full flow takes about 30 s, close to the default limit
+  test.setTimeout(60_000);
   await signIn(page);
 
   // 准备客户 / prepare an account

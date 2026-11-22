@@ -34,6 +34,7 @@ import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch, useSe
 import type { Deal } from '@/lib/types';
 import { CustomFieldItems, CustomFieldValues, useCustomFields } from '@/components/CustomFields';
 import { TerritoryFilter, useTerritoryOptions } from '@/components/Territories';
+import { MacroRunner } from '@/components/Macros';
 
 const DEAL_STAGES = ['QUALIFICATION', 'NEEDS_ANALYSIS', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST'] as const;
 const STAGE_COLOR: Record<string, string> = {
@@ -89,6 +90,18 @@ export default function DealsPage() {
   const [editing, setEditing] = useState<Deal | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<Deal | null>(null);
+  /** 宏执行后递增，使详情内的面板重新加载 / bumped after a macro run so the detail panels reload */
+  const [detailVersion, setDetailVersion] = useState(0);
+  /** 重新读取详情并刷新列表（宏执行后）/ reload the detail and the list (after a macro run) */
+  const refreshDetail = async (id: string) => {
+    try {
+      setDetail(await api<Deal>(`/api/deals/${id}`));
+      setDetailVersion((v) => v + 1);
+    } catch {
+      setDetail(null);
+    }
+    void reload();
+  };
   // 有产品明细时金额由明细计算、币种锁定 / with line items the amount is computed and the currency locked
   const amountLocked = editing !== null && editing !== 'new' && (editing._count?.lineItems ?? 0) > 0;
 
@@ -200,6 +213,7 @@ export default function DealsPage() {
         <BulkBar
           path="/api/deals"
           taggable
+          macroEntity="DEAL"
           selected={sel.selected}
           names={Object.fromEntries(data.items.map((r) => [r.id, r.name]))}
           valueChange={{ action: 'stage', field: 'stage', options: stageOptions }}
@@ -323,10 +337,19 @@ export default function DealsPage() {
         size={900}
         open={detail !== null}
         onClose={() => setDetail(null)}
-        extra={detail && perm.canEdit(detail) && <Button onClick={() => openForm(detail)}>{t('common.edit')}</Button>}
+        extra={
+          detail &&
+          perm.canEdit(detail) && (
+            <Space>
+              <MacroRunner entity="DEAL" ids={[detail.id]} names={{ [detail.id]: detail.name }} onDone={() => void refreshDetail(detail.id)} />
+              <Button onClick={() => openForm(detail)}>{t('common.edit')}</Button>
+            </Space>
+          )
+        }
       >
         {detail && (
           <Tabs
+            key={detailVersion}
             items={[
               {
                 key: 'profile',

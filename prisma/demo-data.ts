@@ -1502,3 +1502,50 @@ export const DEMO_TERRITORIES: {
   { key: 'na', parent: 'intl', name: '【演示】北美', description: '北美客户（演示数据）', manager: 'sales1', members: ['sales1'], priority: 10, match: 'ALL', conditions: [{ field: 'address', op: 'STARTS_WITH', value: '北美' }] },
   { key: 'eu', parent: 'intl', name: '【演示】欧洲', description: '欧洲客户（演示数据）', members: ['sales1'], priority: 10, match: 'ALL', conditions: [{ field: 'address', op: 'STARTS_WITH', value: '欧洲' }] },
 ];
+
+/**
+ * 演示宏（演示数据）：两个共享宏（郑经理创建）与一个王芳的个人宏；标签按键、用户按键在写入时替换为 ID。
+ * Demo macros (demo data): two shared macros by the manager and one personal macro of 王芳; tag and user keys become ids.
+ */
+export const DEMO_MACROS: {
+  name: string;
+  description: string;
+  entity: 'LEAD' | 'DEAL';
+  scope: 'PERSONAL' | 'SHARED';
+  creator: OwnerKey;
+  actions: ({ type: 'UPDATE_FIELD'; field: string; value: string } | { type: 'ADD_TAG'; tag: DemoTagKey } | { type: 'CREATE_TASK'; subject: string; dueInDays: number; assignTo: 'OWNER' })[];
+}[] = [
+  {
+    name: '【演示】已联系并安排回访',
+    description: '电话沟通后使用（演示数据）',
+    entity: 'LEAD',
+    scope: 'SHARED',
+    creator: 'manager',
+    actions: [
+      { type: 'UPDATE_FIELD', field: 'status', value: 'CONTACTED' },
+      { type: 'CREATE_TASK', subject: '电话回访，确认需求与预算', dueInDays: 3, assignTo: 'OWNER' },
+    ],
+  },
+  {
+    name: '【演示】进入方案报价',
+    description: '需求确认后推进到方案报价（演示数据）',
+    entity: 'DEAL',
+    scope: 'SHARED',
+    creator: 'manager',
+    actions: [
+      { type: 'UPDATE_FIELD', field: 'stage', value: 'PROPOSAL' },
+      { type: 'CREATE_TASK', subject: '准备报价单并发送给客户', dueInDays: 2, assignTo: 'OWNER' },
+    ],
+  },
+  {
+    name: '【演示】展会线索整理',
+    description: '王芳的个人宏（演示数据）',
+    entity: 'LEAD',
+    scope: 'PERSONAL',
+    creator: 'sales1',
+    actions: [
+      { type: 'UPDATE_FIELD', field: 'source', value: 'EXHIBITION' },
+      { type: 'ADD_TAG', tag: 'expo' },
+    ],
+  },
+];
