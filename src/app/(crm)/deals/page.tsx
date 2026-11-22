@@ -35,6 +35,7 @@ import type { Deal } from '@/lib/types';
 import { CustomFieldItems, CustomFieldValues, useCustomFields } from '@/components/CustomFields';
 import { TerritoryFilter, useTerritoryOptions } from '@/components/Territories';
 import { MacroRunner } from '@/components/Macros';
+import { BlueprintPanel, useBlueprintStatus } from '@/components/Blueprint';
 
 const DEAL_STAGES = ['QUALIFICATION', 'NEEDS_ANALYSIS', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST'] as const;
 const STAGE_COLOR: Record<string, string> = {
@@ -90,6 +91,7 @@ export default function DealsPage() {
   const [editing, setEditing] = useState<Deal | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<Deal | null>(null);
+  const blueprint = useBlueprintStatus('DEAL');
   /** 宏执行后递增，使详情内的面板重新加载 / bumped after a macro run so the detail panels reload */
   const [detailVersion, setDetailVersion] = useState(0);
   /** 重新读取详情并刷新列表（宏执行后）/ reload the detail and the list (after a macro run) */
@@ -311,8 +313,8 @@ export default function DealsPage() {
           </div>
           {amountLocked && <Typography.Paragraph type="secondary">{t('items.amountLocked')}</Typography.Paragraph>}
           <div className="form-row">
-            <Form.Item name="stage" label={t('deals.stage')}>
-              <Select options={stageOptions} />
+            <Form.Item name="stage" label={t('deals.stage')} extra={blueprint && editing !== 'new' ? t('blueprints.lockedHint', { name: blueprint.name }) : undefined}>
+              <Select options={stageOptions} disabled={!!blueprint && editing !== 'new'} />
             </Form.Item>
             <Form.Item name="expectedCloseDate" label={t('deals.expectedCloseDate')}>
               <DatePicker style={{ width: '100%' }} />
@@ -356,6 +358,7 @@ export default function DealsPage() {
                 label: t('accounts.tabProfile'),
                 children: (
                   <>
+                    <BlueprintPanel entity="DEAL" record={detail as unknown as { id: string } & Record<string, unknown>} onDone={() => void refreshDetail(detail.id)} />
                     <Descriptions column={2} bordered size="small">
                       <Descriptions.Item label={t('deals.name')} span={2}>
                         {detail.name}

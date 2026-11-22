@@ -34,6 +34,7 @@ import { requirePermission } from '../permissions';
 import { requiredText, type Page } from '../validation';
 import { CURRENCIES, LEAD_SOURCES } from './dictionaries';
 import { enqueueDelivery } from './webhooks';
+import { activeBlueprint, BLUEPRINT_FIELD } from './blueprint-rules';
 
 /** 每组织最多规则数 / max rules per organization */
 export const MAX_WORKFLOWS = 100;
@@ -485,6 +486,11 @@ export async function executeRule(
       case 'UPDATE_FIELD': {
         if (ev.entity === WorkflowEntity.LEAD && a.field === 'status' && record.convertedAt) {
           skipped.push(`UPDATE_FIELD ${a.field}: converted`);
+          break;
+        }
+        // 启用流程蓝图时不修改受控字段 / a blueprint-controlled field is not changed by workflows
+        if (a.field === BLUEPRINT_FIELD[ev.entity] && (await activeBlueprint(org, ev.entity, tx))) {
+          skipped.push(`UPDATE_FIELD ${a.field}: blueprint`);
           break;
         }
         const before = norm(record[a.field]);

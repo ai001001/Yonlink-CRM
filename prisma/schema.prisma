@@ -76,6 +76,7 @@ model Organization {
   customFields         CustomField[]
   territories          Territory[]
   macros               Macro[]
+  blueprints           Blueprint[]
   territoryMembers     TerritoryMember[]
   stockMovements       StockMovement[]
   apiKeys              ApiKey[]
@@ -143,6 +144,7 @@ model User {
   validationRules    ValidationRule[]        @relation("ValidationCreator")
   territoriesManaged Territory[]             @relation("TerritoryManager")
   macrosCreated      Macro[]                 @relation("MacroCreator")
+  blueprintsCreated  Blueprint[]             @relation("BlueprintCreator")
   territoryMembers   TerritoryMember[]
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
@@ -2192,4 +2194,25 @@ model Macro {
   @@index([organizationId, entity])
   @@index([organizationId, createdById])
   @@map("macros")
+}
+
+/// 流程蓝图：控制线索状态或商机阶段只能按定义的转换推进 / blueprint: lead status or deal stage moves only through defined transitions
+model Blueprint {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  name           String         @db.VarChar(100)
+  description    String?        @db.VarChar(500)
+  entity         WorkflowEntity
+  /// 每个对象同时只能有一个启用的蓝图 / at most one active blueprint per entity
+  isActive       Boolean        @default(false) @map("is_active")
+  /// 转换（1–20 个）/ transitions (1–20)
+  transitions    Json
+  createdById    String         @map("created_by_id") @db.Uuid
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User           @relation("BlueprintCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId, entity])
+  @@map("blueprints")
 }

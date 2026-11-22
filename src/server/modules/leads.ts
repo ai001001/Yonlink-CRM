@@ -21,6 +21,7 @@ import { tagFilter, tagsInclude } from './tags';
 import { assertValidRecord } from './validation-rules';
 import { customDiff, customInput, resolveCustom } from './custom-fields';
 import { territoryMatcher } from './territory-rules';
+import { assertNotControlled } from './blueprint-rules';
 import { runWorkflows } from './workflows';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
@@ -141,7 +142,7 @@ export async function createLead(ctx: AuthContext, input: z.infer<typeof leadCre
  * 更新线索。
  * Update a lead.
  */
-export async function updateLead(ctx: AuthContext, id: string, input: z.infer<typeof leadUpdateSchema>) {
+export async function updateLead(ctx: AuthContext, id: string, input: z.infer<typeof leadUpdateSchema>, opts: { expectedStatus?: LeadStatus } = {}) {
   const current = await getLead(ctx, id);
   assertCanUpdate(ctx, current);
   const { ownerId, custom, ...data } = input;
@@ -150,10 +151,17 @@ export async function updateLead(ctx: AuthContext, id: string, input: z.infer<ty
   if (current.convertedAt && data.status !== undefined) {
     throw new ApiError(409, 'CONFLICT', 'Lead already converted', { status: ['Converted leads keep their status'] });
   }
+  // 启用流程蓝图时状态只能通过转换修改 / with a blueprint the status moves only via transitions
+  if (data.status !== undefined && data.status !== current.status && !opts.expectedStatus) await assertNotControlled(ctx.organizationId, 'LEAD');
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
   await assertValidRecord(ctx.organizationId, 'LEAD', { ...current, ...data, ownerId: owner });
   const cf = custom === undefined ? null : await resolveCustom(ctx.organizationId, 'LEAD', custom, current.custom);
   return prisma.$transaction(async (tx) => {
+    if (opts.expectedStatus) {
+      // 转换：锁定记录并确认状态未被并发修改 / transition: lock the row and make sure the status has not changed meanwhile
+      const [row] = await tx.$queryRaw<{ status: LeadStatus }[]>`SELECT status FROM leads WHERE id = ${current.id}::uuid FOR UPDATE`;
+      if (row?.status !== opts.expectedStatus) throw new ApiError(409, 'CONFLICT', 'The status changed meanwhile', { status: ['state_changed'] });
+    }
     const lead = await tx.lead.update({ where: { id: current.id }, data: { ...data, ownerId: owner, ...(cf ? { custom: cf.values as Prisma.InputJsonValue } : {}) }, include });
     await notifyAssigned(tx, ctx, { entity: 'lead', id: lead.id }, lead.name, lead.ownerId, current.ownerId);
     const fields = diff('lead', current, lead);

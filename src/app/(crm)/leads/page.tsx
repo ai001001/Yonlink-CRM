@@ -17,6 +17,7 @@ import { usePermissions } from '@/components/AuthProvider';
 import { AssignmentRulesModal } from '@/components/AssignmentRules';
 import { BulkBar } from '@/components/BulkBar';
 import { MacroRunner } from '@/components/Macros';
+import { BlueprintPanel, useBlueprintStatus } from '@/components/Blueprint';
 import { CampaignSelect } from '@/components/CampaignSelect';
 import { SavedViews } from '@/components/SavedViews';
 import { TagEditor, TagFilter, TagList, tagsOf } from '@/components/Tags';
@@ -102,6 +103,7 @@ export default function LeadsPage() {
   const [editing, setEditing] = useState<Lead | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<Lead | null>(null);
+  const blueprint = useBlueprintStatus('LEAD');
   /** 宏执行后递增，使详情内的面板重新加载 / bumped after a macro run so the detail panels reload */
   const [detailVersion, setDetailVersion] = useState(0);
   /** 重新读取详情并刷新列表（宏执行后）/ reload the detail and the list (after a macro run) */
@@ -304,8 +306,12 @@ export default function LeadsPage() {
             <Form.Item name="source" label={t('leads.source')}>
               <Select allowClear options={sourceOptions} />
             </Form.Item>
-            <Form.Item name="status" label={t('leads.status')} extra={editingConverted ? t('convert.statusLocked') : undefined}>
-              <Select options={editingConverted ? statusOptions : editableStatusOptions} disabled={editingConverted} />
+            <Form.Item
+              name="status"
+              label={t('leads.status')}
+              extra={editingConverted ? t('convert.statusLocked') : blueprint && editing !== 'new' ? t('blueprints.lockedHint', { name: blueprint.name }) : undefined}
+            >
+              <Select options={editingConverted ? statusOptions : editableStatusOptions} disabled={editingConverted || (!!blueprint && editing !== 'new')} />
             </Form.Item>
             <Form.Item name="ownerId" label={t('common.owner')} extra={perm.canAssign ? undefined : t('common.ownerLocked')}>
               <Select allowClear={perm.canAssign} disabled={!perm.canAssign} options={owners.map((u) => ({ value: u.id, label: u.name }))} />
@@ -342,6 +348,7 @@ export default function LeadsPage() {
       >
         {detail && (
           <Fragment key={detailVersion}>
+            <BlueprintPanel entity="LEAD" record={detail as unknown as { id: string } & Record<string, unknown>} onDone={() => void refreshDetail(detail.id)} />
             <Descriptions column={2} bordered size="small">
               <Descriptions.Item label={t('leads.name')}>{detail.name}</Descriptions.Item>
               <Descriptions.Item label={t('leads.company')}>{detail.company}</Descriptions.Item>

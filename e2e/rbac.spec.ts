@@ -53,6 +53,8 @@ async function signOut(page: Page): Promise<void> {
 }
 
 test('演示账号列表与各角色权限 / demo accounts and per-role permissions', async ({ page }) => {
+  // 依次以三个角色登录并浏览多个页面，单次约 30 秒，接近默认时限 / signs in as three roles across many pages; about 30 s, close to the default limit
+  test.setTimeout(60_000);
   // 登录页列出 5 个演示账号，不显示密码 / five demo accounts, no passwords
   await page.goto('/login');
   const list = page.getByTestId('demo-accounts');

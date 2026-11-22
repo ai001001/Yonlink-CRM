@@ -341,6 +341,20 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     if (typeof c.clearedAccounts === 'number') lines.push(t('territories.auditCleared', { count: c.clearedAccounts }));
     if (entry.action === 'territory.apply') lines.push(t('territories.auditApplied', { checked: Number(c.checked ?? 0), changed: Number(c.changed ?? 0) }));
   }
+  if (typeof c.transition === 'string' && typeof c.blueprint === 'string') {
+    // 流程蓝图转换 / blueprint transition
+    const e = entry.entityType === 'lead' ? 'leadStatus' : 'dealStage';
+    lines.push(t('blueprints.auditTransition', { blueprint: c.blueprint, transition: c.transition, from: tEnum(e, String(c.from ?? '')), to: tEnum(e, String(c.to ?? '')) }));
+  }
+  if (entry.entityType === 'blueprint') {
+    // 蓝图：名称；新建与删除列出转换；修改列出变化项 / blueprint: name; create/delete list transitions; updates list changes
+    lines.push(t('blueprints.auditName', { name: typeof c.name === 'string' ? c.name : String(snap?.name ?? '') }));
+    if (snap && Array.isArray(snap.transitions)) for (const tr of snap.transitions) lines.push(String(tr));
+    if (fields) {
+      const LABEL: Record<string, MessageKey> = { name: 'blueprints.name', isActive: 'blueprints.active', transitions: 'blueprints.transitions', entity: 'blueprints.entity' };
+      lines.push(t('blueprints.auditChanged', { list: Object.keys(fields).map((f) => (LABEL[f] ? t(LABEL[f]) : f)).join(t('common.listSep')) }));
+    }
+  }
   if (entry.entityType === 'macro') {
     // 宏：名称、对象与范围；修改列出变化项；执行显示成功与失败条数 / macro: name, module and scope; updates list changes; runs show counts
     const name = typeof c.name === 'string' ? c.name : typeof snap?.name === 'string' ? snap.name : '';
@@ -385,9 +399,9 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
       const show = (f: string, v: unknown) => (Array.isArray(v) ? t('workflows.auditCount', { n: v.length }) : f === 'trigger' ? tEnum('workflows.trigger', String(v)) : value(f, v, users));
       for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${LABEL[f] ? t(LABEL[f]) : f}${t('common.colon')}${show(f, b)} → ${show(f, a)}`);
     }
-  } else if (fields && entry.entityType !== 'territory' && entry.entityType !== 'macro') {
+  } else if (fields && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint') {
     for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, b, users, entry.entityType)} → ${value(f, a, users, entry.entityType)}`);
-  } else if (snap && entry.entityType !== 'customfield' && entry.entityType !== 'territory' && entry.entityType !== 'macro') {
+  } else if (snap && entry.entityType !== 'customfield' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint') {
     for (const [f, v] of Object.entries(snap)) if (v !== null) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, v, users, entry.entityType)}`);
   } else if (typeof c.reason === 'string') {
     lines.push(tEnum('auditReason', c.reason));

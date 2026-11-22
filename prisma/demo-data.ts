@@ -1549,3 +1549,23 @@ export const DEMO_MACROS: {
     ],
   },
 ];
+
+/**
+ * 演示流程蓝图（演示数据，默认停用，管理员可在“流程蓝图”中启用）：商机按阶段推进，赢单与重新打开需经理或管理员，
+ * 进入谈判、赢单、输单须填写说明。
+ * Demo blueprint (demo data, inactive by default; admins can enable it): deals move stage by stage; winning and
+ * reopening need a manager or admin; negotiation, won and lost require a note.
+ */
+export const DEMO_BLUEPRINT = {
+  name: '【演示】商机推进流程',
+  description: '演示数据：启用后商机阶段只能按流程推进',
+  entity: 'DEAL' as const,
+  transitions: [
+    { name: '开始需求分析', from: ['QUALIFICATION'], to: 'NEEDS_ANALYSIS', roles: ['ADMIN', 'MANAGER', 'SALES'], fields: ['expectedCloseDate'], noteRequired: false },
+    { name: '提交方案', from: ['NEEDS_ANALYSIS'], to: 'PROPOSAL', roles: ['ADMIN', 'MANAGER', 'SALES'], fields: ['amount'], noteRequired: false },
+    { name: '进入谈判', from: ['PROPOSAL'], to: 'NEGOTIATION', roles: ['ADMIN', 'MANAGER', 'SALES'], fields: [], noteRequired: true },
+    { name: '确认赢单', from: ['NEGOTIATION'], to: 'CLOSED_WON', roles: ['ADMIN', 'MANAGER'], fields: [], noteRequired: true },
+    { name: '标记输单', from: ['QUALIFICATION', 'NEEDS_ANALYSIS', 'PROPOSAL', 'NEGOTIATION'], to: 'CLOSED_LOST', roles: ['ADMIN', 'MANAGER', 'SALES'], fields: [], noteRequired: true },
+    { name: '重新打开', from: ['CLOSED_LOST'], to: 'QUALIFICATION', roles: ['ADMIN', 'MANAGER'], fields: [], noteRequired: false },
+  ],
+};

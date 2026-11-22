@@ -22,6 +22,7 @@ import { assertCanUpdate, assertOwnerAssignable, requirePermission, visible } fr
 import { notifyAssigned } from './notifications';
 import { recycle } from './recycle-bin';
 import { MAX_TAGS_PER_RECORD } from './tags';
+import { assertNotControlled } from './blueprint-rules';
 
 /** 支持的对象 / supported entities */
 export const DEDUPE_ENTITIES = ['leads', 'accounts'] as const;
@@ -197,6 +198,8 @@ export async function mergeDuplicates(ctx: AuthContext, input: z.infer<typeof me
       if (v !== master[field]) data[field] = v;
     }
     if ('ownerId' in data) assertOwnerAssignable(ctx, (data.ownerId as string | null) ?? null);
+    // 启用线索蓝图时合并不能改变主线索的状态 / with a lead blueprint a merge cannot change the master's status
+    if (input.entity === 'leads' && 'status' in data) await assertNotControlled(org, 'LEAD', tx);
 
     const dupIds = input.duplicateIds;
     const moved: Record<string, number> = {};

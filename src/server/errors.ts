@@ -12,6 +12,7 @@ export type ErrorCode =
   | 'RATE_LIMITED'
   | 'NOT_FOUND'
   | 'CONFLICT'
+  | 'BLUEPRINT_CONTROLLED'
   | 'PAYLOAD_TOO_LARGE'
   | 'INTERNAL_ERROR';
 

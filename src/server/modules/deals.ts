@@ -21,6 +21,7 @@ import { tagFilter, tagsInclude } from './tags';
 import { assertValidRecord } from './validation-rules';
 import { customDiff, customInput, resolveCustom } from './custom-fields';
 import { territoryIdsFor } from './territory-rules';
+import { assertNotControlled } from './blueprint-rules';
 import { territoryFilter } from './territory-input';
 import { runWorkflows } from './workflows';
 import { containsText, listQuery, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
@@ -185,9 +186,11 @@ export async function createDeal(ctx: AuthContext, input: z.infer<typeof dealCre
  * 更新商机（可改关联客户，但必须属于本组织）。
  * Update a deal (the account may change but must stay within the organization).
  */
-export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<typeof dealUpdateSchema>) {
+export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<typeof dealUpdateSchema>, opts: { expectedStage?: DealStage } = {}) {
   const current = await getDeal(ctx, id);
   assertCanUpdate(ctx, current);
+  // 启用流程蓝图时阶段只能通过转换修改（转换会传入期望的当前阶段）/ with a blueprint the stage moves only via transitions
+  if (input.stage !== undefined && input.stage !== current.stage && !opts.expectedStage) await assertNotControlled(ctx.organizationId, 'DEAL');
   const { ownerId, custom, ...data } = input;
   assertOwnerAssignable(ctx, ownerId);
   await assertCampaign(ctx.organizationId, data.campaignId);
@@ -208,6 +211,11 @@ export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<ty
   const cf = custom === undefined ? null : await resolveCustom(ctx.organizationId, 'DEAL', custom, current.custom);
   return prisma.$transaction(async (tx) => {
     await setActor(tx, ctx);
+    if (opts.expectedStage) {
+      // 转换：锁定记录并确认阶段未被并发修改 / transition: lock the row and make sure the stage has not changed meanwhile
+      const [row] = await tx.$queryRaw<{ stage: DealStage }[]>`SELECT stage FROM deals WHERE id = ${current.id}::uuid FOR UPDATE`;
+      if (row?.stage !== opts.expectedStage) throw new ApiError(409, 'CONFLICT', 'The stage changed meanwhile', { stage: ['state_changed'] });
+    }
     const deal = await tx.deal.update({ where: { id: current.id }, data: { ...data, ownerId: owner, ...(cf ? { custom: cf.values as Prisma.InputJsonValue } : {}) }, include });
     await notifyAssigned(tx, ctx, { entity: 'deal', id: deal.id }, deal.name, deal.ownerId, current.ownerId);
     const fields = diff('deal', current, deal);
