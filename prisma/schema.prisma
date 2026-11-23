@@ -77,6 +77,8 @@ model Organization {
   territories          Territory[]
   macros               Macro[]
   blueprints           Blueprint[]
+  cadences             Cadence[]
+  cadenceEnrollments   CadenceEnrollment[]
   territoryMembers     TerritoryMember[]
   stockMovements       StockMovement[]
   apiKeys              ApiKey[]
@@ -145,6 +147,8 @@ model User {
   territoriesManaged Territory[]             @relation("TerritoryManager")
   macrosCreated      Macro[]                 @relation("MacroCreator")
   blueprintsCreated  Blueprint[]             @relation("BlueprintCreator")
+  cadencesCreated    Cadence[]               @relation("CadenceCreator")
+  cadenceEnrollments CadenceEnrollment[]     @relation("CadenceEnroller")
   territoryMembers   TerritoryMember[]
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
@@ -233,6 +237,8 @@ model Lead {
 
   /// 自定义字段的值（按字段键保存，服务端按定义校验）/ custom field values keyed by field key, validated server-side
   custom Json @default("{}")
+
+  cadenceEnrollments CadenceEnrollment[]
 
   @@unique([organizationId, id])
   @@index([organizationId, campaignId])
@@ -375,6 +381,8 @@ model Deal {
 
   /// 自定义字段的值（按字段键保存，服务端按定义校验）/ custom field values keyed by field key, validated server-side
   custom Json @default("{}")
+
+  cadenceEnrollments CadenceEnrollment[]
 
   @@unique([organizationId, id])
   @@index([organizationId, campaignId])
@@ -2215,4 +2223,68 @@ model Blueprint {
 
   @@index([organizationId, entity])
   @@map("blueprints")
+}
+
+/// 销售节奏参与状态 / cadence enrollment status
+enum CadenceStatus {
+  ACTIVE
+  COMPLETED
+  EXITED
+  STOPPED
+
+  @@map("cadence_status")
+}
+
+/// 销售节奏：按天数自动为参与的线索或商机创建跟进 / cadence: timed follow-up steps for enrolled leads or deals
+model Cadence {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  name           String              @db.VarChar(100)
+  description    String?             @db.VarChar(500)
+  entity         WorkflowEntity
+  isActive       Boolean             @default(true) @map("is_active")
+  /// 步骤（1–10 个，按天数排序）/ steps (1–10, ordered by day)
+  steps          Json
+  /// 记录进入这些状态/阶段时自动退出 / records leave when they reach these statuses or stages
+  exitStates     Json                @default("[]") @map("exit_states")
+  createdById    String              @map("created_by_id") @db.Uuid
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User                @relation("CadenceCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
+  enrollments    CadenceEnrollment[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, entity])
+  @@map("cadences")
+}
+
+/// 记录参与销售节奏 / a record enrolled in a cadence
+model CadenceEnrollment {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  cadenceId      String        @map("cadence_id") @db.Uuid
+  leadId         String?       @map("lead_id") @db.Uuid
+  dealId         String?       @map("deal_id") @db.Uuid
+  status         CadenceStatus @default(ACTIVE)
+  /// 下一个要执行的步骤（从 0 开始）/ index of the next step (from 0)
+  currentStep    Int           @default(0) @map("current_step")
+  /// 下一步到期时间（仅进行中）/ when the next step is due (active only)
+  nextDueAt      DateTime?     @map("next_due_at") @db.Timestamptz(6)
+  enrolledById   String        @map("enrolled_by_id") @db.Uuid
+  enrolledAt     DateTime      @default(now()) @map("enrolled_at") @db.Timestamptz(6)
+  endedAt        DateTime?     @map("ended_at") @db.Timestamptz(6)
+  /// 结束原因 / why it ended
+  endReason      String?       @map("end_reason") @db.VarChar(30)
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  cadence        Cadence       @relation(fields: [organizationId, cadenceId], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
+  lead           Lead?         @relation(fields: [organizationId, leadId], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
+  deal           Deal?         @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
+  enrolledBy     User          @relation("CadenceEnroller", fields: [organizationId, enrolledById], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([status, nextDueAt])
+  @@index([organizationId, cadenceId, status])
+  @@index([organizationId, leadId])
+  @@index([organizationId, dealId])
+  @@map("cadence_enrollments")
 }

@@ -3,7 +3,7 @@
  * Turbocharger demo data round 1: functional tests.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
-import { buildDemoData, demoDuplicates, DEMO_ORG_NAME, DEMO_USERS } from '../../prisma/demo-data';
+import { buildDemoData, demoCadenceActivities, demoDuplicates, DEMO_ORG_NAME, DEMO_USERS } from '../../prisma/demo-data';
 import { seedDemo } from '../../prisma/seed-demo';
 import { prisma } from '@/server/db';
 import { resetDb } from '../helpers';
@@ -33,7 +33,8 @@ describe('demo data R1', () => {
       contacts: data.accounts.reduce((n, a) => n + a.contacts.length, 0) + dups.accounts.length * 2,
       leads: data.leads.length + dups.leads.length,
       deals: data.deals.length,
-      activities: data.activities.length,
+      // 另含演示销售节奏补建的跟进 / plus the activities created by the demo cadences
+      activities: data.activities.length + demoCadenceActivities(),
     });
     expect(counts.accounts).toBeGreaterThanOrEqual(30);
     expect(counts.leads).toBeGreaterThanOrEqual(45);

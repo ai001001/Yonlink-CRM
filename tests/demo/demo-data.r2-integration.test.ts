@@ -3,7 +3,7 @@
  * Turbocharger demo data round 2: integration tests.
  */
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildDemoData, demoDuplicates, DEMO_ORG_NAME, DEMO_USERS, LEGACY_DEMO_ORG_NAMES } from '../../prisma/demo-data';
+import { buildDemoData, demoCadenceActivities, demoDuplicates, DEMO_ORG_NAME, DEMO_USERS, LEGACY_DEMO_ORG_NAMES } from '../../prisma/demo-data';
 import { seedDemo } from '../../prisma/seed-demo';
 import * as board from '@/app/api/deals/board/route';
 import * as dashboard from '@/app/api/dashboard/route';
@@ -50,7 +50,7 @@ describe('demo data R2 idempotency & reset', () => {
     const oldIds = (await prisma.deal.findMany({ where: { organizationId: org.id }, select: { id: true } })).map((d) => d.id);
     const userIds = (await prisma.user.findMany({ where: { organizationId: org.id }, select: { id: true } })).map((u) => u.id).sort();
     await seedDemo({ reset: true });
-    expect(await count(org.id)).toEqual({ accounts: data.accounts.length + dups.accounts.length, leads: allLeads.length, deals: data.deals.length, activities: data.activities.length });
+    expect(await count(org.id)).toEqual({ accounts: data.accounts.length + dups.accounts.length, leads: allLeads.length, deals: data.deals.length, activities: data.activities.length + demoCadenceActivities() });
     expect(await prisma.deal.count({ where: { id: { in: oldIds } } })).toBe(0);
     expect((await prisma.user.findMany({ where: { organizationId: org.id }, select: { id: true } })).map((u) => u.id).sort()).toEqual(userIds);
   });

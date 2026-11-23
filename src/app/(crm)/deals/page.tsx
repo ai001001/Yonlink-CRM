@@ -36,6 +36,7 @@ import { CustomFieldItems, CustomFieldValues, useCustomFields } from '@/componen
 import { TerritoryFilter, useTerritoryOptions } from '@/components/Territories';
 import { MacroRunner } from '@/components/Macros';
 import { BlueprintPanel, useBlueprintStatus } from '@/components/Blueprint';
+import { CadenceEnroller, CadencePanel } from '@/components/Cadences';
 
 const DEAL_STAGES = ['QUALIFICATION', 'NEEDS_ANALYSIS', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST'] as const;
 const STAGE_COLOR: Record<string, string> = {
@@ -216,6 +217,7 @@ export default function DealsPage() {
           path="/api/deals"
           taggable
           macroEntity="DEAL"
+          cadenceEntity="DEAL"
           selected={sel.selected}
           names={Object.fromEntries(data.items.map((r) => [r.id, r.name]))}
           valueChange={{ action: 'stage', field: 'stage', options: stageOptions }}
@@ -343,6 +345,7 @@ export default function DealsPage() {
           detail &&
           perm.canEdit(detail) && (
             <Space>
+              <CadenceEnroller entity="DEAL" ids={[detail.id]} names={{ [detail.id]: detail.name }} onDone={() => void refreshDetail(detail.id)} />
               <MacroRunner entity="DEAL" ids={[detail.id]} names={{ [detail.id]: detail.name }} onDone={() => void refreshDetail(detail.id)} />
               <Button onClick={() => openForm(detail)}>{t('common.edit')}</Button>
             </Space>
@@ -358,6 +361,7 @@ export default function DealsPage() {
                 label: t('accounts.tabProfile'),
                 children: (
                   <>
+                    <CadencePanel entity="DEAL" id={detail.id} editable={perm.canEdit(detail)} version={detailVersion} />
                     <BlueprintPanel entity="DEAL" record={detail as unknown as { id: string } & Record<string, unknown>} onDone={() => void refreshDetail(detail.id)} />
                     <Descriptions column={2} bordered size="small">
                       <Descriptions.Item label={t('deals.name')} span={2}>

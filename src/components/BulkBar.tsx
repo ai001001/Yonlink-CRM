@@ -10,6 +10,7 @@ import { t, type MessageKey } from '@/i18n';
 import { api } from '@/lib/api';
 import { useOwners } from '@/lib/hooks';
 import { usePermissions } from './AuthProvider';
+import { CadenceEnroller } from './Cadences';
 import { MacroRunner, type MacroEntity } from './Macros';
 import { useTags } from './Tags';
 
@@ -36,12 +37,14 @@ interface Props {
   ruleAssignable?: boolean;
   /** 线索/商机：运行宏 / leads, deals: run a macro */
   macroEntity?: MacroEntity;
+  /** 线索/商机：加入销售节奏 / leads, deals: enroll in a cadence */
+  cadenceEntity?: MacroEntity;
   /** 完成后回调（刷新列表并清空选择）/ called afterwards (reload and clear selection) */
   onDone: () => void;
   onClear: () => void;
 }
 
-export function BulkBar({ path, selected, names, valueChange, completable, taggable, ruleAssignable, macroEntity, onDone, onClear }: Props) {
+export function BulkBar({ path, selected, names, valueChange, completable, taggable, ruleAssignable, macroEntity, cadenceEntity, onDone, onClear }: Props) {
   const { message, modal } = App.useApp();
   const perm = usePermissions();
   const owners = useOwners();
@@ -93,6 +96,7 @@ export function BulkBar({ path, selected, names, valueChange, completable, tagga
     <Space wrap data-testid="bulk-bar" style={{ marginBottom: 12, padding: '8px 12px', background: '#e6f4ff', borderRadius: 6, width: '100%' }}>
       <Typography.Text strong>{t('bulk.selected', { n })}</Typography.Text>
       {macroEntity && perm.can('record.update.own') && <MacroRunner entity={macroEntity} ids={selected} names={names} onDone={onDone} />}
+      {cadenceEntity && perm.can('record.update.own') && <CadenceEnroller entity={cadenceEntity} ids={selected} names={names} onDone={onDone} />}
       {perm.canAssign && (
         <Select
           aria-label={t('bulk.assign')}

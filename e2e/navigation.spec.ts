@@ -38,6 +38,7 @@ const PATHS: Record<string, string> = {
   自定义字段: '/custom-fields',
   区域管理: '/territories',
   流程蓝图: '/blueprints',
+  销售节奏: '/cadences',
   宏: '/macros',
   集成: '/integrations',
   汇率: '/exchange-rates',
@@ -53,8 +54,8 @@ const GROUPS = ['销售', '营销', '活动', '库存', '服务', '分析', '设
 
 /** 各角色应看到的菜单（按顺序）/ entries each role should see, in order */
 const ROLES: { name: string; login: (page: Page) => Promise<void>; items: string[] }[] = [
-  { name: '系统管理员', login: signIn, items: [...WITH_PURCHASE, '用户管理', '工作流规则', '验证规则', '自定义字段', '区域管理', '流程蓝图', '宏', '集成', '汇率', '查重合并', '回收站', '审计日志'] },
-  { name: '销售经理', login: (p) => demo(p, '郑经理'), items: [...WITH_PURCHASE, '工作流规则', '验证规则', '区域管理', '流程蓝图', '宏', '汇率', '查重合并', '回收站'] },
+  { name: '系统管理员', login: signIn, items: [...WITH_PURCHASE, '用户管理', '工作流规则', '验证规则', '自定义字段', '区域管理', '流程蓝图', '销售节奏', '宏', '集成', '汇率', '查重合并', '回收站', '审计日志'] },
+  { name: '销售经理', login: (p) => demo(p, '郑经理'), items: [...WITH_PURCHASE, '工作流规则', '验证规则', '区域管理', '流程蓝图', '销售节奏', '宏', '汇率', '查重合并', '回收站'] },
   { name: '销售代表', login: (p) => demo(p, '王芳'), items: [...BUSINESS, '宏', '汇率', '查重合并'] },
   { name: '只读用户', login: (p) => demo(p, '周会计'), items: [...WITH_PURCHASE, '汇率', '查重合并'] },
 ];

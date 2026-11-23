@@ -18,6 +18,7 @@ import { AssignmentRulesModal } from '@/components/AssignmentRules';
 import { BulkBar } from '@/components/BulkBar';
 import { MacroRunner } from '@/components/Macros';
 import { BlueprintPanel, useBlueprintStatus } from '@/components/Blueprint';
+import { CadenceEnroller, CadencePanel } from '@/components/Cadences';
 import { CampaignSelect } from '@/components/CampaignSelect';
 import { SavedViews } from '@/components/SavedViews';
 import { TagEditor, TagFilter, TagList, tagsOf } from '@/components/Tags';
@@ -208,6 +209,7 @@ export default function LeadsPage() {
         taggable
         ruleAssignable
         macroEntity="LEAD"
+        cadenceEntity="LEAD"
         selected={sel.selected}
         names={Object.fromEntries(data.items.map((r) => [r.id, r.name]))}
         valueChange={{ action: 'status', field: 'status', options: editableStatusOptions }}
@@ -340,6 +342,7 @@ export default function LeadsPage() {
                   {t('convert.action')}
                 </Button>
               )}
+              {perm.canEdit(detail) && !detail.convertedAt && <CadenceEnroller entity="LEAD" ids={[detail.id]} names={{ [detail.id]: detail.name }} onDone={() => void refreshDetail(detail.id)} />}
               {perm.canEdit(detail) && <MacroRunner entity="LEAD" ids={[detail.id]} names={{ [detail.id]: detail.name }} onDone={() => void refreshDetail(detail.id)} />}
               {perm.canEdit(detail) && <Button onClick={() => openForm(detail)}>{t('common.edit')}</Button>}
             </Space>
@@ -348,6 +351,7 @@ export default function LeadsPage() {
       >
         {detail && (
           <Fragment key={detailVersion}>
+            <CadencePanel entity="LEAD" id={detail.id} editable={perm.canEdit(detail)} version={detailVersion} />
             <BlueprintPanel entity="LEAD" record={detail as unknown as { id: string } & Record<string, unknown>} onDone={() => void refreshDetail(detail.id)} />
             <Descriptions column={2} bordered size="small">
               <Descriptions.Item label={t('leads.name')}>{detail.name}</Descriptions.Item>

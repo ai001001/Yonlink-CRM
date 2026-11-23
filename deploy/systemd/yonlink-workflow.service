@@ -1,7 +1,7 @@
-# 永联CRM 定时工作流，由 yonlink-workflow.timer 每 15 分钟触发
-# Yonlink-CRM scheduled workflows, triggered every 15 minutes by yonlink-workflow.timer
+# 永联CRM 定时工作流与销售节奏，由 yonlink-workflow.timer 每 15 分钟触发
+# Yonlink-CRM scheduled workflows and cadences, triggered every 15 minutes by yonlink-workflow.timer
 [Unit]
-Description=Yonlink-CRM scheduled workflows
+Description=Yonlink-CRM scheduled workflows and cadences
 After=yonlink-postgres.service
 Requires=yonlink-postgres.service
 

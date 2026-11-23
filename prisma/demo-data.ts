@@ -1569,3 +1569,52 @@ export const DEMO_BLUEPRINT = {
     { name: '重新打开', from: ['CLOSED_LOST'], to: 'QUALIFICATION', roles: ['ADMIN', 'MANAGER'], fields: [], noteRequired: false },
   ],
 };
+
+/**
+ * 演示销售节奏（演示数据）：新线索 7 天跟进与方案后跟进；演示时把前 3 条王芳的新线索、前 2 个方案报价商机在 3 天前加入，
+ * 由节奏处理补建已到期的步骤。
+ * Demo cadences (demo data): a 7-day new-lead follow-up and a post-proposal follow-up; the first 3 new leads of 王芳 and
+ * the first 2 proposal deals are enrolled 3 days ago and the due steps are created by the cadence processing.
+ */
+export const DEMO_CADENCES: {
+  key: string;
+  name: string;
+  description: string;
+  entity: 'LEAD' | 'DEAL';
+  steps: { day: number; type: 'CALL' | 'MEETING' | 'VISIT' | 'TASK'; subject: string }[];
+  exitStates: string[];
+}[] = [
+  {
+    key: 'lead7',
+    name: '【演示】新线索 7 天跟进',
+    description: '演示数据：新线索的标准跟进节奏',
+    entity: 'LEAD',
+    steps: [
+      { day: 0, type: 'CALL', subject: '【演示】首次电话联系，了解车型与用量' },
+      { day: 2, type: 'TASK', subject: '【演示】发送产品目录与报价区间' },
+      { day: 5, type: 'CALL', subject: '【演示】二次回访，确认样品需求' },
+      { day: 7, type: 'VISIT', subject: '【演示】安排上门拜访或视频会议' },
+    ],
+    exitStates: ['QUALIFIED', 'UNQUALIFIED'],
+  },
+  {
+    key: 'proposal',
+    name: '【演示】方案后跟进',
+    description: '演示数据：提交方案后的跟进节奏',
+    entity: 'DEAL',
+    steps: [
+      { day: 0, type: 'TASK', subject: '【演示】确认客户已收到方案' },
+      { day: 3, type: 'CALL', subject: '【演示】方案答疑与价格沟通' },
+      { day: 10, type: 'MEETING', subject: '【演示】商务谈判' },
+    ],
+    exitStates: ['NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST'],
+  },
+];
+
+/** 演示参与：线索与商机的数量、几天前加入 / demo enrollments: how many leads and deals, enrolled how many days ago */
+export const DEMO_CADENCE_ENROLL = { LEAD: 3, DEAL: 2, daysAgo: 3 } as const;
+/**
+ * 演示节奏补建的跟进数（加入时已到期的步骤 × 参与数）。
+ * Activities the demo cadences create (steps due at enrollment age × enrollments).
+ */
+export const demoCadenceActivities = () => DEMO_CADENCES.reduce((n, c) => n + c.steps.filter((s) => s.day <= DEMO_CADENCE_ENROLL.daysAgo).length * DEMO_CADENCE_ENROLL[c.entity], 0);

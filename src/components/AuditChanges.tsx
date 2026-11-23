@@ -346,6 +346,24 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     const e = entry.entityType === 'lead' ? 'leadStatus' : 'dealStage';
     lines.push(t('blueprints.auditTransition', { blueprint: c.blueprint, transition: c.transition, from: tEnum(e, String(c.from ?? '')), to: tEnum(e, String(c.to ?? '')) }));
   }
+  if (typeof c.cadence === 'string' && typeof c.step === 'number' && typeof c.of === 'number') {
+    // 销售节奏创建的跟进 / an activity created by a cadence
+    lines.push(t('cadences.auditStep', { name: c.cadence, step: c.step, of: c.of }));
+  }
+  if (entry.entityType === 'cadence') {
+    // 节奏：加入、停止、维护 / cadence: enroll, stop, maintenance
+    const name = typeof c.name === 'string' ? c.name : String(snap?.name ?? '');
+    if (entry.action === 'cadence.enroll') lines.push(t('cadences.auditEnroll', { name, record: String(c.record ?? '') }));
+    else if (entry.action === 'cadence.stop') lines.push(t('cadences.auditStop', { name, record: String(c.record ?? '') }));
+    else {
+      lines.push(t('cadences.auditName', { name }));
+      if (snap && Array.isArray(snap.steps)) for (const s of snap.steps) lines.push(String(s));
+      if (fields) {
+        const LABEL: Record<string, MessageKey> = { name: 'cadences.name', isActive: 'cadences.active', steps: 'cadences.steps', exitStates: 'cadences.exitStates', entity: 'cadences.entity' };
+        lines.push(t('cadences.auditChanged', { list: Object.keys(fields).map((f) => (LABEL[f] ? t(LABEL[f]) : f)).join(t('common.listSep')) }));
+      }
+    }
+  }
   if (entry.entityType === 'blueprint') {
     // 蓝图：名称；新建与删除列出转换；修改列出变化项 / blueprint: name; create/delete list transitions; updates list changes
     lines.push(t('blueprints.auditName', { name: typeof c.name === 'string' ? c.name : String(snap?.name ?? '') }));
@@ -399,9 +417,9 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
       const show = (f: string, v: unknown) => (Array.isArray(v) ? t('workflows.auditCount', { n: v.length }) : f === 'trigger' ? tEnum('workflows.trigger', String(v)) : value(f, v, users));
       for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${LABEL[f] ? t(LABEL[f]) : f}${t('common.colon')}${show(f, b)} → ${show(f, a)}`);
     }
-  } else if (fields && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint') {
+  } else if (fields && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence') {
     for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, b, users, entry.entityType)} → ${value(f, a, users, entry.entityType)}`);
-  } else if (snap && entry.entityType !== 'customfield' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint') {
+  } else if (snap && entry.entityType !== 'customfield' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence') {
     for (const [f, v] of Object.entries(snap)) if (v !== null) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, v, users, entry.entityType)}`);
   } else if (typeof c.reason === 'string') {
     lines.push(tEnum('auditReason', c.reason));

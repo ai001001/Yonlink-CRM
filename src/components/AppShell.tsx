@@ -137,6 +137,7 @@ const NAV_GROUPS: { key: string; label: string | null; icon?: React.ReactNode; i
       { key: '/custom-fields', icon: <FormOutlined />, label: t('nav.customFields'), permission: 'customfield.manage' },
       { key: '/territories', icon: <GlobalOutlined />, label: t('nav.territories'), permission: 'territory.manage' },
       { key: '/blueprints', icon: <ApartmentOutlined />, label: t('nav.blueprints'), permission: 'blueprint.manage' },
+      { key: '/cadences', icon: <ScheduleOutlined />, label: t('nav.cadences'), permission: 'cadence.manage' },
       { key: '/macros', icon: <PlayCircleOutlined />, label: t('nav.macros'), permission: 'record.update.own' },
       { key: '/integrations', icon: <ApiOutlined />, label: t('nav.integrations'), permission: 'integration.manage' },
       { key: '/exchange-rates', icon: <DollarOutlined />, label: t('nav.rates') },
