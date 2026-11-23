@@ -30,6 +30,7 @@ export type Permission =
   | 'integration.manage' // 管理 API 密钥与 Webhook（仅管理员）/ manage API keys and webhooks (admins only)
   | 'validation.manage' // 维护字段验证规则 / maintain validation rules
   | 'customfield.manage' // 维护自定义字段（仅管理员）/ maintain custom fields (admins only)
+  | 'portal.manage' // 客户门户设置与开通联系人（管理员、经理）/ portal settings and contact access (admins, managers)
   | 'cadence.manage' // 维护销售节奏（管理员、经理）/ maintain cadences (admins, managers)
   | 'blueprint.manage' // 维护流程蓝图（管理员、经理）/ maintain blueprints (admins, managers)
   | 'macro.manage' // 维护共享宏（管理员、经理）/ maintain shared macros (admins, managers)
@@ -43,8 +44,8 @@ export type Permission =
 
 /** 角色 → 权限 / Role → permissions */
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
-  ADMIN: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'audit.read', 'user.manage', 'data.export', 'product.manage', 'tag.manage', 'recycle.purge', 'view.share', 'forecast.manage', 'rate.manage', 'campaign.manage', 'sla.manage', 'scoring.manage', 'assignment.manage', 'workflow.manage', 'approval.manage', 'quote.approve', 'integration.manage', 'validation.manage', 'customfield.manage', 'territory.manage', 'macro.manage', 'blueprint.manage', 'cadence.manage', 'kb.manage', 'purchase.read', 'purchase.manage'],
-  MANAGER: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'data.export', 'product.manage', 'tag.manage', 'view.share', 'forecast.manage', 'campaign.manage', 'sla.manage', 'scoring.manage', 'assignment.manage', 'workflow.manage', 'approval.manage', 'quote.approve', 'validation.manage', 'territory.manage', 'macro.manage', 'blueprint.manage', 'cadence.manage', 'kb.manage', 'purchase.read', 'purchase.manage'],
+  ADMIN: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'audit.read', 'user.manage', 'data.export', 'product.manage', 'tag.manage', 'recycle.purge', 'view.share', 'forecast.manage', 'rate.manage', 'campaign.manage', 'sla.manage', 'scoring.manage', 'assignment.manage', 'workflow.manage', 'approval.manage', 'quote.approve', 'integration.manage', 'validation.manage', 'customfield.manage', 'territory.manage', 'macro.manage', 'blueprint.manage', 'cadence.manage', 'portal.manage', 'kb.manage', 'purchase.read', 'purchase.manage'],
+  MANAGER: ['record.read.all', 'record.create', 'record.update.all', 'record.update.own', 'record.delete', 'owner.assign', 'data.export', 'product.manage', 'tag.manage', 'view.share', 'forecast.manage', 'campaign.manage', 'sla.manage', 'scoring.manage', 'assignment.manage', 'workflow.manage', 'approval.manage', 'quote.approve', 'validation.manage', 'territory.manage', 'macro.manage', 'blueprint.manage', 'cadence.manage', 'portal.manage', 'kb.manage', 'purchase.read', 'purchase.manage'],
   SALES: ['record.create', 'record.update.own'],
   READONLY: ['record.read.all', 'purchase.read'],
 };

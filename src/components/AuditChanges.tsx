@@ -350,6 +350,16 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     // 销售节奏创建的跟进 / an activity created by a cadence
     lines.push(t('cadences.auditStep', { name: c.cadence, step: c.step, of: c.of }));
   }
+  if (c.via === 'portal') {
+    // 客户在门户中的操作 / customer actions from the portal
+    lines.push(t('portal.auditVia', { contact: String(c.contact ?? '') }));
+  }
+  if (entry.entityType === 'portal') {
+    // 门户：开通、停用、设置 / portal: invitations, disabling, settings
+    if (entry.action === 'portal.invite') lines.push(t('portal.auditInvite', { contact: String(c.contact ?? ''), reset: c.reset ? t('portal.auditReset') : '' }));
+    else if (entry.action === 'portal.disable') lines.push(t('portal.auditDisable', { contact: String(c.contact ?? ''), n: Number(c.sessions ?? 0) }));
+    else if (fields) for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${t(f === 'isEnabled' ? 'portal.enabled' : 'portal.welcome')}${t('common.colon')}${value(f, b, users)} → ${value(f, a, users)}`);
+  }
   if (entry.entityType === 'cadence') {
     // 节奏：加入、停止、维护 / cadence: enroll, stop, maintenance
     const name = typeof c.name === 'string' ? c.name : String(snap?.name ?? '');
@@ -417,7 +427,7 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
       const show = (f: string, v: unknown) => (Array.isArray(v) ? t('workflows.auditCount', { n: v.length }) : f === 'trigger' ? tEnum('workflows.trigger', String(v)) : value(f, v, users));
       for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${LABEL[f] ? t(LABEL[f]) : f}${t('common.colon')}${show(f, b)} → ${show(f, a)}`);
     }
-  } else if (fields && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence') {
+  } else if (fields && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'portal') {
     for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, b, users, entry.entityType)} → ${value(f, a, users, entry.entityType)}`);
   } else if (snap && entry.entityType !== 'customfield' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence') {
     for (const [f, v] of Object.entries(snap)) if (v !== null) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, v, users, entry.entityType)}`);

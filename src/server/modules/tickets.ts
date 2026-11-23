@@ -85,7 +85,7 @@ const withOverdue = <T extends { status: TicketStatus; dueAt: Date | null }>(t: 
  * 原子分配下一个工单号（与新建同一事务）。
  * Allocate the next ticket number atomically (same transaction as the insert).
  */
-async function nextNumber(tx: Prisma.TransactionClient, organizationId: string): Promise<string> {
+export async function nextNumber(tx: Prisma.TransactionClient, organizationId: string): Promise<string> {
   const year = new Date().getUTCFullYear();
   const rows = await tx.$queryRaw<{ last: number }[]>`
     INSERT INTO ticket_counters (organization_id, year, last) VALUES (${organizationId}::uuid, ${year}, 1)

@@ -78,6 +78,8 @@ model Organization {
   macros               Macro[]
   blueprints           Blueprint[]
   cadences             Cadence[]
+  portalSettings       PortalSettings?
+  portalUsers          PortalUser[]
   cadenceEnrollments   CadenceEnrollment[]
   territoryMembers     TerritoryMember[]
   stockMovements       StockMovement[]
@@ -148,6 +150,7 @@ model User {
   macrosCreated      Macro[]                 @relation("MacroCreator")
   blueprintsCreated  Blueprint[]             @relation("BlueprintCreator")
   cadencesCreated    Cadence[]               @relation("CadenceCreator")
+  portalInvites      PortalUser[]            @relation("PortalInviter")
   cadenceEnrollments CadenceEnrollment[]     @relation("CadenceEnroller")
   territoryMembers   TerritoryMember[]
 
@@ -323,6 +326,8 @@ model Contact {
 
   /// 自定义字段的值（按字段键保存，服务端按定义校验）/ custom field values keyed by field key, validated server-side
   custom Json @default("{}")
+
+  portalUser PortalUser?
 
   @@unique([organizationId, id])
   @@index([organizationId, accountId])
@@ -1260,6 +1265,8 @@ enum TicketChannel {
   WEB
   ONSITE
   OTHER
+  /// 客户门户 / customer portal
+  PORTAL
 
   @@map("ticket_channel")
 }
@@ -1330,14 +1337,18 @@ model TicketComment {
   id             String       @id @default(uuid()) @db.Uuid
   organizationId String       @map("organization_id") @db.Uuid
   ticketId       String       @map("ticket_id") @db.Uuid
-  authorId       String       @map("author_id") @db.Uuid
+  /// 员工作者（客户在门户中回复时为空）/ staff author (null for customer replies from the portal)
+  authorId       String?      @map("author_id") @db.Uuid
+  /// 门户用户作者 / portal user author
+  portalUserId   String?      @map("portal_user_id") @db.Uuid
   body           String       @db.Text
   isInternal     Boolean      @default(false) @map("is_internal")
   editedAt       DateTime?    @map("edited_at") @db.Timestamptz(6)
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   ticket         Ticket       @relation(fields: [organizationId, ticketId], references: [organizationId, id], onDelete: Cascade)
-  author         User         @relation("TicketCommentAuthor", fields: [organizationId, authorId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  author         User?        @relation("TicketCommentAuthor", fields: [organizationId, authorId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  portalUser     PortalUser?  @relation(fields: [organizationId, portalUserId], references: [organizationId, id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([organizationId, ticketId, createdAt])
   @@map("ticket_comments")
@@ -2287,4 +2298,68 @@ model CadenceEnrollment {
   @@index([organizationId, leadId])
   @@index([organizationId, dealId])
   @@map("cadence_enrollments")
+}
+
+/// 门户用户状态 / portal user status
+enum PortalUserStatus {
+  INVITED
+  ACTIVE
+  DISABLED
+
+  @@map("portal_user_status")
+}
+
+/// 客户门户设置（每组织一行）/ customer portal settings (one row per organization)
+model PortalSettings {
+  organizationId String       @id @map("organization_id") @db.Uuid
+  isEnabled      Boolean      @default(false) @map("is_enabled")
+  /// 门户地址中的组织标识（随机生成）/ organization key in the portal URL (random)
+  portalKey      String       @unique @map("portal_key") @db.VarChar(32)
+  /// 门户首页欢迎语 / welcome text on the portal home
+  welcome        String?      @db.VarChar(500)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("portal_settings")
+}
+
+/// 门户用户：开通门户的联系人 / portal user: a contact with portal access
+model PortalUser {
+  id              String           @id @default(uuid()) @db.Uuid
+  organizationId  String           @map("organization_id") @db.Uuid
+  contactId       String           @map("contact_id") @db.Uuid
+  /// 登录邮箱（开通时取自联系人，小写）/ sign-in email (from the contact at invitation, lower case)
+  email           String           @db.VarChar(254)
+  passwordHash    String?          @map("password_hash")
+  status          PortalUserStatus @default(INVITED)
+  /// 邀请令牌的 SHA-256（原始令牌只在生成时返回一次）/ SHA-256 of the invitation token (the raw token is shown once)
+  inviteTokenHash String?          @unique @map("invite_token_hash") @db.Char(64)
+  inviteExpiresAt DateTime?        @map("invite_expires_at") @db.Timestamptz(6)
+  lastLoginAt     DateTime?        @map("last_login_at") @db.Timestamptz(6)
+  invitedById     String           @map("invited_by_id") @db.Uuid
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contact         Contact          @relation(fields: [organizationId, contactId], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
+  invitedBy       User             @relation("PortalInviter", fields: [organizationId, invitedById], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
+  sessions        PortalSession[]
+  comments        TicketComment[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, contactId])
+  @@unique([organizationId, email])
+  @@map("portal_users")
+}
+
+/// 门户会话（只存令牌哈希）/ portal session (token hash only)
+model PortalSession {
+  id           String     @id @default(uuid()) @db.Uuid
+  portalUserId String     @map("portal_user_id") @db.Uuid
+  tokenHash    String     @unique @map("token_hash") @db.Char(64)
+  expiresAt    DateTime   @map("expires_at") @db.Timestamptz(6)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  portalUser   PortalUser @relation(fields: [portalUserId], references: [id], onDelete: Cascade)
+
+  @@index([portalUserId])
+  @@map("portal_sessions")
 }

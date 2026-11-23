@@ -20,7 +20,10 @@ interface Comment {
   isInternal: boolean;
   editedAt: string | null;
   createdAt: string;
-  author: { id: string; name: string };
+  /** 员工作者；客户在门户中的回复为空 / staff author; null for customer replies from the portal */
+  author: { id: string; name: string } | null;
+  /** 门户回复的客户（联系人已删除时为空）/ the portal customer (null once the contact is deleted) */
+  portalUser?: { contact: { name: string } } | null;
 }
 
 interface Props {
@@ -91,7 +94,7 @@ export function TicketComments({ ticket }: Props) {
       {items.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('ticketComments.empty')} />}
       <Space orientation="vertical" size={8} style={{ width: '100%', marginBottom: 12 }}>
         {items.map((c) => {
-          const mine = c.author.id === me?.id;
+          const mine = !!c.author && c.author.id === me?.id;
           return (
             <div
               key={c.id}
@@ -99,7 +102,7 @@ export function TicketComments({ ticket }: Props) {
               style={{ padding: '8px 12px', borderRadius: 6, background: c.isInternal ? 'var(--ant-color-warning-bg, #fffbe6)' : 'var(--ant-color-fill-quaternary, #f5f5f5)' }}
             >
               <Space size={6} wrap style={{ marginBottom: 4 }}>
-                <Typography.Text strong>{c.author.name}</Typography.Text>
+                <Typography.Text strong>{c.author ? c.author.name : t('portal.customerReply', { name: c.portalUser?.contact.name ?? t('portal.deletedCustomer') })}</Typography.Text>
                 <Tag color={c.isInternal ? 'gold' : 'blue'}>{t(c.isInternal ? 'ticketComments.internal' : 'ticketComments.external')}</Tag>
                 <Typography.Text type="secondary">{fmtDateTime(c.createdAt)}</Typography.Text>
                 {c.editedAt && <Typography.Text type="secondary">{`(${t('ticketComments.edited')})`}</Typography.Text>}

@@ -141,7 +141,7 @@ export default function CadencesPage() {
           { title: t('cadences.entity'), render: (_, c) => <Tag>{t(`workflows.entity.${c.entity}`)}</Tag> },
           { title: t('cadences.steps'), render: (_, c) => c.steps.map((s, i) => <div key={i}>{stepText(s)}</div>) },
           { title: t('cadences.exitStates'), render: (_, c) => (c.exitStates.length ? c.exitStates.map((s) => tEnum(CADENCE_STATE_PREFIX[c.entity], s)).join(t('common.listSep')) : '—') },
-          { title: t('cadences.panelTitle'), render: (_, c) => t('cadences.counts', c.counts) },
+          { title: t('cadences.participation'), render: (_, c) => t('cadences.counts', c.counts) },
           { title: t('cadences.active'), render: (_, c) => <Switch size="small" checked={c.isActive} aria-label={`${t('cadences.active')} ${c.name}`} onChange={(v) => void toggle(c, v)} /> },
           {
             title: t('common.actions'),

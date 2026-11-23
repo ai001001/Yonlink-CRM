@@ -1,0 +1,70 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+56 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+(node:1744427) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1744805) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1744905) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1745018) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1745202) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1745281) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1745366) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1745483) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1745574) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1745676) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1745762) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1745861) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1745975) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1746129) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1746194) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1746251) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1746330) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1746392) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1746451) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1746503) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1746556) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1746714) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1746768) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1746856) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1746908) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:1746945) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ Test Files  31 passed (31)
+      Tests  313 passed (313)
+   Start at  15:50:44
+   Duration  213.18s (tests 93%, import 6%, transform 1%)
+

@@ -27,7 +27,8 @@ export const commentUpdateSchema = z
   .partial()
   .refine((v) => Object.keys(v).length > 0, 'No changes');
 
-const select = { id: true, ticketId: true, body: true, isInternal: true, editedAt: true, createdAt: true, author: { select: { id: true, name: true } } } as const;
+// 客户在门户中的回复没有员工作者，带门户用户（联系人姓名）/ portal replies have no staff author but a portal user (contact name)
+const select = { id: true, ticketId: true, body: true, isInternal: true, editedAt: true, createdAt: true, author: { select: { id: true, name: true } }, portalUser: { select: { contact: { select: { name: true } } } } } as const;
 
 /**
  * 读取可见工单。

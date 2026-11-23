@@ -18,7 +18,7 @@ export async function signIn(page: Page): Promise<void> {
  * Click a side-navigation entry. Groups are collapsible, so expand all first when the entry is hidden; submenus
  * nest menus, so look inside the root menu only.
  */
-export async function nav(page: Page, name: '工作台' | '线索' | '市场活动' | '网页表单' | '客户' | '联系人' | '商机' | '跟进' | '服务工单' | '知识库' | '报价单' | '销售订单' | '采购单' | '发票' | '供应商' | '报表' | '销售预测' | '产品' | '价格表' | '汇率' | '查重合并' | '回收站' | '审计日志' | '用户管理' | '工作流规则' | '审批' | '集成' | '验证规则' | '自定义字段' | '区域管理' | '宏' | '流程蓝图' | '销售节奏'): Promise<void> {
+export async function nav(page: Page, name: '工作台' | '线索' | '市场活动' | '网页表单' | '客户' | '联系人' | '商机' | '跟进' | '服务工单' | '知识库' | '报价单' | '销售订单' | '采购单' | '发票' | '供应商' | '报表' | '销售预测' | '产品' | '价格表' | '汇率' | '查重合并' | '回收站' | '审计日志' | '用户管理' | '工作流规则' | '审批' | '集成' | '验证规则' | '自定义字段' | '区域管理' | '宏' | '流程蓝图' | '销售节奏' | '客户门户'): Promise<void> {
   const link = sideMenu(page).getByRole('link', { name, exact: true });
   if (!(await link.isVisible())) await page.getByTestId('sider-toolbar').getByRole('button', { name: '全部展开' }).click();
   await link.click();

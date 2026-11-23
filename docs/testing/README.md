@@ -83,6 +83,7 @@
 | 宏 | ✅ | ✅ | ✅ | [macros.md](macros.md) |
 | 流程蓝图 | ✅ | ✅ | ✅ | [blueprints.md](blueprints.md) |
 | 销售节奏 | ✅ | ✅ | ✅ | [cadences.md](cadences.md) |
+| 客户门户 | ✅ | ✅ | ✅ | [portal.md](portal.md) |
 
 ## 整体回归（全部模块完成后）
 命令：`scripts/regression.sh final-mvp` → **PASS**（lint、typecheck、11 文件 181/181、静态导出、生产构建、E2E 6/6）。原始输出：[results/final-mvp-r3-regression.txt](results/final-mvp-r3-regression.txt)

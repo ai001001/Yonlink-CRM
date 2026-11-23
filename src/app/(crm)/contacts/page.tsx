@@ -20,6 +20,7 @@ import { fmtDateTime } from '@/lib/format';
 import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch } from '@/lib/hooks';
 import type { ContactRow } from '@/lib/types';
 import { CustomFieldItems, CustomFieldValues, useCustomFields } from '@/components/CustomFields';
+import { ContactPortal } from '@/components/ContactPortal';
 
 type Primary = 'true' | 'false';
 
@@ -218,6 +219,7 @@ export default function ContactsPage() {
               </Descriptions.Item>
             </Descriptions>
             <CustomFieldValues defs={customDefs} values={detail.custom} />
+            {perm.can('portal.manage') && <ContactPortal contactId={detail.id} />}
           </div>
         )}
       </Drawer>

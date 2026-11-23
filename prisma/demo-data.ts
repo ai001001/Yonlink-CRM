@@ -1618,3 +1618,15 @@ export const DEMO_CADENCE_ENROLL = { LEAD: 3, DEAL: 2, daysAgo: 3 } as const;
  * Activities the demo cadences create (steps due at enrollment age × enrollments).
  */
 export const demoCadenceActivities = () => DEMO_CADENCES.reduce((n, c) => n + c.steps.filter((s) => s.day <= DEMO_CADENCE_ENROLL.daysAgo).length * DEMO_CADENCE_ENROLL[c.entity], 0);
+
+/**
+ * 演示客户门户（演示数据）：启用门户、固定的门户标识（由组织 ID 推导，重建后地址不变）与欢迎语；不预置门户账号与密码，
+ * 演示时在联系人详情中开通并用邀请链接设置密码。
+ * Demo customer portal (demo data): enabled, a fixed portal key (derived from the organization id, so the URL survives
+ * resets) and a welcome text; no portal accounts or passwords are seeded — grant access from a contact and set the
+ * password through the invitation link.
+ */
+export const DEMO_PORTAL = {
+  welcome: '【演示】欢迎使用演示客户服务门户：您可以在这里提交服务工单、查看报价单与发票（演示数据，均为虚构）。',
+  key: (organizationId: string) => createHash('sha256').update(`yonlink-demo-portal:${organizationId}`).digest('base64url').slice(0, 22),
+};
