@@ -64,6 +64,7 @@ const select = {
   dealId: true,
   activityId: true,
   ticketId: true,
+  productId: true,
   actor: { select: { id: true, name: true } },
 } satisfies Prisma.NotificationSelect;
 

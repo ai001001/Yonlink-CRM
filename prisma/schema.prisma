@@ -517,6 +517,10 @@ model Product {
   priceBookEntries PriceBookEntry[]
   stockMovements   StockMovement[]
 
+  /// 本次低库存已提醒的时间（库存回到再订货水平以上时清空）/ when the current low-stock spell was alerted (cleared once stock recovers)
+  lowStockAlertedAt DateTime?      @map("low_stock_alerted_at") @db.Timestamptz(6)
+  notifications     Notification[]
+
   @@unique([organizationId, id])
   @@unique([organizationId, sku])
   @@index([organizationId, name])
@@ -843,6 +847,8 @@ enum NotificationType {
   APPROVAL_REQUEST
   /// 我提交的报价单已审批 / my quote submission was decided
   APPROVAL_DECIDED
+  /// 产品库存降到再订货水平以下 / a product fell to its reorder level
+  LOW_STOCK
 
   @@map("notification_type")
 }
@@ -862,6 +868,8 @@ model Notification {
   dealId         String?          @map("deal_id") @db.Uuid
   activityId     String?          @map("activity_id") @db.Uuid
   ticketId       String?          @map("ticket_id") @db.Uuid
+  /// 低库存提醒的产品 / product of a low-stock alert
+  productId      String?          @map("product_id") @db.Uuid
   title          String           @db.VarChar(200)
   dueAt          DateTime?        @map("due_at") @db.Timestamptz(6)
   dedupKey       String?          @map("dedup_key") @db.VarChar(100)
@@ -875,6 +883,7 @@ model Notification {
   deal           Deal?            @relation(fields: [organizationId, dealId], references: [organizationId, id], onDelete: Cascade)
   activity       Activity?        @relation(fields: [organizationId, activityId], references: [organizationId, id], onDelete: Cascade)
   ticket         Ticket?          @relation(fields: [organizationId, ticketId], references: [organizationId, id], onDelete: Cascade)
+  product        Product?         @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Cascade)
 
   @@unique([userId, dedupKey])
   @@index([organizationId, userId, createdAt(sort: Desc)])
@@ -883,6 +892,7 @@ model Notification {
   @@index([organizationId, leadId])
   @@index([organizationId, accountId])
   @@index([organizationId, dealId])
+  @@index([organizationId, productId])
   @@map("notifications")
 }
 

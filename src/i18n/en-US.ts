@@ -2194,4 +2194,7 @@ export const enUS: Record<MessageKey, string> = {
   'portal.auditReset': ' (password reset)',
   'portal.auditDisable': 'Contact: {contact}; {n} sessions ended',
   'portal.auditVia': 'From the customer portal ({contact})',
+  'notificationType.LOW_STOCK': 'Low stock',
+  'notifications.lowStock': 'Product "{title}" fell to its reorder level; please restock',
+  'notifications.entity.product': 'product',
 };

@@ -12,7 +12,7 @@ import { StockDrawer, StockTag } from '@/components/StockDrawer';
 import { t } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtMoney } from '@/lib/format';
-import { toFormErrors, usePagedList } from '@/lib/hooks';
+import { toFormErrors, useOpenFromUrl, usePagedList } from '@/lib/hooks';
 import type { Product } from '@/lib/types';
 
 const CURRENCIES = ['CNY', 'USD', 'EUR', 'HKD', 'JPY'].map((v) => ({ value: v, label: v }));
@@ -29,6 +29,16 @@ export default function ProductsPage() {
   const { data, loading, reload, pagination } = usePagedList<Product>('/api/products', { q, active: active === 'all' ? undefined : active, stock: stock === 'all' ? undefined : stock });
   const [summary, setSummary] = useState({ low: 0, out: 0 });
   const [stockOf, setStockOf] = useState<Product | null>(null);
+  /** 从通知或 ?id= 打开产品的库存详情 / open a product's stock from a notification or ?id= */
+  const openStock = useCallback(
+    (id: string) => {
+      api<Product>(`/api/products/${id}`)
+        .then(setStockOf)
+        .catch((err: Error) => message.error(err.message));
+    },
+    [message],
+  );
+  useOpenFromUrl(openStock);
   const loadSummary = useCallback(() => {
     api<{ low: number; out: number }>('/api/products/stock-summary')
       .then(setSummary)

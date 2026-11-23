@@ -17,7 +17,7 @@ import { NOTIFICATIONS_CHANGED, notificationHref, notificationText, notifyChange
 
 type Status = 'all' | 'unread';
 
-const TYPE_COLOR: Record<AppNotification['type'], string> = { ASSIGNED: 'blue', ACTIVITY_DUE: 'orange', TICKET_COMMENT: 'purple', TICKET_ESCALATED: 'magenta', WEB_FORM_LEAD: 'green', WORKFLOW: 'cyan', APPROVAL_REQUEST: 'gold', APPROVAL_DECIDED: 'lime' };
+const TYPE_COLOR: Record<AppNotification['type'], string> = { ASSIGNED: 'blue', ACTIVITY_DUE: 'orange', TICKET_COMMENT: 'purple', TICKET_ESCALATED: 'magenta', WEB_FORM_LEAD: 'green', WORKFLOW: 'cyan', APPROVAL_REQUEST: 'gold', APPROVAL_DECIDED: 'lime', LOW_STOCK: 'red' };
 
 export default function NotificationsPage() {
   const { message } = App.useApp();

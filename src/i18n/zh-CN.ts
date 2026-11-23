@@ -2187,6 +2187,9 @@ export const zhCN = {
   'portal.auditReset': '（重设密码）',
   'portal.auditDisable': '联系人：{contact}，结束 {n} 个会话',
   'portal.auditVia': '来自客户门户（{contact}）',
+  'notificationType.LOW_STOCK': '低库存',
+  'notifications.lowStock': '产品“{title}”库存已降到再订货水平以下，请及时补货',
+  'notifications.entity.product': '产品',
 } as const;
 
 export type MessageKey = keyof typeof zhCN;

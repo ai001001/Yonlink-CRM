@@ -10,7 +10,7 @@ import { fmtDateTime } from './format';
 /** 通知 / Notification */
 export interface AppNotification {
   id: string;
-  type: 'ASSIGNED' | 'ACTIVITY_DUE' | 'TICKET_COMMENT' | 'TICKET_ESCALATED' | 'WEB_FORM_LEAD' | 'WORKFLOW' | 'APPROVAL_REQUEST' | 'APPROVAL_DECIDED';
+  type: 'ASSIGNED' | 'ACTIVITY_DUE' | 'TICKET_COMMENT' | 'TICKET_ESCALATED' | 'WEB_FORM_LEAD' | 'WORKFLOW' | 'APPROVAL_REQUEST' | 'APPROVAL_DECIDED' | 'LOW_STOCK';
   title: string;
   dueAt: string | null;
   readAt: string | null;
@@ -21,6 +21,8 @@ export interface AppNotification {
   activityId: string | null;
   /** 服务工单 / service ticket */
   ticketId?: string | null;
+  /** 低库存提醒的产品 / product of a low-stock alert */
+  productId?: string | null;
   actor: { id: string; name: string } | null;
 }
 
@@ -47,7 +49,8 @@ export function notifyChanged(): void {
  * 通知关联记录的列表页与记录 ID。
  * The list page and record id a notification points at.
  */
-export function notificationTarget(n: AppNotification): { path: string; id: string; entity: 'lead' | 'account' | 'deal' | 'activity' | 'ticket' } {
+export function notificationTarget(n: AppNotification): { path: string; id: string; entity: 'lead' | 'account' | 'deal' | 'activity' | 'ticket' | 'product' } {
+  if (n.productId) return { path: '/products', id: n.productId, entity: 'product' };
   if (n.ticketId) return { path: '/tickets', id: n.ticketId, entity: 'ticket' };
   if (n.leadId) return { path: '/leads', id: n.leadId, entity: 'lead' };
   if (n.accountId) return { path: '/accounts', id: n.accountId, entity: 'account' };
@@ -68,6 +71,7 @@ export function notificationText(n: AppNotification, now = Date.now()): string {
   if (n.type === 'TICKET_ESCALATED') return t('notifications.ticketEscalated', { title: n.title });
   if (n.type === 'WEB_FORM_LEAD') return t('notifications.webFormLead', { title: n.title });
   if (n.type === 'WORKFLOW') return t('notifications.workflow', { title: n.title });
+  if (n.type === 'LOW_STOCK') return t('notifications.lowStock', { title: n.title });
   if (n.type === 'APPROVAL_REQUEST') return t('notifications.approvalRequest', { actor: n.actor?.name ?? t('notifications.someone'), title: n.title });
   if (n.type === 'APPROVAL_DECIDED') return t('notifications.approvalDecided', { actor: n.actor?.name ?? t('notifications.someone'), title: n.title });
   if (n.type === 'TICKET_COMMENT') return t('notifications.ticketComment', { actor: n.actor?.name ?? t('notifications.someone'), title: n.title });
