@@ -37,7 +37,8 @@ test('经理：库存筛选、流水与手工调整 / manager: stock filters, mo
   await drawer.getByTestId('stock-adjust').click();
   await expect(page.getByText('库存已调整')).toBeVisible();
   await expect(drawer.getByTestId('stock-quantity').first()).toContainText(String(before + 5));
-  const first = drawer.locator('tr.ant-table-row').first();
+  // 多仓库起抽屉上方多了各仓库库存表，流水表单独定位 / since multi-warehouse a stock-by-warehouse table sits above, so target the movements table
+  const first = drawer.getByTestId('stock-movements').locator('tr.ant-table-row').first();
   await expect(first).toContainText('手工调整');
   await expect(first).toContainText('+5');
   await expect(first).toContainText('E2E 退货入库');

@@ -39,8 +39,9 @@ export const orderCreateSchema = z.strictObject({
 export const orderUpdateSchema = z.strictObject({ subject: requiredText(200), expectedDelivery, shippingAddress: optionalText(500), notes: optionalText(5000) }).partial();
 /** 状态变更；取消时可填原因 / Status change; an optional reason when cancelling */
 export const orderStatusSchema = z
-  .strictObject({ status: z.enum(SalesOrderStatus), reason: optionalText(500) })
-  .refine((v) => v.status === SalesOrderStatus.CANCELLED || !v.reason, { path: ['reason'], message: 'Only for cancellation' });
+  .strictObject({ status: z.enum(SalesOrderStatus), reason: optionalText(500), /** 发货仓库（只用于发货，不填为默认仓库）/ shipping warehouse (shipping only; default when omitted) */ warehouseId: z.uuid().optional() })
+  .refine((v) => v.status === SalesOrderStatus.CANCELLED || !v.reason, { path: ['reason'], message: 'Only for cancellation' })
+  .refine((v) => v.status === SalesOrderStatus.SHIPPED || !v.warehouseId, { path: ['warehouseId'], message: 'Only for shipping' });
 /** 列表查询 / List query */
 export const orderListSchema = listQuery.extend({
   status: z.enum(SalesOrderStatus).optional(),
@@ -244,9 +245,9 @@ export async function changeOrderStatus(ctx: AuthContext, id: string, input: z.i
       if (invoices > 0) throw new ApiError(409, 'CONFLICT', 'Order has invoices', { invoices: [String(invoices)] });
     }
     // 发货减少库存；已发货订单取消时退回 / shipping takes stock out; cancelling a shipped order returns it
-    let stock: { sku: string; quantity: string; balance: string }[] = [];
+    let stock: { sku: string; quantity: string; balance: string; warehouse: string }[] = [];
     if (input.status === SalesOrderStatus.SHIPPED) {
-      stock = await recordMovements(tx, ctx, 'SALES_SHIPMENT', current.lines.map((l) => ({ sku: l.productSku, quantity: l.quantity })), { salesOrderId: id });
+      stock = await recordMovements(tx, ctx, 'SALES_SHIPMENT', current.lines.map((l) => ({ sku: l.productSku, quantity: l.quantity })), { salesOrderId: id }, input.warehouseId);
     }
     if (input.status === SalesOrderStatus.CANCELLED && current.status === SalesOrderStatus.SHIPPED) stock = await returnShipment(tx, ctx, id);
     const fields: Record<string, unknown> = { status: [current.status, input.status] };

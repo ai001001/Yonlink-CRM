@@ -14,6 +14,7 @@ import { t, tEnum } from '@/i18n';
 import { api, ClientApiError, qs } from '@/lib/api';
 import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
 import { usePermissions } from './AuthProvider';
+import { useWarehouses, WarehouseSelect } from './Warehouses';
 
 const CURRENCIES = ['CNY', 'USD', 'EUR', 'HKD', 'JPY'];
 const STATUS_COLOR: Record<string, string> = { DRAFT: 'default', ORDERED: 'blue', PARTIALLY_RECEIVED: 'orange', RECEIVED: 'green', CANCELLED: 'red' };
@@ -291,6 +292,9 @@ export function PurchaseOrderDrawer({ orderId, onClose, onChanged }: DrawerProps
   const [po, setPo] = useState<PurchaseOrder | null>(null);
   const [editing, setEditing] = useState<PurchaseOrder | null>(null);
   const [receiving, setReceiving] = useState<Record<string, string> | null>(null);
+  /** 收货仓库（多个启用仓库时可选，不选为默认仓库）/ receiving warehouse (optional with several active ones) */
+  const [receiveWarehouse, setReceiveWarehouse] = useState<string>();
+  const warehouses = useWarehouses();
   const [cancelReason, setCancelReason] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -332,7 +336,7 @@ export function PurchaseOrderDrawer({ orderId, onClose, onChanged }: DrawerProps
       .map(([lineId, quantity]) => ({ lineId, quantity: String(quantity) }));
     if (!lines.length) return;
     try {
-      changed(await api<PurchaseOrder>(`/api/purchase-orders/${po.id}/receive`, { method: 'POST', body: { lines } }));
+      changed(await api<PurchaseOrder>(`/api/purchase-orders/${po.id}/receive`, { method: 'POST', body: { lines, ...(receiveWarehouse ? { warehouseId: receiveWarehouse } : {}) } }));
       message.success(t('purchase.received'));
       setReceiving(null);
     } catch (err) {
@@ -433,6 +437,12 @@ export function PurchaseOrderDrawer({ orderId, onClose, onChanged }: DrawerProps
 
       <Modal title={t('purchase.action.receive')} open={receiving !== null} onOk={receive} onCancel={() => setReceiving(null)} okText={t('purchase.confirmReceive')} width={720} zIndex={1100}>
         <Typography.Paragraph type="secondary">{t('purchase.receiveHint')}</Typography.Paragraph>
+        {warehouses.items.filter((w) => w.isActive).length > 1 && (
+          <Space style={{ marginBottom: 12 }}>
+            <Typography.Text>{t('stock.receiveWarehouse')}</Typography.Text>
+            <WarehouseSelect items={warehouses.items} allowClear placeholder={t('warehouses.defaultHint')} aria-label={t('stock.receiveWarehouse')} style={{ width: 260 }} value={receiveWarehouse} onChange={setReceiveWarehouse} />
+          </Space>
+        )}
         <Table<PoLine>
           rowKey="id"
           size="small"

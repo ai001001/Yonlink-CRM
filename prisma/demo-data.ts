@@ -1630,3 +1630,22 @@ export const DEMO_PORTAL = {
   welcome: '【演示】欢迎使用演示客户服务门户：您可以在这里提交服务工单、查看报价单与发票（演示数据，均为虚构）。',
   key: (organizationId: string) => createHash('sha256').update(`yonlink-demo-portal:${organizationId}`).digest('base64url').slice(0, 22),
 };
+
+/**
+ * 演示仓库（演示数据）：上海总仓为默认仓库，期初库存与历史流水都在总仓；部分产品调拨到华南仓与华北仓。
+ * Demo warehouses (demo data): the Shanghai main warehouse is the default and holds the opening stock and history;
+ * some products are transferred to the South and North China warehouses.
+ */
+export const DEMO_WAREHOUSES = [
+  { code: 'SH', name: '【演示】上海总仓', address: '上海市嘉定区（演示地址）', isDefault: true },
+  { code: 'GZ', name: '【演示】华南仓', address: '广州市黄埔区（演示地址）', isDefault: false },
+  { code: 'TJ', name: '【演示】华北仓', address: '天津市滨海新区（演示地址）', isDefault: false },
+] as const;
+/** 演示调拨：第几个产品、调到哪个仓库、数量 / demo transfers: product index, target warehouse, quantity */
+export const DEMO_TRANSFERS: { product: number; to: 'GZ' | 'TJ'; quantity: number }[] = [
+  { product: 0, to: 'GZ', quantity: 12 },
+  { product: 1, to: 'TJ', quantity: 8 },
+  { product: 3, to: 'GZ', quantity: 15 },
+  { product: 4, to: 'TJ', quantity: 10 },
+  { product: 5, to: 'GZ', quantity: 6 },
+];

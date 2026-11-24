@@ -120,8 +120,9 @@ describe('sales orders R1 lifecycle', () => {
     expect(c.json.cancelledAt).not.toBeNull();
     expect(c.json.shippedAt).not.toBeNull();
     const log = await prisma.auditLog.findFirstOrThrow({ where: { entityId: o.id, action: 'order.status' }, orderBy: { createdAt: 'desc' } });
-    // 已发货订单取消时退回库存，审计附带库存变动（产品库存功能起）/ cancelling a shipped order returns stock, recorded in the audit (since product stock)
-    expect(log.changes).toEqual({ fields: { status: ['SHIPPED', 'CANCELLED'], cancelReason: [null, '[redacted]'] }, stock: [{ sku: 'P-1', quantity: '3', balance: '0' }] });
+    // 已发货订单取消时退回库存，审计附带库存变动（产品库存功能起；多仓库功能起含仓库代码，退回原发货仓库）
+    // cancelling a shipped order returns stock, recorded in the audit (since product stock; with the warehouse code since multi-warehouse)
+    expect(log.changes).toEqual({ fields: { status: ['SHIPPED', 'CANCELLED'], cancelReason: [null, '[redacted]'] }, stock: [{ sku: 'P-1', quantity: '3', balance: '0', warehouse: 'MAIN' }] });
   });
 
   it('修改主题、预计交付、收货地址、备注并写审计（长文本脱敏）/ update with audit', async () => {

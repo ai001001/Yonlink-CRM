@@ -12,12 +12,15 @@ import { t, tEnum } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
 import type { Product } from '@/lib/types';
+import { useWarehouses, warehouseLabel, WarehouseSelect } from './Warehouses';
 
 interface Movement {
   id: string;
-  reason: 'ADJUSTMENT' | 'PURCHASE_RECEIPT' | 'SALES_SHIPMENT' | 'SALES_RETURN';
+  reason: 'ADJUSTMENT' | 'PURCHASE_RECEIPT' | 'SALES_SHIPMENT' | 'SALES_RETURN' | 'TRANSFER';
   quantity: string;
   balanceAfter: string;
+  warehouseBalanceAfter: string;
+  warehouse: { id: string; code: string; name: string };
   note: string | null;
   createdAt: string;
   actor: { id: string; name: string } | null;
@@ -27,6 +30,8 @@ interface Movement {
 
 interface MovementPage {
   product: { id: string; sku: string; stockQuantity: string; reorderLevel: string | null; unit: string };
+  /** 各仓库库存 / stock per warehouse */
+  warehouses: { warehouse: { id: string; code: string; name: string; isActive: boolean; isDefault: boolean }; quantity: string }[];
   items: Movement[];
   total: number;
 }
@@ -57,23 +62,46 @@ export function StockDrawer({ product, canManage, onClose, onChanged }: { produc
   const { message } = App.useApp();
   const [data, setData] = useState<MovementPage | null>(null);
   const [page, setPage] = useState(1);
-  const [form] = Form.useForm<{ mode: 'add' | 'set'; quantity: string; note: string }>();
+  const [form] = Form.useForm<{ mode: 'add' | 'set'; quantity: string; note: string; warehouseId?: string }>();
+  const [moveForm] = Form.useForm<{ fromWarehouseId: string; toWarehouseId: string; quantity: string; note: string }>();
   const [saving, setSaving] = useState(false);
+  const [filter, setFilter] = useState<string>();
+  const warehouses = useWarehouses();
+  const multi = warehouses.items.filter((w) => w.isActive).length > 1;
 
   const load = useCallback(() => {
     if (!product) return;
-    api<MovementPage>(`/api/products/${product.id}/stock?page=${page}&pageSize=10`)
+    api<MovementPage>(`/api/products/${product.id}/stock?page=${page}&pageSize=10${filter ? `&warehouseId=${filter}` : ''}`)
       .then(setData)
       .catch((err: Error) => message.error(err.message));
-  }, [product, page, message]);
+  }, [product, page, filter, message]);
   useEffect(load, [load]);
+
+  const transfer = async () => {
+    if (!product) return;
+    const v = await moveForm.validateFields();
+    setSaving(true);
+    try {
+      await api(`/api/products/${product.id}/stock/transfer`, { method: 'POST', body: { ...v, quantity: String(v.quantity) } });
+      message.success(t('stock.transferred'));
+      moveForm.resetFields();
+      setPage(1);
+      load();
+      onChanged();
+    } catch (err) {
+      const code = err instanceof ClientApiError ? Object.values(err.details ?? {})[0]?.[0] : undefined;
+      message.error(code === 'same_warehouse' ? t('stock.sameWarehouse') : code === 'inactive' ? t('warehouses.inactive') : (err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const adjust = async () => {
     if (!product) return;
     const v = await form.validateFields();
     setSaving(true);
     try {
-      await api(`/api/products/${product.id}/stock`, { method: 'POST', body: { mode: v.mode, quantity: String(v.quantity), note: v.note } });
+      await api(`/api/products/${product.id}/stock`, { method: 'POST', body: { mode: v.mode, quantity: String(v.quantity), note: v.note, ...(v.warehouseId ? { warehouseId: v.warehouseId } : {}) } });
       message.success(t('stock.adjusted'));
       form.resetFields();
       setPage(1);
@@ -96,6 +124,32 @@ export function StockDrawer({ product, canManage, onClose, onChanged }: { produc
             <Descriptions.Item label={t('stock.quantity')}>{current ? <StockTag product={{ ...current }} /> : null}</Descriptions.Item>
             <Descriptions.Item label={t('stock.reorderLevel')}>{current?.reorderLevel !== null && current ? `${qty(current.reorderLevel!)} ${current.unit}` : t('stock.noReorder')}</Descriptions.Item>
           </Descriptions>
+          {data && data.warehouses.length > 0 && (
+            <>
+              <Typography.Title level={5}>{t('stock.byWarehouse')}</Typography.Title>
+              <Table
+                rowKey={(r) => r.warehouse.id}
+                size="small"
+                pagination={false}
+                style={{ marginBottom: 16 }}
+                data-testid="stock-by-warehouse"
+                dataSource={data.warehouses}
+                columns={[
+                  {
+                    title: t('stock.warehouse'),
+                    render: (_, r) => (
+                      <Space size={4}>
+                        {warehouseLabel(r.warehouse)}
+                        {r.warehouse.isDefault && <Tag color="blue">{t('warehouses.default')}</Tag>}
+                        {!r.warehouse.isActive && <Tag>{t('warehouses.inactiveTag')}</Tag>}
+                      </Space>
+                    ),
+                  },
+                  { title: t('stock.quantity'), align: 'right', render: (_, r) => <Typography.Text type={Number(r.quantity) < 0 ? 'danger' : undefined}>{`${qty(r.quantity)} ${current?.unit ?? ''}`}</Typography.Text> },
+                ]}
+              />
+            </>
+          )}
           {canManage && (
             <Form form={form} name="stock-adjust" layout="inline" initialValues={{ mode: 'add' }} style={{ marginBottom: 16, rowGap: 8 }}>
               <Form.Item name="mode">
@@ -113,15 +167,58 @@ export function StockDrawer({ product, canManage, onClose, onChanged }: { produc
               <Form.Item name="note" rules={[{ required: true, whitespace: true, message: t('common.required', { field: t('stock.note') }) }]}>
                 <Input maxLength={200} style={{ width: 240 }} placeholder={t('stock.note')} aria-label={t('stock.note')} />
               </Form.Item>
+              {multi && (
+                <Form.Item name="warehouseId">
+                  <WarehouseSelect items={warehouses.items} allowClear placeholder={t('warehouses.defaultHint')} aria-label={t('stock.warehouse')} style={{ width: 220 }} />
+                </Form.Item>
+              )}
               <Button type="primary" loading={saving} onClick={adjust} data-testid="stock-adjust">
                 {t('stock.adjust')}
               </Button>
             </Form>
           )}
-          <Typography.Title level={5}>{t('stock.movements')}</Typography.Title>
+          {canManage && multi && (
+            <Form form={moveForm} name="stock-transfer" layout="inline" style={{ marginBottom: 16, rowGap: 8 }} data-testid="stock-transfer-form">
+              <Form.Item name="fromWarehouseId" rules={[{ required: true, message: t('common.required', { field: t('stock.transferFrom') }) }]}>
+                <WarehouseSelect items={warehouses.items} placeholder={t('stock.transferFrom')} aria-label={t('stock.transferFrom')} style={{ width: 200 }} />
+              </Form.Item>
+              <Form.Item name="toWarehouseId" rules={[{ required: true, message: t('common.required', { field: t('stock.transferTo') }) }]}>
+                <WarehouseSelect items={warehouses.items} placeholder={t('stock.transferTo')} aria-label={t('stock.transferTo')} style={{ width: 200 }} />
+              </Form.Item>
+              <Form.Item name="quantity" rules={[{ required: true, message: t('common.required', { field: t('stock.transferQuantity') }) }]}>
+                <InputNumber<string> stringMode min="0.01" precision={2} style={{ width: 120 }} placeholder={t('stock.transferQuantity')} aria-label={t('stock.transferQuantity')} />
+              </Form.Item>
+              <Form.Item name="note" rules={[{ required: true, whitespace: true, message: t('common.required', { field: t('stock.note') }) }]}>
+                <Input maxLength={200} style={{ width: 200 }} placeholder={t('stock.note')} aria-label={`${t('stock.transfer')} ${t('stock.note')}`} />
+              </Form.Item>
+              <Button loading={saving} onClick={transfer} data-testid="stock-transfer">
+                {t('stock.transfer')}
+              </Button>
+            </Form>
+          )}
+          <Space style={{ marginBottom: 8 }} wrap>
+            <Typography.Title level={5} style={{ margin: 0 }}>
+              {t('stock.movements')}
+            </Typography.Title>
+            {warehouses.items.length > 1 && (
+              <WarehouseSelect
+                items={warehouses.items.map((w) => ({ ...w, isActive: true }))}
+                allowClear
+                placeholder={t('stock.allWarehouses')}
+                aria-label={t('stock.allWarehouses')}
+                style={{ width: 220 }}
+                value={filter}
+                onChange={(v) => {
+                  setFilter(v);
+                  setPage(1);
+                }}
+              />
+            )}
+          </Space>
           <Table<Movement>
             rowKey="id"
             size="small"
+            data-testid="stock-movements"
             dataSource={data?.items ?? []}
             loading={!data}
             scroll={{ x: 'max-content' }}
@@ -131,6 +228,8 @@ export function StockDrawer({ product, canManage, onClose, onChanged }: { produc
               { title: t('stock.time'), render: (_, r) => fmtDateTime(r.createdAt) },
               { title: t('stock.reason'), render: (_, r) => tEnum('stockReason', r.reason) },
               { title: t('stock.change'), align: 'right', render: (_, r) => <Typography.Text type={Number(r.quantity) < 0 ? 'danger' : 'success'}>{qty(r.quantity, true)}</Typography.Text> },
+              { title: t('stock.warehouse'), render: (_, r) => r.warehouse.code },
+              { title: t('stock.warehouseBalance'), align: 'right', render: (_, r) => qty(r.warehouseBalanceAfter) },
               { title: t('stock.balance'), align: 'right', render: (_, r) => qty(r.balanceAfter) },
               {
                 title: t('stock.source'),

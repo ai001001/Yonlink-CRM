@@ -18,6 +18,7 @@ import { usePermissions } from './AuthProvider';
 import { SalesOrderPurchases } from './PurchaseOrderDrawer';
 import { CreateInvoiceModal, INVOICE_STATUS_COLOR } from './InvoiceDrawer';
 import { QuoteLinesTable } from './QuoteDrawer';
+import { useWarehouses, WarehouseSelect } from './Warehouses';
 
 /** 状态颜色 / Status colours */
 export const ORDER_STATUS_COLOR: Record<SalesOrderStatus, string> = { CONFIRMED: 'blue', SHIPPED: 'gold', DELIVERED: 'green', CANCELLED: 'default' };
@@ -132,6 +133,10 @@ export function SalesOrderDrawer({ orderId, onClose, onChanged }: Props) {
   const [order, setOrder] = useState<SalesOrder | null>(null);
   const [editing, setEditing] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  /** 发货仓库（多个启用仓库时可选，不选为默认仓库）/ shipping warehouse (optional with several active ones) */
+  const [shipWarehouse, setShipWarehouse] = useState<string>();
+  const warehouses = useWarehouses();
+  const multiWarehouse = warehouses.items.filter((w) => w.isActive).length > 1;
   const [invoicing, setInvoicing] = useState(false);
   const [form] = Form.useForm<OrderForm>();
   const [cancelForm] = Form.useForm<{ reason?: string }>();
@@ -166,8 +171,8 @@ export function SalesOrderDrawer({ orderId, onClose, onChanged }: Props) {
     }
   };
 
-  const setStatus = (status: SalesOrderStatus, reason?: string) =>
-    run(() => api<SalesOrder>(`/api/sales-orders/${order!.id}/status`, { method: 'POST', body: reason ? { status, reason } : { status } }), t('common.saved'));
+  const setStatus = (status: SalesOrderStatus, reason?: string, warehouseId?: string) =>
+    run(() => api<SalesOrder>(`/api/sales-orders/${order!.id}/status`, { method: 'POST', body: { status, ...(reason ? { reason } : {}), ...(warehouseId ? { warehouseId } : {}) } }), t('common.saved'));
 
   const editable = !!order && perm.canEdit(order.deal) && !isFinal(order.status);
   // 未取消且没有未作废发票的订单可开票（含已交付）/ non-cancelled orders without an active invoice can be invoiced
@@ -207,7 +212,16 @@ export function SalesOrderDrawer({ orderId, onClose, onChanged }: Props) {
               NEXT[order.status]
                 .filter((s) => s !== 'CANCELLED')
                 .map((s) => (
-                  <Popconfirm key={s} title={t('orders.confirmStatus', { status: tEnum('orderStatus', s) })} onConfirm={() => setStatus(s)}>
+                  <Popconfirm
+                    key={s}
+                    title={t('orders.confirmStatus', { status: tEnum('orderStatus', s) })}
+                    description={
+                      s === 'SHIPPED' && multiWarehouse ? (
+                        <WarehouseSelect items={warehouses.items} allowClear placeholder={t('warehouses.defaultHint')} aria-label={t('stock.shipWarehouse')} style={{ width: 240 }} value={shipWarehouse} onChange={setShipWarehouse} />
+                      ) : undefined
+                    }
+                    onConfirm={() => setStatus(s, undefined, s === 'SHIPPED' ? shipWarehouse : undefined)}
+                  >
                     <Button type="primary">{t(`orders.action.${s}` as MessageKey)}</Button>
                   </Popconfirm>
                 ))}

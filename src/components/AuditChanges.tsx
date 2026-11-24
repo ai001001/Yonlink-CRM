@@ -312,9 +312,14 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
   if (entry.action === 'product.stock_adjust' && Array.isArray(c.stock)) {
     // 库存调整：SKU、变动、前后库存 / stock adjustment: SKU, change and stock before → after
     lines.push(t('stock.auditAdjust', { sku: String(c.sku ?? ''), quantity: String(c.quantity ?? ''), before: String(c.stock[0]), after: String(c.stock[1]) }));
+    // 多仓库起：仓库与该仓库的前后库存 / since multi-warehouse: the warehouse and its stock before → after
+    if (typeof c.warehouse === 'string' && Array.isArray(c.warehouseStock)) lines.push(t('stock.auditWarehouse', { warehouse: c.warehouse, before: String(c.warehouseStock[0]), after: String(c.warehouseStock[1]) }));
+  } else if (entry.action === 'product.stock_transfer') {
+    // 仓库调拨 / transfer between warehouses
+    lines.push(t('stock.auditTransfer', { sku: String(c.sku ?? ''), quantity: String(c.quantity ?? ''), from: String(c.from ?? ''), to: String(c.to ?? '') }));
   } else if (Array.isArray(c.stock) && c.stock.length) {
-    // 收货、发货、取消退回带来的库存变动 / stock movements from receipts, shipments and returns
-    lines.push(t('stock.auditMovements', { list: (c.stock as { sku: string; quantity: string }[]).map((x) => `${x.sku} ${Number(x.quantity) > 0 ? '+' : ''}${x.quantity}`).join(t('common.listSep')) }));
+    // 收货、发货、取消退回带来的库存变动（多仓库起带仓库代码）/ stock movements from receipts, shipments and returns (with the warehouse since multi-warehouse)
+    lines.push(t('stock.auditMovements', { list: (c.stock as { sku: string; quantity: string; warehouse?: string }[]).map((x) => `${x.sku} ${Number(x.quantity) > 0 ? '+' : ''}${x.quantity}${x.warehouse ? ` @${x.warehouse}` : ''}`).join(t('common.listSep')) }));
   }
   if (Array.isArray(c.reasons) && entry.entityType === 'quote') {
     // 报价单提交审批：原因 / quote approval submission: reasons
@@ -359,6 +364,12 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     if (entry.action === 'portal.invite') lines.push(t('portal.auditInvite', { contact: String(c.contact ?? ''), reset: c.reset ? t('portal.auditReset') : '' }));
     else if (entry.action === 'portal.disable') lines.push(t('portal.auditDisable', { contact: String(c.contact ?? ''), n: Number(c.sessions ?? 0) }));
     else if (fields) for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${t(f === 'isEnabled' ? 'portal.enabled' : 'portal.welcome')}${t('common.colon')}${value(f, b, users)} → ${value(f, a, users)}`);
+  }
+  if (entry.entityType === 'warehouse') {
+    // 仓库：代码与名称；修改列出变化项 / warehouse: code and name; updates list the changes
+    const snapW = (c.after ?? c.before) as { code?: string; name?: string } | undefined;
+    if (snapW) lines.push(`${snapW.code ?? ''} · ${snapW.name ?? ''}`);
+    if (fields) for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${t(`warehouses.${f === 'isActive' ? 'active' : f === 'isDefault' ? 'default' : f}` as MessageKey)}${t('common.colon')}${value(f, b, users)} → ${value(f, a, users)}`);
   }
   if (entry.entityType === 'cadence') {
     // 节奏：加入、停止、维护 / cadence: enroll, stop, maintenance
@@ -427,9 +438,9 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
       const show = (f: string, v: unknown) => (Array.isArray(v) ? t('workflows.auditCount', { n: v.length }) : f === 'trigger' ? tEnum('workflows.trigger', String(v)) : value(f, v, users));
       for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${LABEL[f] ? t(LABEL[f]) : f}${t('common.colon')}${show(f, b)} → ${show(f, a)}`);
     }
-  } else if (fields && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'portal') {
+  } else if (fields && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'portal' && entry.entityType !== 'warehouse') {
     for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, b, users, entry.entityType)} → ${value(f, a, users, entry.entityType)}`);
-  } else if (snap && entry.entityType !== 'customfield' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence') {
+  } else if (snap && entry.entityType !== 'customfield' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'warehouse') {
     for (const [f, v] of Object.entries(snap)) if (v !== null) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, v, users, entry.entityType)}`);
   } else if (typeof c.reason === 'string') {
     lines.push(tEnum('auditReason', c.reason));

@@ -57,24 +57,27 @@ describe('stock R2 isolation and database', () => {
     const b = await createTenant('B');
     const bp = (await call(products.POST, { token: b.token, body: { sku: 'P-1', name: 'B 产品' } })).json;
     await adjust({ mode: 'add', quantity: '5', note: 'x' });
+    // 多仓库（#60b）后流水必须指定仓库：A 用首次调整自动建立的默认仓库，B 建一个仓库 / movements need a warehouse since #60b
+    const wa = (await prisma.warehouse.findFirstOrThrow({ where: { organizationId: a.org.id, isDefault: true } })).id;
+    const wb = (await prisma.warehouse.create({ data: { organizationId: b.org.id, code: 'MAIN', name: 'B 仓库', isDefault: true } })).id;
     expect((await call(summary.GET, { token: b.token })).json).toEqual({ low: 0, out: 1 });
     expect((await call(stockRoute.GET, { token: b.token, params: { id: p.id } })).status).toBe(404);
     expect((await prisma.product.findUniqueOrThrow({ where: { id: bp.id } })).stockQuantity.toString()).toBe('0');
     // 跨组织产品或单据 / cross-org product or orders
-    await expect(prisma.stockMovement.create({ data: { organizationId: b.org.id, productId: p.id, reason: 'ADJUSTMENT', quantity: 1 } })).rejects.toThrow();
+    await expect(prisma.stockMovement.create({ data: { organizationId: b.org.id, productId: p.id, warehouseId: wb, reason: 'ADJUSTMENT', quantity: 1 } })).rejects.toThrow();
     const vendor = await prisma.vendor.create({ data: { organizationId: a.org.id, name: 'V' } });
     const po = await prisma.purchaseOrder.create({ data: { organizationId: a.org.id, vendorId: vendor.id, poNumber: 'PO-X-1', subject: 's', currency: 'CNY', subtotal: 0, taxAmount: 0, total: 0 } });
-    await expect(prisma.stockMovement.create({ data: { organizationId: b.org.id, productId: bp.id, reason: 'PURCHASE_RECEIPT', quantity: 1, purchaseOrderId: po.id } })).rejects.toThrow(/Foreign key constraint/);
+    await expect(prisma.stockMovement.create({ data: { organizationId: b.org.id, productId: bp.id, warehouseId: wb, reason: 'PURCHASE_RECEIPT', quantity: 1, purchaseOrderId: po.id } })).rejects.toThrow(/Foreign key constraint/);
     // 触发器以外键错误码（23503）拒绝，Prisma 报告为外键约束错误 / the trigger rejects with 23503, reported by Prisma as a foreign-key error
     // 约束 / constraints
-    await expect(prisma.stockMovement.create({ data: { organizationId: a.org.id, productId: p.id, reason: 'ADJUSTMENT', quantity: 0 } })).rejects.toThrow(/stock_movements_check/);
-    await expect(prisma.stockMovement.create({ data: { organizationId: a.org.id, productId: p.id, reason: 'ADJUSTMENT', quantity: 1, note: '  ' } })).rejects.toThrow(/stock_movements_check/);
+    await expect(prisma.stockMovement.create({ data: { organizationId: a.org.id, productId: p.id, warehouseId: wa, reason: 'ADJUSTMENT', quantity: 0 } })).rejects.toThrow(/stock_movements_check/);
+    await expect(prisma.stockMovement.create({ data: { organizationId: a.org.id, productId: p.id, warehouseId: wa, reason: 'ADJUSTMENT', quantity: 1, note: '  ' } })).rejects.toThrow(/stock_movements_check/);
     const m = await prisma.stockMovement.findFirstOrThrow({ where: { productId: p.id } });
     await expect(prisma.$executeRaw`UPDATE stock_movements SET quantity = 9 WHERE id = ${m.id}::uuid`).rejects.toThrow(/append-only/);
     await expect(prisma.$executeRaw`UPDATE products SET reorder_level = -1 WHERE id = ${p.id}::uuid`).rejects.toThrow(/products_reorder_level_check/);
     await expect(prisma.product.delete({ where: { id: p.id } })).rejects.toThrow();
     // 采购单被删除时流水保留、单据置空 / deleting the order keeps the movement and clears the reference
-    const r = await prisma.stockMovement.create({ data: { organizationId: a.org.id, productId: p.id, reason: 'PURCHASE_RECEIPT', quantity: 2, purchaseOrderId: po.id } });
+    const r = await prisma.stockMovement.create({ data: { organizationId: a.org.id, productId: p.id, warehouseId: wa, reason: 'PURCHASE_RECEIPT', quantity: 2, purchaseOrderId: po.id } });
     expect(r.balanceAfter.toString()).toBe('7');
     await prisma.purchaseOrder.delete({ where: { id: po.id } });
     expect((await prisma.stockMovement.findUniqueOrThrow({ where: { id: r.id } })).purchaseOrderId).toBeNull();
@@ -82,7 +85,8 @@ describe('stock R2 isolation and database', () => {
   });
 
   it('2000 条流水：分页查询 1 秒内 / 2000 movements page quickly', async () => {
-    await prisma.stockMovement.createMany({ data: Array.from({ length: 2000 }, (_, i) => ({ organizationId: a.org.id, productId: p.id, reason: 'ADJUSTMENT' as const, quantity: i % 2 ? -1 : 2, note: `n${i}` })) });
+    const wa = (await prisma.warehouse.create({ data: { organizationId: a.org.id, code: 'MAIN', name: 'A 仓库', isDefault: true } })).id;
+    await prisma.stockMovement.createMany({ data: Array.from({ length: 2000 }, (_, i) => ({ organizationId: a.org.id, productId: p.id, warehouseId: wa, reason: 'ADJUSTMENT' as const, quantity: i % 2 ? -1 : 2, note: `n${i}` })) });
     expect((await prisma.product.findUniqueOrThrow({ where: { id: p.id } })).stockQuantity.toString()).toBe('1000');
     const t0 = Date.now();
     const res = await call(stockRoute.GET, { token: a.token, params: { id: p.id }, query: { page: '50', pageSize: '20' } });

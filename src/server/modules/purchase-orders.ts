@@ -94,6 +94,8 @@ export const poStatusSchema = z
 /** 收货 / Receive goods */
 export const poReceiveSchema = z.strictObject({
   lines: z.array(z.strictObject({ lineId: z.uuid(), quantity })).min(1).max(200),
+  /** 收货仓库（不填为默认仓库）/ receiving warehouse (default when omitted) */
+  warehouseId: z.uuid().optional(),
 });
 /** 列表查询 / List query */
 export const poListSchema = listQuery.extend({
@@ -337,7 +339,7 @@ export async function receivePurchaseOrder(ctx: AuthContext, id: string, input: 
       include: detailInclude,
     });
     // 收货增加库存 / receipts add stock
-    const stock = await recordMovements(tx, ctx, 'PURCHASE_RECEIPT', received, { purchaseOrderId: id });
+    const stock = await recordMovements(tx, ctx, 'PURCHASE_RECEIPT', received, { purchaseOrderId: id }, input.warehouseId);
     await audit(tx, { ...by(ctx), action: 'purchase.receive', entityType: 'purchase', entityId: id, changes: { received, status: [current.status, po.status], ...(stock.length ? { stock } : {}) } });
     return po;
   });

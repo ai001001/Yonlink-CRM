@@ -18,7 +18,7 @@ import { toBase } from '../src/server/modules/exchange-rates';
 import { approvalReasons, approvalSteps } from '../src/server/modules/approvals';
 import { matchTerritory } from '../src/server/modules/territory-rules';
 import { Prisma } from '../src/generated/prisma/client';
-import { buildDemoData, dealCreatedDaysAgo, demoStagePath, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_ACCOUNT_SCORING, DEMO_CONTACT_SCORING, DEMO_DEAL_SCORING, DEMO_ASSIGNMENT_RULES, DEMO_WEB_FORMS, DEMO_WORKFLOWS, DEMO_APPROVAL, DEMO_WEBHOOK, DEMO_VALIDATION_RULES, DEMO_CUSTOM_FIELDS, DEMO_TERRITORIES, DEMO_MACROS, DEMO_BLUEPRINT, DEMO_CADENCES, DEMO_CADENCE_ENROLL, DEMO_PORTAL, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { buildDemoData, dealCreatedDaysAgo, demoStagePath, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_ACCOUNT_SCORING, DEMO_CONTACT_SCORING, DEMO_DEAL_SCORING, DEMO_ASSIGNMENT_RULES, DEMO_WEB_FORMS, DEMO_WORKFLOWS, DEMO_APPROVAL, DEMO_WEBHOOK, DEMO_VALIDATION_RULES, DEMO_CUSTOM_FIELDS, DEMO_TERRITORIES, DEMO_MACROS, DEMO_BLUEPRINT, DEMO_CADENCES, DEMO_CADENCE_ENROLL, DEMO_PORTAL, DEMO_TRANSFERS, DEMO_WAREHOUSES, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -114,6 +114,8 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         // 库存流水限制删除产品，先删除 / stock movements restrict product deletion, so they go first
         await tx.stockMovement.deleteMany({ where: { organizationId: o } });
         await tx.product.deleteMany({ where: { organizationId: o } });
+        // 各仓库库存随产品删除 / warehouse stock goes with the products
+        await tx.warehouse.deleteMany({ where: { organizationId: o } });
         // 标签关联已随记录级联删除 / tag assignments cascaded with the records
         await tx.tag.deleteMany({ where: { organizationId: o } });
         // 回收站中的旧快照对应已不存在的旧数据，一并清空 / old snapshots refer to the wiped data
@@ -751,7 +753,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
       // balances; some products get a reorder level
       const products = await tx.product.findMany({ where: { organizationId: o }, orderBy: { sku: 'asc' } });
       const productBySku = new Map(products.map((p) => [p.sku, p]));
-      const events: { at: Date; productId: string; reason: 'ADJUSTMENT' | 'PURCHASE_RECEIPT' | 'SALES_SHIPMENT'; quantity: Prisma.Decimal; note?: string; purchaseOrderId?: string; salesOrderId?: string }[] = [];
+      const events: { at: Date; productId: string; reason: 'ADJUSTMENT' | 'PURCHASE_RECEIPT' | 'SALES_SHIPMENT' | 'TRANSFER'; quantity: Prisma.Decimal; note?: string; purchaseOrderId?: string; salesOrderId?: string; warehouse?: string; transferId?: string }[] = [];
       const pos = await tx.purchaseOrder.findMany({ where: { organizationId: o }, include: { lines: true } });
       for (const po of pos) {
         for (const l of po.lines) {
@@ -776,10 +778,33 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         const opening = Prisma.Decimal.max(target.plus(shippedQty).minus(net('PURCHASE_RECEIPT')), shippedQty);
         if (opening.gt(0)) events.push({ at: new Date(Date.now() - 150 * DAY), productId: p.id, reason: 'ADJUSTMENT', quantity: opening, note: '【演示】期初库存' });
       }
+      // 演示调拨：20 天前从总仓调到区域仓的成对流水（总库存不变），与其他流水一起按时间写入
+      // demo transfers: paired movements from the main warehouse 20 days ago (total unchanged), written in time order
+      for (const tr of DEMO_TRANSFERS) {
+        const transferId = randomUUID();
+        const at = new Date(Date.now() - 20 * DAY);
+        const base = { at, productId: products[tr.product]!.id, reason: 'TRANSFER' as const, transferId, note: '【演示】调拨补充区域仓' };
+        events.push({ ...base, warehouse: 'SH', quantity: new Prisma.Decimal(-tr.quantity) }, { ...base, at: new Date(at.getTime() + 1), warehouse: tr.to, quantity: new Prisma.Decimal(tr.quantity) });
+      }
       events.sort((x, y) => x.at.getTime() - y.at.getTime());
+      // 演示仓库：其余历史流水都在默认的总仓 / demo warehouses: the rest of the history goes to the default main warehouse
+      const warehouseIds: Record<string, string> = {};
+      for (const w of DEMO_WAREHOUSES) warehouseIds[w.code] = (await tx.warehouse.create({ data: { organizationId: o, ...w } })).id;
       for (const e of events) {
         await tx.stockMovement.create({
-          data: { organizationId: o, productId: e.productId, reason: e.reason, quantity: e.quantity, note: e.note ?? null, purchaseOrderId: e.purchaseOrderId ?? null, salesOrderId: e.salesOrderId ?? null, actorId: ids.manager, createdAt: e.at },
+          data: {
+            organizationId: o,
+            productId: e.productId,
+            warehouseId: warehouseIds[e.warehouse ?? 'SH']!,
+            reason: e.reason,
+            quantity: e.quantity,
+            transferId: e.transferId ?? null,
+            note: e.note ?? null,
+            purchaseOrderId: e.purchaseOrderId ?? null,
+            salesOrderId: e.salesOrderId ?? null,
+            actorId: ids.manager,
+            createdAt: e.at,
+          },
         });
       }
       // 再订货水平：每隔一个产品设置为 30（第 3 个设为 10，使其显示低库存）/ reorder level 30 on every other product (10 on the 3rd so it shows low)
@@ -986,7 +1011,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length + 1} 客户（含 1 条重复）、${data.accounts.reduce((n, a) => n + a.contacts.length, 0) + 2} 联系人、` +
-      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单（${Object.values(DEMO_TICKET_COMMENTS).flat().length} 条处理记录）、${DEMO_KB_ARTICLES.length} 篇知识库文章、${DEMO_VENDORS.length} 个供应商、${DEMO_PURCHASE_ORDERS.length} 张采购单、${DEMO_PRICE_BOOKS.length} 张价格表、${DEMO_WEB_FORMS.length} 个网页表单、${DEMO_ASSIGNMENT_RULES.length} 条分配规则、${DEMO_WORKFLOWS.length} 条工作流规则、${DEMO_TERRITORIES.length} 个区域、${DEMO_MACROS.length} 个宏、1 个流程蓝图（停用）、${DEMO_CADENCES.length} 个销售节奏、客户门户（已启用）、${DEMO_SCORING.rules.length + DEMO_ACCOUNT_SCORING.rules.length + DEMO_CONTACT_SCORING.rules.length + DEMO_DEAL_SCORING.rules.length} 条评分规则、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
+      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单（${Object.values(DEMO_TICKET_COMMENTS).flat().length} 条处理记录）、${DEMO_KB_ARTICLES.length} 篇知识库文章、${DEMO_VENDORS.length} 个供应商、${DEMO_PURCHASE_ORDERS.length} 张采购单、${DEMO_PRICE_BOOKS.length} 张价格表、${DEMO_WEB_FORMS.length} 个网页表单、${DEMO_ASSIGNMENT_RULES.length} 条分配规则、${DEMO_WORKFLOWS.length} 条工作流规则、${DEMO_TERRITORIES.length} 个区域、${DEMO_MACROS.length} 个宏、1 个流程蓝图（停用）、${DEMO_CADENCES.length} 个销售节奏、客户门户（已启用）、${DEMO_WAREHOUSES.length} 个仓库、${DEMO_SCORING.rules.length + DEMO_ACCOUNT_SCORING.rules.length + DEMO_CONTACT_SCORING.rules.length + DEMO_DEAL_SCORING.rules.length} 条评分规则、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
   );
 }
 

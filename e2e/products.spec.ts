@@ -28,6 +28,8 @@ async function createProduct(page: Page, sku: string, name: string, price: strin
 }
 
 test('产品目录与商机明细 / product catalog and deal line items', async ({ page }) => {
+  // 完整流程步骤多，单次约 30 秒，接近默认时限 / the full flow takes about 30 s, close to the default limit
+  test.setTimeout(60_000);
   await signIn(page);
   await nav(page, '产品');
   await expect(page.getByText('产品目录').first()).toBeVisible();

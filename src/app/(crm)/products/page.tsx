@@ -9,6 +9,7 @@ import { App, Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Segment
 import { PlusOutlined } from '@ant-design/icons';
 import { usePermissions } from '@/components/AuthProvider';
 import { StockDrawer, StockTag } from '@/components/StockDrawer';
+import { WarehousesModal } from '@/components/Warehouses';
 import { t } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtMoney } from '@/lib/format';
@@ -29,6 +30,7 @@ export default function ProductsPage() {
   const { data, loading, reload, pagination } = usePagedList<Product>('/api/products', { q, active: active === 'all' ? undefined : active, stock: stock === 'all' ? undefined : stock });
   const [summary, setSummary] = useState({ low: 0, out: 0 });
   const [stockOf, setStockOf] = useState<Product | null>(null);
+  const [warehousesOpen, setWarehousesOpen] = useState(false);
   /** 从通知或 ?id= 打开产品的库存详情 / open a product's stock from a notification or ?id= */
   const openStock = useCallback(
     (id: string) => {
@@ -96,11 +98,16 @@ export default function ProductsPage() {
     <Card
       title={t('products.title')}
       extra={
-        canManage && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
-            {t('products.new')}
+        <Space>
+          <Button onClick={() => setWarehousesOpen(true)} data-testid="warehouses-open">
+            {t('warehouses.manage')}
           </Button>
-        )
+          {canManage && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
+              {t('products.new')}
+            </Button>
+          )}
+        </Space>
       }
     >
       <Space wrap style={{ marginBottom: 16 }}>
@@ -226,6 +233,7 @@ export default function ProductsPage() {
           </Form.Item>
         </Form>
       </Modal>
+      <WarehousesModal open={warehousesOpen} onClose={() => setWarehousesOpen(false)} canManage={canManage} onChanged={refresh} />
       <StockDrawer product={stockOf} canManage={canManage} onClose={() => setStockOf(null)} onChanged={refresh} />
     </Card>
   );

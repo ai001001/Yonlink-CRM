@@ -80,6 +80,8 @@ model Organization {
   cadences             Cadence[]
   portalSettings       PortalSettings?
   portalUsers          PortalUser[]
+  warehouses           Warehouse[]
+  productStocks        ProductStock[]
   cadenceEnrollments   CadenceEnrollment[]
   territoryMembers     TerritoryMember[]
   stockMovements       StockMovement[]
@@ -520,6 +522,7 @@ model Product {
   /// 本次低库存已提醒的时间（库存回到再订货水平以上时清空）/ when the current low-stock spell was alerted (cleared once stock recovers)
   lowStockAlertedAt DateTime?      @map("low_stock_alerted_at") @db.Timestamptz(6)
   notifications     Notification[]
+  warehouseStocks   ProductStock[]
 
   @@unique([organizationId, id])
   @@unique([organizationId, sku])
@@ -1922,6 +1925,8 @@ enum StockReason {
   SALES_SHIPMENT
   /// 已发货订单取消退回 / return of a cancelled shipped order
   SALES_RETURN
+  /// 仓库间调拨（成对出现，总库存不变）/ transfer between warehouses (paired; total unchanged)
+  TRANSFER
 
   @@map("stock_reason")
 }
@@ -1930,28 +1935,37 @@ enum StockReason {
 /// Stock movement (cf. Zoho Inventory): signed quantity; on insert a database trigger atomically updates the product's
 /// stock and records the balance after; append-only.
 model StockMovement {
-  id              String         @id @default(uuid()) @db.Uuid
-  organizationId  String         @map("organization_id") @db.Uuid
-  productId       String         @map("product_id") @db.Uuid
-  reason          StockReason
-  quantity        Decimal        @db.Decimal(18, 2)
+  id                    String         @id @default(uuid()) @db.Uuid
+  organizationId        String         @map("organization_id") @db.Uuid
+  productId             String         @map("product_id") @db.Uuid
+  reason                StockReason
+  quantity              Decimal        @db.Decimal(18, 2)
   /// 变动后余额（触发器写入）/ balance after the movement (set by the trigger)
-  balanceAfter    Decimal        @default(0) @map("balance_after") @db.Decimal(18, 2)
-  purchaseOrderId String?        @map("purchase_order_id") @db.Uuid
-  salesOrderId    String?        @map("sales_order_id") @db.Uuid
-  note            String?        @db.VarChar(200)
-  actorId         String?        @map("actor_id") @db.Uuid
-  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  balanceAfter          Decimal        @default(0) @map("balance_after") @db.Decimal(18, 2)
+  /// 仓库 / warehouse
+  warehouseId           String         @map("warehouse_id") @db.Uuid
+  /// 该仓库变动后余额（触发器写入）/ the warehouse balance after the movement (set by the trigger)
+  warehouseBalanceAfter Decimal        @default(0) @map("warehouse_balance_after") @db.Decimal(18, 2)
+  /// 调拨的成对流水共用的 ID / id shared by the two movements of a transfer
+  transferId            String?        @map("transfer_id") @db.Uuid
+  purchaseOrderId       String?        @map("purchase_order_id") @db.Uuid
+  salesOrderId          String?        @map("sales_order_id") @db.Uuid
+  note                  String?        @db.VarChar(200)
+  actorId               String?        @map("actor_id") @db.Uuid
+  createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization          Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   /// 有库存流水的产品不能删除 / products with stock history cannot be deleted
-  product         Product        @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Restrict)
+  product               Product        @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Restrict)
   /// 来源单据删除时置空（流水保留）；同组织由触发器保证 / cleared when the source order is deleted (the movement stays); same-org enforced by a trigger
-  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
-  salesOrder      SalesOrder?    @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
-  actor           User?          @relation("StockActor", fields: [organizationId, actorId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  purchaseOrder         PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  salesOrder            SalesOrder?    @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
+  /// 有流水的仓库不能删除 / warehouses with movements cannot be deleted
+  warehouse             Warehouse      @relation(fields: [organizationId, warehouseId], references: [organizationId, id], onDelete: Restrict, onUpdate: NoAction)
+  actor                 User?          @relation("StockActor", fields: [organizationId, actorId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([organizationId, productId, createdAt])
   @@index([organizationId, salesOrderId])
+  @@index([organizationId, warehouseId, createdAt])
   @@map("stock_movements")
 }
 
@@ -2372,4 +2386,42 @@ model PortalSession {
 
   @@index([portalUserId])
   @@map("portal_sessions")
+}
+
+/// 仓库 / warehouse
+model Warehouse {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  /// 仓库代码（大写字母、数字、- 与 _）/ code (upper-case letters, digits, - and _)
+  code           String          @db.VarChar(20)
+  name           String          @db.VarChar(100)
+  address        String?         @db.VarChar(500)
+  isActive       Boolean         @default(true) @map("is_active")
+  /// 默认仓库：未指定仓库的收货、发货与调整使用；每组织一个 / default warehouse for receipts, shipments and adjustments without one; one per organization
+  isDefault      Boolean         @default(false) @map("is_default")
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  movements      StockMovement[]
+  stocks         ProductStock[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, code])
+  @@map("warehouses")
+}
+
+/// 产品在各仓库的库存（只由库存流水触发器维护）/ product stock per warehouse (maintained only by the movement trigger)
+model ProductStock {
+  organizationId String       @map("organization_id") @db.Uuid
+  productId      String       @map("product_id") @db.Uuid
+  warehouseId    String       @map("warehouse_id") @db.Uuid
+  quantity       Decimal      @default(0) @db.Decimal(18, 2)
+  updatedAt      DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product        Product      @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Cascade)
+  warehouse      Warehouse    @relation(fields: [organizationId, warehouseId], references: [organizationId, id], onDelete: Restrict)
+
+  @@id([productId, warehouseId])
+  @@index([organizationId, warehouseId])
+  @@map("product_stocks")
 }

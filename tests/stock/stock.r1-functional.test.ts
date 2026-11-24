@@ -71,9 +71,10 @@ describe('stock R1 adjustments', () => {
     expect((await call(productItem.PATCH, { token: a.token, params: { id: p1.id }, body: { stockQuantity: '9' }, method: 'PATCH' })).status).toBe(400);
     expect((await call(productItem.PATCH, { token: a.token, params: { id: p1.id }, body: { reorderLevel: '8.5' }, method: 'PATCH' })).json.reorderLevel).toBe('8.5');
 
-    expect((await adjust(p1.id, { mode: 'add', quantity: '20', note: '期初' })).json).toEqual({ quantity: '20', balanceAfter: '20' });
-    expect((await adjust(p1.id, { mode: 'add', quantity: '-2.5', note: '损耗' })).json).toEqual({ quantity: '-2.5', balanceAfter: '17.5' });
-    expect((await adjust(p1.id, { mode: 'set', quantity: '15', note: '盘点' })).json).toEqual({ quantity: '-2.5', balanceAfter: '15' });
+    // 多仓库（#60b）起返回值增加该仓库的余额（只有默认仓库时与总数相同）/ since #60b the warehouse balance is returned too
+    expect((await adjust(p1.id, { mode: 'add', quantity: '20', note: '期初' })).json).toEqual({ quantity: '20', balanceAfter: '20', warehouseBalanceAfter: '20' });
+    expect((await adjust(p1.id, { mode: 'add', quantity: '-2.5', note: '损耗' })).json).toEqual({ quantity: '-2.5', balanceAfter: '17.5', warehouseBalanceAfter: '17.5' });
+    expect((await adjust(p1.id, { mode: 'set', quantity: '15', note: '盘点' })).json).toEqual({ quantity: '-2.5', balanceAfter: '15', warehouseBalanceAfter: '15' });
     expect((await adjust(p1.id, { mode: 'set', quantity: '15', note: '盘点' })).json.error.details).toEqual({ quantity: ['no_change'] });
     for (const body of [{ mode: 'add', quantity: '0', note: 'x' }, { mode: 'add', quantity: '1', note: ' ' }, { mode: 'set', quantity: '-1', note: 'x' }, { mode: 'add', quantity: '1.234', note: 'x' }, { mode: 'move', quantity: '1', note: 'x' }, { mode: 'add', quantity: '1' }]) {
       expect((await adjust(p1.id, body)).status, JSON.stringify(body)).toBe(400);
@@ -84,9 +85,10 @@ describe('stock R1 adjustments', () => {
     expect(await stockOf(p1.id)).toBe('15');
     const logs = await prisma.auditLog.findMany({ where: { action: 'product.stock_adjust' }, orderBy: { createdAt: 'asc' } });
     expect(logs.map((l) => l.changes)).toEqual([
-      { sku: 'P-1', mode: 'add', quantity: '20', stock: ['0', '20'] },
-      { sku: 'P-1', mode: 'add', quantity: '-2.5', stock: ['20', '17.5'] },
-      { sku: 'P-1', mode: 'set', quantity: '-2.5', stock: ['17.5', '15'] },
+      // 多仓库（#60b）起审计含仓库代码与该仓库的前后库存 / since #60b the audit carries the warehouse and its stock
+      { sku: 'P-1', mode: 'add', warehouse: 'MAIN', quantity: '20', warehouseStock: ['0', '20'], stock: ['0', '20'] },
+      { sku: 'P-1', mode: 'add', warehouse: 'MAIN', quantity: '-2.5', warehouseStock: ['20', '17.5'], stock: ['20', '17.5'] },
+      { sku: 'P-1', mode: 'set', warehouse: 'MAIN', quantity: '-2.5', warehouseStock: ['17.5', '15'], stock: ['17.5', '15'] },
     ]);
     // 流水：最新在前、原因与操作人；销售可查看 / movements newest first; reps may view
     const m = (await movements(p1.id, rep.token)).json;
