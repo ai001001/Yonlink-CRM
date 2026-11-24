@@ -65,8 +65,8 @@ test('演示账号列表与各角色权限 / demo accounts and per-role permissi
   await expect(page.getByText('演示环境：演示账号属于独立的演示组织，所有客户与业务数据均为虚构的演示数据，可随意操作。')).toBeVisible();
   await expect(page.getByText('演示企业')).toHaveCount(0);
 
-  // 经理通过 API 在王芳的客户下新增一个由陈静负责的商机（用于验证商机数按可见范围计数）
-  // the manager adds a deal owned by 陈静 under 王芳's account via the API (deal count must follow visibility)
+  // 经理通过 API 在王芳的客户下新增一个由陈静负责的商机（该客户在王芳所在的北美区域，按区域可见范围 #60d 计入且只读）
+  // the manager adds a deal owned by 陈静 under 王芳's account (in 王芳's 北美 territory, so it counts and is read-only, #60d)
   const demoUsers = (await (await page.request.get('/api/auth/demo-accounts')).json()).items as { id: string; name: string }[];
   const idOf = (name: string) => demoUsers.find((u) => u.name === name)!.id;
   const managerToken = (await (await page.request.post('/api/auth/demo-login', { data: { userId: idOf('郑经理') } })).json()).token;
@@ -102,22 +102,31 @@ test('演示账号列表与各角色权限 / demo accounts and per-role permissi
   await dialog.getByLabel('姓名').fill('E2E 销售自建线索');
   await dialog.getByRole('button', { name: /保\s*存/ }).click();
   await expect(page.getByRole('row', { name: /E2E 销售自建线索/ })).toContainText('王芳');
-  // 客户商机数只统计自己负责的（他人负责的 1 个不计入）/ deal count excludes the deal owned by someone else
+  // 客户在王芳的区域内：他人负责的商机也计入并可查看（#60d 区域可见范围）/ in 王芳's territory: others' deals count and show
   await nav(page, '客户');
   await search(page, ACCOUNTS_SEARCH, S.sales1SingleDealAccount);
   const accRow = rowOf(page, S.sales1SingleDealAccount);
-  await expect(await cellByHeader(page, accRow, '商机数')).toHaveText('1');
+  await expect(await cellByHeader(page, accRow, '商机数')).toHaveText('2');
   await accRow.getByRole('button', { name: S.sales1SingleDealAccount }).click();
   const accDrawer = page.getByRole('dialog', { name: /客户详情/ });
-  await expect(accDrawer.getByRole('tab', { name: '商机 (1)' })).toBeVisible();
-  await accDrawer.getByRole('tab', { name: '商机 (1)' }).click();
-  await expect(accDrawer.getByTestId('account-deals')).not.toContainText('E2E 陈静负责的商机');
+  await expect(accDrawer.getByRole('tab', { name: '商机 (2)' })).toBeVisible();
+  await accDrawer.getByRole('tab', { name: '商机 (2)' }).click();
+  await expect(accDrawer.getByTestId('account-deals')).toContainText('E2E 陈静负责的商机');
   await closeDrawer(page, accDrawer);
+  // 只读：他人负责的商机没有编辑按钮 / read-only: no edit button on the other owner's deal
+  await nav(page, '商机');
+  await search(page, DEALS, 'E2E 陈静负责的商机');
+  await expect(rowOf(page, 'E2E 陈静负责的商机')).toBeVisible();
+  await expect(rowOf(page, 'E2E 陈静负责的商机').getByRole('button', { name: /编\s*辑/ })).toHaveCount(0);
   await nav(page, '商机');
   await search(page, DEALS, S.sales1Deal);
   await expect(rowOf(page, S.sales1Deal)).toBeVisible();
+  // 不在自己区域内的他人商机看不到；区域内他人负责的商机只读可见 / outside the territories: invisible; inside: read-only
+  await search(page, DEALS, S.managerDeal);
+  await expect(rowOf(page, S.managerDeal)).toHaveCount(0);
   await search(page, DEALS, S.sales2Deal);
-  await expect(rowOf(page, S.sales2Deal)).toHaveCount(0);
+  await expect(rowOf(page, S.sales2Deal)).toBeVisible();
+  await expect(rowOf(page, S.sales2Deal).getByRole('button', { name: /编\s*辑/ })).toHaveCount(0);
   await page.goto('/audit-logs');
   await expect(page.getByText('没有权限执行该操作').first()).toBeVisible();
   await signOut(page);

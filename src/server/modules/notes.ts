@@ -14,6 +14,7 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
 import { assertCanUpdate, can, visible } from '../permissions';
+import { readableAccounts, readableDeals, territoryReadScope } from './territory-rules';
 
 /** 备注正文 / Note content */
 const content = z.string().trim().min(1).max(5000);
@@ -40,12 +41,13 @@ type Parent = { leadId?: string | null; accountId?: string | null; dealId?: stri
 async function requireParent(ctx: AuthContext, p: Parent): Promise<{ ownerId: string | null }> {
   const scope = visible(ctx);
   const select = { ownerId: true };
+  // 客户、商机按区域只读范围放宽读取（写入另由 assertCanUpdate 判断）/ accounts and deals widen by territory (writes still checked)
   const row = p.leadId
     ? await prisma.lead.findFirst({ where: { id: p.leadId, ...scope }, select })
     : p.accountId
-      ? await prisma.account.findFirst({ where: { id: p.accountId, ...scope }, select })
+      ? await prisma.account.findFirst({ where: { AND: [{ id: p.accountId }, readableAccounts(ctx, await territoryReadScope(ctx))] }, select })
       : p.dealId
-        ? await prisma.deal.findFirst({ where: { id: p.dealId, ...scope }, select })
+        ? await prisma.deal.findFirst({ where: { AND: [{ id: p.dealId }, readableDeals(ctx, await territoryReadScope(ctx))] }, select })
         : null;
   if (!row) throw notFound();
   return row;

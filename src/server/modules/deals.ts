@@ -20,7 +20,7 @@ import { gradeRange, scoreListFields, scoreOrder } from './scoring-grades';
 import { tagFilter, tagsInclude } from './tags';
 import { assertValidRecord } from './validation-rules';
 import { customDiff, customInput, resolveCustom } from './custom-fields';
-import { territoryIdsFor } from './territory-rules';
+import { readableDeals, territoryIdsFor, territoryReadScope } from './territory-rules';
 import { assertNotControlled } from './blueprint-rules';
 import { territoryFilter } from './territory-input';
 import { runWorkflows } from './workflows';
@@ -105,9 +105,10 @@ export function dealWhere(
   query: Omit<z.infer<typeof dealListSchema>, 'page' | 'pageSize'>,
   score?: Prisma.IntFilter,
   territories?: string[] | null,
+  scope: string[] = [],
 ): Prisma.DealWhereInput {
   const territory: Prisma.DealWhereInput = territories === undefined ? {} : { account: { territoryId: territories === null ? null : { in: territories } } };
-  const where: Prisma.DealWhereInput = { AND: [visible(ctx), { stage: query.stage, accountId: query.accountId, ownerId: query.ownerId, campaignId: query.campaignId, score }, tagFilter(query.tagId), territory] };
+  const where: Prisma.DealWhereInput = { AND: [readableDeals(ctx, scope), { stage: query.stage, accountId: query.accountId, ownerId: query.ownerId, campaignId: query.campaignId, score }, tagFilter(query.tagId), territory] };
   if (query.q) {
     const c = containsText(query.q);
     where.OR = [{ name: c }, { account: { name: c } }];
@@ -123,7 +124,7 @@ export async function listDeals(
   ctx: AuthContext,
   query: z.infer<typeof dealListSchema>,
 ): Promise<Page<unknown> & { sums: { currency: string; amount: string }[] }> {
-  const where = dealWhere(ctx, query, await gradeRange(ctx.organizationId, 'DEAL', query.grade), await territoryIdsFor(ctx, query.territoryId));
+  const where = dealWhere(ctx, query, await gradeRange(ctx.organizationId, 'DEAL', query.grade), await territoryIdsFor(ctx, query.territoryId), await territoryReadScope(ctx));
   const [items, total, sums] = await prisma.$transaction([
     prisma.deal.findMany({
       where,
@@ -149,7 +150,7 @@ export async function listDeals(
  * Deal detail; cross-organization access yields 404.
  */
 export async function getDeal(ctx: AuthContext, id: string) {
-  const deal = await prisma.deal.findFirst({ where: { id, ...visible(ctx) }, include });
+  const deal = await prisma.deal.findFirst({ where: { AND: [{ id }, readableDeals(ctx, await territoryReadScope(ctx))] }, include });
   if (!deal) throw notFound();
   return deal;
 }
@@ -278,7 +279,7 @@ export interface BoardColumn {
  * close date (dateless last). Visibility matches the list (sales reps see their own deals only).
  */
 export async function dealBoard(ctx: AuthContext, query: z.infer<typeof dealBoardSchema>): Promise<{ columns: BoardColumn[] }> {
-  const where: Prisma.DealWhereInput = { AND: [visible(ctx), { accountId: query.accountId, ownerId: query.ownerId }] };
+  const where: Prisma.DealWhereInput = { AND: [readableDeals(ctx, await territoryReadScope(ctx)), { accountId: query.accountId, ownerId: query.ownerId }] };
   if (query.q) {
     const c = containsText(query.q);
     where.OR = [{ name: c }, { account: { name: c } }];

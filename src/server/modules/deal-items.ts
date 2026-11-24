@@ -18,6 +18,7 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
 import { assertCanUpdate, visible } from '../permissions';
+import { readableDeals, territoryReadScope } from './territory-rules';
 import { discountPercent as discount, positiveQuantity as quantity } from '../validation';
 import { amountSchema } from './deals';
 import { priceFor, type priceQuerySchema } from './price-books';
@@ -53,7 +54,7 @@ export function lineTotal(qty: string | Prisma.Decimal, price: string | Prisma.D
  * Load a visible deal (owner and currency).
  */
 async function requireDeal(ctx: AuthContext, dealId: string) {
-  const deal = await prisma.deal.findFirst({ where: { id: dealId, ...visible(ctx) }, select: { id: true, ownerId: true, currency: true, amount: true, accountId: true } });
+  const deal = await prisma.deal.findFirst({ where: { AND: [{ id: dealId }, readableDeals(ctx, await territoryReadScope(ctx))] }, select: { id: true, ownerId: true, currency: true, amount: true, accountId: true } });
   if (!deal) throw notFound();
   return deal;
 }

@@ -13,6 +13,7 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
 import { assertCanUpdate, visible } from '../permissions';
+import { readableDeals, territoryReadScope } from './territory-rules';
 
 /** 威胁程度取值 / Threat levels */
 export const THREAT_LEVELS = Object.values(CompetitorThreat) as [CompetitorThreat, ...CompetitorThreat[]];
@@ -46,7 +47,7 @@ const THREAT_ORDER: Record<CompetitorThreat, number> = { HIGH: 0, MEDIUM: 1, LOW
  * Load a visible deal.
  */
 async function requireDeal(ctx: AuthContext, dealId: string) {
-  const deal = await prisma.deal.findFirst({ where: { id: dealId, ...visible(ctx) }, select: { id: true, ownerId: true } });
+  const deal = await prisma.deal.findFirst({ where: { AND: [{ id: dealId }, readableDeals(ctx, await territoryReadScope(ctx))] }, select: { id: true, ownerId: true } });
   if (!deal) throw notFound();
   return deal;
 }

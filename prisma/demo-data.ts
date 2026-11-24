@@ -888,6 +888,8 @@ export function demoSamples() {
     sales1SingleDealAccount: ACCOUNTS.find((a) => a.key === 'northlake')!.name,
     sales1Deal: firstDeal('sales1'),
     sales2Deal: firstDeal('sales2'),
+    /** 经理负责的商机（国内客户，不在王芳的区域内）/ a manager deal (domestic account, outside 王芳's territories) */
+    managerDeal: firstDeal('manager'),
   };
 }
 

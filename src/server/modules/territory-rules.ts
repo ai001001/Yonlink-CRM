@@ -11,7 +11,7 @@ import { TerritoryMatch } from '@/generated/prisma/enums';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError } from '../errors';
-import { can } from '../permissions';
+import { can, visible } from '../permissions';
 import { INDUSTRIES } from './dictionaries';
 import type { territoryFilter, territoryInput } from './territory-input';
 import { evaluate, type Condition, type FieldDef } from './workflows';
@@ -117,12 +117,51 @@ async function withDescendants(org: string, roots: string[]): Promise<string[]> 
 export async function territoryIdsFor(ctx: AuthContext, filter: z.infer<typeof territoryFilter>): Promise<string[] | null | undefined> {
   if (filter === undefined) return undefined;
   if (filter === 'NONE') return null;
-  if (filter === 'MINE') {
-    const mine = await prisma.territory.findMany({
-      where: { organizationId: ctx.organizationId, OR: [{ managerId: ctx.userId }, { members: { some: { userId: ctx.userId } } }] },
-      select: { id: true },
-    });
-    return withDescendants(ctx.organizationId, mine.map((t) => t.id));
-  }
+  if (filter === 'MINE') return myTerritoryIds(ctx);
   return withDescendants(ctx.organizationId, [filter]);
+}
+
+/**
+ * 当前用户负责（区域经理）或参与（成员）的区域及其全部下级区域。
+ * Territories the user manages or belongs to, plus all their descendants.
+ */
+async function myTerritoryIds(ctx: AuthContext): Promise<string[]> {
+  const mine = await prisma.territory.findMany({
+    where: { organizationId: ctx.organizationId, OR: [{ managerId: ctx.userId }, { members: { some: { userId: ctx.userId } } }] },
+    select: { id: true },
+  });
+  return withDescendants(ctx.organizationId, mine.map((t) => t.id));
+}
+
+/**
+ * 区域只读范围：没有全量查看权限的用户（销售代表）额外可查看所在区域（含下级）的客户、这些客户的联系人与商机；
+ * 有全量查看权限时为空数组（已能看全部）。只放宽读取，编辑仍按负责人判断（assertCanUpdate）。
+ * Territory read scope: users without read-all (sales reps) may also read the accounts of their territories (with
+ * descendants) and those accounts' contacts and deals; empty with read-all (everything is visible already). Only reads
+ * widen; edits still follow ownership (assertCanUpdate).
+ */
+export async function territoryReadScope(ctx: AuthContext): Promise<string[]> {
+  return can(ctx, 'record.read.all') ? [] : myTerritoryIds(ctx);
+}
+
+/**
+ * 可读取的客户条件：自己负责的，或属于区域只读范围。
+ * Readable accounts: owned by the user, or in the territory read scope.
+ * @param territories territoryReadScope 的结果 / the result of territoryReadScope
+ */
+export function readableAccounts(ctx: AuthContext, territories: string[]): Prisma.AccountWhereInput {
+  const own = visible(ctx);
+  if (!own.ownerId || !territories.length) return own;
+  return { organizationId: ctx.organizationId, OR: [{ ownerId: own.ownerId }, { territoryId: { in: territories } }] };
+}
+
+/**
+ * 可读取的商机条件：自己负责的，或所属客户在区域只读范围内。
+ * Readable deals: owned by the user, or whose account is in the territory read scope.
+ * @param territories territoryReadScope 的结果 / the result of territoryReadScope
+ */
+export function readableDeals(ctx: AuthContext, territories: string[]): Prisma.DealWhereInput {
+  const own = visible(ctx);
+  if (!own.ownerId || !territories.length) return own;
+  return { organizationId: ctx.organizationId, OR: [{ ownerId: own.ownerId }, { account: { territoryId: { in: territories } } }] };
 }

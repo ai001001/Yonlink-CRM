@@ -16,6 +16,7 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
 import { assertCanUpdate, can, visible } from '../permissions';
+import { readableAccounts, readableDeals, territoryReadScope } from './territory-rules';
 import { loadFile, removeFile, saveFile } from '../storage';
 
 /** 单个文件上限 / per-file limit */
@@ -101,11 +102,13 @@ const select = {
 async function requireParent(ctx: AuthContext, parent: Parent): Promise<{ ownerId: string | null }> {
   const where = { ...visible(ctx) };
   const sel = { ownerId: true } as const;
+  // 客户、商机按区域只读范围放宽读取（上传另由 assertCanUpdate 判断）/ accounts and deals widen by territory (uploads still checked)
+  const territories = await territoryReadScope(ctx);
   const record = parent.leadId
     ? await prisma.lead.findFirst({ where: { ...where, id: parent.leadId }, select: sel })
     : parent.accountId
-      ? await prisma.account.findFirst({ where: { ...where, id: parent.accountId }, select: sel })
-      : await prisma.deal.findFirst({ where: { ...where, id: parent.dealId }, select: sel });
+      ? await prisma.account.findFirst({ where: { AND: [{ id: parent.accountId }, readableAccounts(ctx, territories)] }, select: sel })
+      : await prisma.deal.findFirst({ where: { AND: [{ id: parent.dealId }, readableDeals(ctx, territories)] }, select: sel });
   if (!record) throw notFound();
   return record;
 }
@@ -158,13 +161,15 @@ export async function uploadAttachment(ctx: AuthContext, parent: Parent, file: {
 }
 
 /**
- * 读取可见附件（所属记录可见），含所属记录负责人。
- * Load a visible attachment (its parent is visible), with the parent's owner.
+ * 读取可见附件（所属记录可见），含所属记录负责人；read 为 true（下载）时客户、商机按区域只读范围放宽。
+ * Load a visible attachment (its parent is visible), with the parent's owner; with read (downloads) accounts and deals
+ * widen by the territory read scope.
  */
-async function requireAttachment(ctx: AuthContext, id: string) {
+async function requireAttachment(ctx: AuthContext, id: string, read = false) {
   const v = visible(ctx);
+  const territories = read ? await territoryReadScope(ctx) : [];
   const row = await prisma.attachment.findFirst({
-    where: { id, organizationId: ctx.organizationId, OR: [{ lead: v }, { account: v }, { deal: v }] },
+    where: { id, organizationId: ctx.organizationId, OR: [{ lead: v }, { account: readableAccounts(ctx, territories) }, { deal: readableDeals(ctx, territories) }] },
     select: { ...select, uploadedById: true, sha256: true, lead: { select: { ownerId: true } }, account: { select: { ownerId: true } }, deal: { select: { ownerId: true } } },
   });
   if (!row) throw notFound();
@@ -176,7 +181,7 @@ async function requireAttachment(ctx: AuthContext, id: string) {
  * Download: metadata and content (SHA-256 verified; 500 when corrupted).
  */
 export async function downloadAttachment(ctx: AuthContext, id: string) {
-  const row = await requireAttachment(ctx, id);
+  const row = await requireAttachment(ctx, id, true);
   const data = await loadFile(ctx.organizationId, row.id);
   if (createHash('sha256').update(data).digest('hex') !== row.sha256) throw new ApiError(500, 'INTERNAL_ERROR', 'Stored file is corrupted');
   return { fileName: row.fileName, contentType: row.contentType, data };

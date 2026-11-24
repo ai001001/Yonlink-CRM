@@ -27,6 +27,7 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { notFound } from '../errors';
 import { requirePermission, visible } from '../permissions';
+import { readableAccounts, readableDeals, territoryReadScope } from './territory-rules';
 import { INDUSTRIES } from './accounts';
 import { LEAD_SOURCES } from './leads';
 import { gradeOf, scoreThresholds } from './scoring-grades';
@@ -181,9 +182,9 @@ export async function saveScoring(ctx: AuthContext, entity: ScoringEntity, input
 
 /**
  * 记录的得分明细：命中的规则与得分（与数据库计算同一函数）、总分与分级；记录不可见时 404。
- * 联系人的可见范围跟随所属客户。
+ * 联系人的可见范围跟随所属客户；客户、联系人、商机含区域只读范围（#60d）。
  * A record's breakdown: matched rules and points (the same database function), the total and the grade; 404 when not
- * visible. Contacts follow their account's visibility.
+ * visible. Contacts follow their account's visibility; accounts, contacts and deals include the territory read scope (#60d).
  */
 export async function explainScore(ctx: AuthContext, entity: ScoringEntity, id: string) {
   const org = ctx.organizationId;
@@ -195,17 +196,17 @@ export async function explainScore(ctx: AuthContext, entity: ScoringEntity, id: 
     score = r.score;
     rows = await prisma.$queryRaw`SELECT i.rule_id, i.points FROM "leads" l, "lead_score_items"(l) i WHERE l.id = ${id}::uuid AND l.organization_id = ${org}::uuid`;
   } else if (entity === ScoringEntity.ACCOUNT) {
-    const r = await prisma.account.findFirst({ where: { id, ...visible(ctx) }, select: { score: true } });
+    const r = await prisma.account.findFirst({ where: { AND: [{ id }, readableAccounts(ctx, await territoryReadScope(ctx))] }, select: { score: true } });
     if (!r) throw notFound();
     score = r.score;
     rows = await prisma.$queryRaw`SELECT i.rule_id, i.points FROM "accounts" a, "account_score_items"(a) i WHERE a.id = ${id}::uuid AND a.organization_id = ${org}::uuid`;
   } else if (entity === ScoringEntity.CONTACT) {
-    const r = await prisma.contact.findFirst({ where: { id, organizationId: org, account: visible(ctx) }, select: { score: true } });
+    const r = await prisma.contact.findFirst({ where: { id, organizationId: org, account: readableAccounts(ctx, await territoryReadScope(ctx)) }, select: { score: true } });
     if (!r) throw notFound();
     score = r.score;
     rows = await prisma.$queryRaw`SELECT i.rule_id, i.points FROM "contacts" c, "contact_score_items"(c) i WHERE c.id = ${id}::uuid AND c.organization_id = ${org}::uuid`;
   } else {
-    const r = await prisma.deal.findFirst({ where: { id, ...visible(ctx) }, select: { score: true } });
+    const r = await prisma.deal.findFirst({ where: { AND: [{ id }, readableDeals(ctx, await territoryReadScope(ctx))] }, select: { score: true } });
     if (!r) throw notFound();
     score = r.score;
     rows = await prisma.$queryRaw`SELECT i.rule_id, i.points FROM "deals" d, "deal_score_items"(d) i WHERE d.id = ${id}::uuid AND d.organization_id = ${org}::uuid`;

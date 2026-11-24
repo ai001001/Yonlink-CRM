@@ -22,6 +22,7 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { notFound } from '../errors';
 import { visible } from '../permissions';
+import { readableDeals, territoryReadScope } from './territory-rules';
 import { dateOnly } from './deals';
 import { STAGE_PROBABILITY } from './forecasts';
 import { resolvePeriod } from './reports';
@@ -37,7 +38,7 @@ const CLOSED = new Set(['CLOSED_WON', 'CLOSED_LOST']);
  * A deal's stage history (newest first) with duration, probability, expected revenue and actor; 404 when not visible.
  */
 export async function getStageHistory(ctx: AuthContext, dealId: string, now = new Date()) {
-  const deal = await prisma.deal.findFirst({ where: { id: dealId, ...visible(ctx) }, select: { id: true } });
+  const deal = await prisma.deal.findFirst({ where: { AND: [{ id: dealId }, readableDeals(ctx, await territoryReadScope(ctx))] }, select: { id: true } });
   if (!deal) throw notFound();
   const rows = await prisma.dealStageHistory.findMany({
     where: { organizationId: ctx.organizationId, dealId },

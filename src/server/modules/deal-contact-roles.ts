@@ -15,6 +15,7 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
 import { assertCanUpdate, visible } from '../permissions';
+import { readableDeals, territoryReadScope } from './territory-rules';
 
 /** 角色取值 / Role values */
 export const CONTACT_ROLES = Object.values(DealContactRoleType) as [DealContactRoleType, ...DealContactRoleType[]];
@@ -39,7 +40,7 @@ const contactSelect = { id: true, name: true, title: true, phone: true, email: t
  * Load a visible deal (owner and account).
  */
 async function requireDeal(ctx: AuthContext, dealId: string) {
-  const deal = await prisma.deal.findFirst({ where: { id: dealId, ...visible(ctx) }, select: { id: true, ownerId: true, accountId: true } });
+  const deal = await prisma.deal.findFirst({ where: { AND: [{ id: dealId }, readableDeals(ctx, await territoryReadScope(ctx))] }, select: { id: true, ownerId: true, accountId: true } });
   if (!deal) throw notFound();
   return deal;
 }

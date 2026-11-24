@@ -73,10 +73,13 @@ test('经理查看、新建并导出联系人 / manager views, creates and expor
   await expect(page.getByRole('dialog', { name: /客户详情/ })).toContainText(sample.account.name);
 });
 
-test('销售代表只看到自己负责客户的联系人，没有导出 / sales reps see their own, no export', async ({ page }) => {
+test('销售代表只看到自己负责客户及所在区域客户的联系人，没有导出 / sales reps see their own and territory contacts, no export', async ({ page }) => {
   await demoSignIn(page, '王芳');
   const mine = await apiGet(page, '/api/contacts?pageSize=100');
-  expect(mine.items.every((c: { account: { owner: { name: string } | null } }) => c.account.owner?.name === '王芳')).toBe(true);
+  // 王芳是“海外”区域成员（#60d）：可见自己与陈静负责的海外客户的联系人，看不到郑经理负责的国内客户的联系人
+  // 王芳 belongs to the overseas territory (#60d): her own and 陈静's overseas contacts, none of the manager's domestic ones
+  const owners = new Set(mine.items.map((c: { account: { owner: { name: string } | null } }) => c.account.owner?.name));
+  expect([...owners].sort()).toEqual(['王芳', '陈静'].sort());
   await nav(page, '联系人');
   await expect(page.getByText(`共 ${mine.total} 条`)).toBeVisible();
   await expect(page.getByRole('main').getByRole('button', { name: /导\s*出/ })).toHaveCount(0);
