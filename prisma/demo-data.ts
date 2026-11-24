@@ -1324,7 +1324,7 @@ export const DEMO_ASSIGNMENT_RULES: { name: string; conditions: { field: string;
  */
 export const DEMO_WORKFLOWS: {
   name: string;
-  entity: 'LEAD' | 'DEAL';
+  entity: 'LEAD' | 'DEAL' | 'ACCOUNT' | 'TICKET';
   trigger: 'CREATE' | 'UPDATE' | 'CREATE_OR_UPDATE' | 'FIELD_CHANGE' | 'DATE_RELATIVE' | 'INACTIVITY';
   triggerField?: string;
   /** 定时触发的天数 / days for scheduled triggers */
@@ -1397,6 +1397,23 @@ export const DEMO_WORKFLOWS: {
     conditions: [{ field: 'source', op: 'EQUALS', value: 'EXHIBITION' }],
     actions: [{ type: 'ADD_TAG', tag: 'expo' }],
     isActive: false,
+  },
+  {
+    name: '【演示】工单升为紧急：通知经理',
+    entity: 'TICKET',
+    trigger: 'FIELD_CHANGE',
+    triggerField: 'priority',
+    conditions: [{ field: 'priority', op: 'EQUALS', value: 'URGENT' }],
+    actions: [{ type: 'NOTIFY', recipient: 'manager', message: '工单升为紧急，请关注处理进度' }],
+    isActive: true,
+  },
+  {
+    name: '【演示】新客户：安排首次拜访',
+    entity: 'ACCOUNT',
+    trigger: 'CREATE',
+    conditions: [],
+    actions: [{ type: 'CREATE_TASK', subject: '【演示】安排首次拜访，了解采购计划', dueInDays: 7, assignTo: 'OWNER' }],
+    isActive: true,
   },
 ];
 

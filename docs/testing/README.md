@@ -86,6 +86,7 @@
 | 客户门户 | ✅ | ✅ | ✅ | [portal.md](portal.md) |
 | 低库存提醒（#60a） | ✅ | ✅ | ✅ | [low-stock.md](low-stock.md) |
 | 多仓库（#60b） | ✅ | ✅ | ✅ | [warehouses.md](warehouses.md) |
+| 客户与工单的工作流（#60c） | ✅ | ✅ | ✅ | [workflow-entities.md](workflow-entities.md) |
 
 ## 整体回归（全部模块完成后）
 命令：`scripts/regression.sh final-mvp` → **PASS**（lint、typecheck、11 文件 181/181、静态导出、生产构建、E2E 6/6）。原始输出：[results/final-mvp-r3-regression.txt](results/final-mvp-r3-regression.txt)

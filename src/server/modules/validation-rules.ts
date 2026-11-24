@@ -15,7 +15,6 @@
  */
 import { z } from 'zod';
 import { Prisma } from '@/generated/prisma/client';
-import { WorkflowEntity } from '@/generated/prisma/enums';
 import { audit, by } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
@@ -23,6 +22,7 @@ import { ApiError, notFound } from '../errors';
 import { requirePermission } from '../permissions';
 import { requiredText } from '../validation';
 import { checkCondition, CONDITION_FIELDS, conditionSchema, evaluate, type Condition, type FieldDef } from './workflows';
+import { RECORD_ENTITIES, type RecordEntity } from './dictionaries';
 
 /** 每组织最多规则数 / max rules per organization */
 export const MAX_VALIDATION_RULES = 50;
@@ -31,14 +31,14 @@ export const MAX_VALIDATION_RULES = 50;
 const withoutScore = (f: Record<string, FieldDef>) => Object.fromEntries(Object.entries(f).filter(([k]) => k !== 'score'));
 
 /** 可用于验证规则的字段 / fields usable in validation rules */
-export const VALIDATION_FIELDS: Record<WorkflowEntity, Record<string, FieldDef>> = {
+export const VALIDATION_FIELDS: Record<RecordEntity, Record<string, FieldDef>> = {
   LEAD: { ...withoutScore(CONDITION_FIELDS.LEAD), mobile: { type: 'text' } },
   DEAL: { ...withoutScore(CONDITION_FIELDS.DEAL), expectedCloseDate: { type: 'date' } },
 };
 
 const ruleFields = {
   name: requiredText(100),
-  entity: z.enum(WorkflowEntity),
+  entity: z.enum(RECORD_ENTITIES),
   when: z.array(conditionSchema).max(5).default([]),
   require: z.array(conditionSchema).min(1).max(5),
   message: requiredText(200),
@@ -47,7 +47,7 @@ const ruleFields = {
 };
 
 /** 按对象校验条件与提示字段 / validate conditions and the error field per entity */
-function checkRule(v: { entity: WorkflowEntity; when: Condition[]; require: Condition[]; errorField: string | null }, ctx: z.RefinementCtx) {
+function checkRule(v: { entity: RecordEntity; when: Condition[]; require: Condition[]; errorField: string | null }, ctx: z.RefinementCtx) {
   const fields = VALIDATION_FIELDS[v.entity];
   for (const key of ['when', 'require'] as const) {
     v[key].forEach((c, i) => checkCondition(fields, c, (field, message) => ctx.addIssue({ code: 'custom', path: [key, i, field], message })));
@@ -61,7 +61,7 @@ export const validationCreateSchema = z.strictObject(ruleFields).superRefine(che
 export const validationUpdateSchema = z
   .strictObject({
     name: requiredText(100),
-    entity: z.enum(WorkflowEntity),
+    entity: z.enum(RECORD_ENTITIES),
     when: z.array(conditionSchema).max(5),
     require: z.array(conditionSchema).min(1).max(5),
     message: requiredText(200),
@@ -78,7 +78,7 @@ export const validationUpdateSchema = z
     checkRule({ entity: v.entity, when: v.when ?? [], require: v.require, errorField: v.errorField ?? null }, ctx);
   });
 /** 列表 / list */
-export const validationListSchema = z.strictObject({ entity: z.enum(WorkflowEntity).optional() });
+export const validationListSchema = z.strictObject({ entity: z.enum(RECORD_ENTITIES).optional() });
 
 const select = {
   id: true,
@@ -184,7 +184,7 @@ export async function deleteValidationRule(ctx: AuthContext, id: string): Promis
  * Check the record as written against the active rules; on failure 400 listing every message (grouped by the error
  * field, or under "rule").
  */
-export async function assertValidRecord(organizationId: string, entity: WorkflowEntity, record: Record<string, unknown>): Promise<void> {
+export async function assertValidRecord(organizationId: string, entity: RecordEntity, record: Record<string, unknown>): Promise<void> {
   const rules = await prisma.validationRule.findMany({ where: { organizationId, entity, isActive: true }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] });
   if (!rules.length) return;
   const fields = VALIDATION_FIELDS[entity];

@@ -23,6 +23,7 @@ import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermiss
 import { containsText, listQuery, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 import { notifyAssigned } from './notifications';
 import { activePolicy, slaDue, sweepEscalations } from './ticket-sla';
+import { runWorkflows } from './workflows';
 
 /** 已解决类状态 / resolved-like statuses */
 export const DONE_STATUSES: TicketStatus[] = [TicketStatus.RESOLVED, TicketStatus.CLOSED];
@@ -189,6 +190,10 @@ export async function createTicket(ctx: AuthContext, input: z.infer<typeof ticke
     });
     await audit(tx, { ...by(ctx), action: 'ticket.create', entityType: 'ticket', entityId: ticket.id, changes: { after: snapshot('ticket', ticket) } });
     await notifyAssigned(tx, ctx, { entity: 'ticket', id: ticket.id }, `${ticket.ticketNumber} ${ticket.subject}`, ticket.ownerId, null);
+    // 工作流（工单以“编号 主题”作为名称）/ workflows (tickets use "number subject" as the name)
+    if (await runWorkflows(tx, { entity: 'TICKET', before: null, after: { ...ticket, name: `${ticket.ticketNumber} ${ticket.subject}` }, actorId: ctx.userId, meta: ctx.meta })) {
+      return withOverdue(await tx.ticket.findUniqueOrThrow({ where: { id: ticket.id }, include }));
+    }
     return withOverdue(ticket);
   });
 }
@@ -231,6 +236,9 @@ export async function updateTicket(ctx: AuthContext, id: string, input: z.infer<
     const fields = diff('ticket', current, ticket);
     if (Object.keys(fields).length) await audit(tx, { ...by(ctx), action: 'ticket.update', entityType: 'ticket', entityId: id, changes: { fields } });
     await notifyAssigned(tx, ctx, { entity: 'ticket', id }, `${ticket.ticketNumber} ${ticket.subject}`, ticket.ownerId, current.ownerId);
+    if (await runWorkflows(tx, { entity: 'TICKET', before: current, after: { ...ticket, name: `${ticket.ticketNumber} ${ticket.subject}` }, actorId: ctx.userId, meta: ctx.meta })) {
+      return withOverdue(await tx.ticket.findUniqueOrThrow({ where: { id }, include }));
+    }
     return withOverdue(ticket);
   });
 }

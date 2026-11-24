@@ -6,18 +6,18 @@
  * maintenance and transitions live in blueprints.ts.
  */
 import type { Prisma } from '@/generated/prisma/client';
-import type { WorkflowEntity } from '@/generated/prisma/enums';
 import { prisma } from '../db';
 import { ApiError } from '../errors';
+import type { RecordEntity } from './dictionaries';
 
 /** 蓝图控制的字段 / the field a blueprint controls */
-export const BLUEPRINT_FIELD = { LEAD: 'status', DEAL: 'stage' } as const satisfies Record<WorkflowEntity, string>;
+export const BLUEPRINT_FIELD = { LEAD: 'status', DEAL: 'stage' } as const satisfies Record<RecordEntity, string>;
 
 /**
  * 对象当前启用的蓝图（没有时为 null）。
  * The active blueprint of an entity (null when none).
  */
-export function activeBlueprint(organizationId: string, entity: WorkflowEntity, client: Prisma.TransactionClient = prisma) {
+export function activeBlueprint(organizationId: string, entity: RecordEntity, client: Prisma.TransactionClient = prisma) {
   return client.blueprint.findFirst({ where: { organizationId, entity, isActive: true }, select: { id: true, name: true, transitions: true } });
 }
 
@@ -25,7 +25,7 @@ export function activeBlueprint(organizationId: string, entity: WorkflowEntity, 
  * 有启用的蓝图时拒绝直接修改受控字段（409 BLUEPRINT_CONTROLLED）。
  * Refuse direct changes of the controlled field while a blueprint is active (409 BLUEPRINT_CONTROLLED).
  */
-export async function assertNotControlled(organizationId: string, entity: WorkflowEntity, client: Prisma.TransactionClient = prisma): Promise<void> {
+export async function assertNotControlled(organizationId: string, entity: RecordEntity, client: Prisma.TransactionClient = prisma): Promise<void> {
   if (await activeBlueprint(organizationId, entity, client)) {
     const field = BLUEPRINT_FIELD[entity];
     throw new ApiError(409, 'BLUEPRINT_CONTROLLED', `The ${field} is controlled by a blueprint`, { [field]: ['blueprint'] });

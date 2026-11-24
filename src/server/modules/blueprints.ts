@@ -34,16 +34,17 @@ import { activeBlueprint, BLUEPRINT_FIELD } from './blueprint-rules';
 import { dealUpdateSchema, getDeal, updateDeal } from './deals';
 import { getLead, leadUpdateSchema, updateLead } from './leads';
 import { createNote } from './notes';
+import { asRecordEntity, RECORD_ENTITIES, type RecordEntity } from './dictionaries';
 
 /** 每组织最多蓝图数 / max blueprints per organization */
 export const MAX_BLUEPRINTS = 20;
 /** 各对象的状态（线索不含已转化）/ states per entity (leads exclude converted) */
-export const BLUEPRINT_STATES: Record<WorkflowEntity, readonly string[]> = {
+export const BLUEPRINT_STATES: Record<RecordEntity, readonly string[]> = {
   LEAD: ['NEW', 'CONTACTED', 'QUALIFIED', 'UNQUALIFIED'],
   DEAL: Object.values(DealStage),
 };
 /** 转换时可要求填写的字段 / fields a transition may require */
-export const BLUEPRINT_FIELDS: Record<WorkflowEntity, readonly string[]> = {
+export const BLUEPRINT_FIELDS: Record<RecordEntity, readonly string[]> = {
   LEAD: ['company', 'title', 'phone', 'email', 'description'],
   DEAL: ['amount', 'expectedCloseDate', 'description'],
 };
@@ -66,7 +67,7 @@ export const transitionSchema = z.strictObject({
 export type Transition = Required<z.infer<typeof transitionSchema>>;
 
 /** 按对象校验转换 / validate transitions per entity */
-function checkTransitions(entity: WorkflowEntity, transitions: z.infer<typeof transitionSchema>[], ctx: z.RefinementCtx) {
+function checkTransitions(entity: RecordEntity, transitions: z.infer<typeof transitionSchema>[], ctx: z.RefinementCtx) {
   const issue = (path: (string | number)[], message: string) => ctx.addIssue({ code: 'custom', path, message });
   const states = BLUEPRINT_STATES[entity];
   const names = new Set<string>();
@@ -98,7 +99,7 @@ export const blueprintCreateSchema = z
   .strictObject({
     name: requiredText(100),
     description: optionalText(500),
-    entity: z.enum(WorkflowEntity),
+    entity: z.enum(RECORD_ENTITIES),
     isActive: z.boolean().default(false),
     transitions: z.array(transitionSchema).min(1).max(20),
   })
@@ -108,7 +109,7 @@ export const blueprintUpdateSchema = z
   .strictObject({
     name: requiredText(100),
     description: optionalText(500),
-    entity: z.enum(WorkflowEntity),
+    entity: z.enum(RECORD_ENTITIES),
     isActive: z.boolean(),
     transitions: z.array(transitionSchema).min(1).max(20),
   })
@@ -118,12 +119,12 @@ export const blueprintUpdateSchema = z
     if (v.transitions && v.entity) checkTransitions(v.entity, v.transitions, ctx);
   });
 /** 对象查询 / entity query */
-export const blueprintEntitySchema = z.strictObject({ entity: z.enum(WorkflowEntity) });
+export const blueprintEntitySchema = z.strictObject({ entity: z.enum(RECORD_ENTITIES) });
 /** 记录的可用转换查询 / available transitions query */
-export const blueprintRecordSchema = z.strictObject({ entity: z.enum(WorkflowEntity), id: z.uuid() });
+export const blueprintRecordSchema = z.strictObject({ entity: z.enum(RECORD_ENTITIES), id: z.uuid() });
 /** 执行转换 / run a transition */
 export const transitionRunSchema = z.strictObject({
-  entity: z.enum(WorkflowEntity),
+  entity: z.enum(RECORD_ENTITIES),
   id: z.uuid(),
   transitionId: z.uuid(),
   fields: z.record(z.string(), z.unknown()).default({}),
@@ -160,13 +161,13 @@ function conflict(err: unknown): never {
 }
 
 /** 启用时检查同对象没有其他启用的蓝图 / when activating, no other blueprint of the entity may be active */
-async function assertSingleActive(tx: Prisma.TransactionClient, org: string, entity: WorkflowEntity, exceptId: string | null) {
+async function assertSingleActive(tx: Prisma.TransactionClient, org: string, entity: RecordEntity, exceptId: string | null) {
   const other = await tx.blueprint.findFirst({ where: { organizationId: org, entity, isActive: true, ...(exceptId ? { id: { not: exceptId } } : {}) }, select: { name: true } });
   if (other) throw new ApiError(409, 'CONFLICT', 'Another blueprint is active', { isActive: ['another_active'] });
 }
 
 /** 审计快照 / audit snapshot */
-const auditView = (b: { name: string; entity: WorkflowEntity; isActive: boolean; transitions: unknown }) => ({
+const auditView = (b: { name: string; entity: string; isActive: boolean; transitions: unknown }) => ({
   name: b.name,
   entity: b.entity,
   isActive: b.isActive,
@@ -186,7 +187,7 @@ export async function listBlueprints(ctx: AuthContext) {
  * 对象当前启用的蓝图（所有用户可读，用于在表单中锁定受控字段）。
  * The active blueprint of an entity (everyone; used to lock the controlled field in forms).
  */
-export async function blueprintStatus(ctx: AuthContext, entity: WorkflowEntity) {
+export async function blueprintStatus(ctx: AuthContext, entity: RecordEntity) {
   const bp = await activeBlueprint(ctx.organizationId, entity);
   return { active: bp ? { id: bp.id, name: bp.name } : null, field: BLUEPRINT_FIELD[entity] };
 }
@@ -225,7 +226,7 @@ export async function updateBlueprint(ctx: AuthContext, id: string, input: z.inf
       const current = await tx.blueprint.findFirst({ where: { id, organizationId: org }, select });
       if (!current) throw notFound();
       if (input.entity && input.entity !== current.entity) throw new ApiError(400, 'VALIDATION_ERROR', 'The entity cannot change', { entity: ['immutable'] });
-      if (input.isActive) await assertSingleActive(tx, org, current.entity, id);
+      if (input.isActive) await assertSingleActive(tx, org, asRecordEntity(current.entity), id);
       const data = { name: input.name, description: input.description, isActive: input.isActive, ...(input.transitions ? { transitions: withIds(input.transitions) as unknown as Prisma.InputJsonValue } : {}) };
       const b = await tx.blueprint.update({ where: { id }, data, select });
       const a = auditView(b);
@@ -254,7 +255,7 @@ export async function deleteBlueprint(ctx: AuthContext, id: string): Promise<voi
 }
 
 /** 读取记录（可见范围内）/ load a visible record */
-async function loadRecord(ctx: AuthContext, entity: WorkflowEntity, id: string) {
+async function loadRecord(ctx: AuthContext, entity: RecordEntity, id: string) {
   const r = entity === WorkflowEntity.LEAD ? await getLead(ctx, id) : await getDeal(ctx, id);
   return r as unknown as Record<string, unknown> & { id: string; ownerId: string | null; convertedAt?: Date | null };
 }
@@ -263,7 +264,7 @@ async function loadRecord(ctx: AuthContext, entity: WorkflowEntity, id: string) 
  * 记录当前可执行的转换（当前状态为出发状态、角色允许、记录可编辑）。
  * Transitions the user can run on a record now (source state, allowed role, editable record).
  */
-export async function availableTransitions(ctx: AuthContext, entity: WorkflowEntity, id: string) {
+export async function availableTransitions(ctx: AuthContext, entity: RecordEntity, id: string) {
   const record = await loadRecord(ctx, entity, id);
   const bp = await activeBlueprint(ctx.organizationId, entity);
   const state = String(record[BLUEPRINT_FIELD[entity]]);

@@ -34,6 +34,7 @@ import { optionalText, requiredText } from '../validation';
 import { getContact } from './accounts';
 import { activePolicy, slaDue } from './ticket-sla';
 import { nextNumber } from './tickets';
+import { runWorkflows } from './workflows';
 
 /** 门户设置 / portal settings */
 export const portalSettingsSchema = z.strictObject({ isEnabled: z.boolean(), welcome: optionalText(500) }).partial();
@@ -208,6 +209,11 @@ export async function createMyTicket(ctx: PortalContext, input: z.infer<typeof p
     });
     await audit(tx, { organizationId: ctx.organizationId, actorId: null, action: 'ticket.create', entityType: 'ticket', entityId: ticket.id, changes: { via: 'portal', portalUserId: ctx.portalUserId, contact: ctx.name, after: { ticketNumber: ticket.ticketNumber, subject: ticket.subject } }, meta: ctx.meta });
     if (owner) await tx.notification.create({ data: { organizationId: ctx.organizationId, userId: owner, type: NotificationType.ASSIGNED, actorId: null, ticketId: ticket.id, title: `${ticket.ticketNumber} ${ticket.subject}`.slice(0, 200) } });
+    // 客户在门户新建的工单也触发工作流（没有操作人）/ portal tickets fire workflows too (no actor)
+    const full = await tx.ticket.findUniqueOrThrow({ where: { id: ticket.id } });
+    if (await runWorkflows(tx, { entity: 'TICKET', before: null, after: { ...full, name: `${full.ticketNumber} ${full.subject}` }, actorId: null })) {
+      return tx.ticket.findUniqueOrThrow({ where: { id: ticket.id }, select: ticketSelect });
+    }
     return ticket;
   });
 }

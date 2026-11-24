@@ -11,17 +11,20 @@ import { App, Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Segment
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { usePermissions } from '@/components/AuthProvider';
 import { CampaignSelect } from '@/components/CampaignSelect';
+import { RecordSelect } from '@/components/RecordSelect';
+import { territoryOptions, useTerritoryOptions } from '@/components/Territories';
 import { useTags } from '@/components/Tags';
 import { t, tEnum, type MessageKey } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
 import { useOwners, usePagedList } from '@/lib/hooks';
 
-type Entity = 'LEAD' | 'DEAL';
+type Entity = 'LEAD' | 'DEAL' | 'ACCOUNT' | 'TICKET';
+const ENTITIES = ['LEAD', 'DEAL', 'ACCOUNT', 'TICKET'] as const;
 type Trigger = 'CREATE' | 'UPDATE' | 'CREATE_OR_UPDATE' | 'FIELD_CHANGE' | 'DATE_RELATIVE' | 'INACTIVITY';
 const TRIGGERS = ['CREATE', 'UPDATE', 'CREATE_OR_UPDATE', 'FIELD_CHANGE', 'DATE_RELATIVE', 'INACTIVITY'] as const;
 /** 相对日期的日期字段（与服务端一致）/ date fields for relative-date triggers (same as the server) */
-const DATE_FIELDS: Record<'LEAD' | 'DEAL', string[]> = { LEAD: ['createdAt'], DEAL: ['expectedCloseDate', 'createdAt'] };
+const DATE_FIELDS: Record<Entity, string[]> = { LEAD: ['createdAt'], DEAL: ['expectedCloseDate', 'createdAt'], ACCOUNT: ['createdAt'], TICKET: ['dueAt', 'createdAt'] };
 type FieldType = 'enum' | 'text' | 'number' | 'id';
 
 /** 条件字段（与服务端一致）/ condition fields (same as the server) */
@@ -49,14 +52,43 @@ const FIELDS: Record<Entity, Record<string, { type: FieldType; enumPrefix?: stri
     ownerId: { type: 'id' },
     campaignId: { type: 'id' },
   },
+  ACCOUNT: {
+    industry: { type: 'enum', enumPrefix: 'industry', values: ['MANUFACTURING', 'IT', 'FINANCE', 'RETAIL', 'EDUCATION', 'HEALTHCARE', 'CONSTRUCTION', 'LOGISTICS', 'GOVERNMENT', 'OTHER'] },
+    name: { type: 'text' },
+    phone: { type: 'text' },
+    website: { type: 'text' },
+    address: { type: 'text' },
+    description: { type: 'text' },
+    score: { type: 'number' },
+    ownerId: { type: 'id' },
+    territoryId: { type: 'id' },
+  },
+  TICKET: {
+    status: { type: 'enum', enumPrefix: 'ticketStatus', values: ['OPEN', 'IN_PROGRESS', 'WAITING_CUSTOMER', 'RESOLVED', 'CLOSED'] },
+    priority: { type: 'enum', enumPrefix: 'ticketPriority', values: ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] },
+    type: { type: 'enum', enumPrefix: 'ticketType', values: ['QUESTION', 'PROBLEM', 'FEATURE_REQUEST'] },
+    channel: { type: 'enum', enumPrefix: 'ticketChannel', values: ['PHONE', 'EMAIL', 'WEB', 'ONSITE', 'OTHER', 'PORTAL'] },
+    subject: { type: 'text' },
+    description: { type: 'text' },
+    ownerId: { type: 'id' },
+    accountId: { type: 'id' },
+  },
 };
-const TRIGGER_FIELDS: Record<Entity, string[]> = { LEAD: ['status', 'source', 'ownerId', 'campaignId'], DEAL: ['stage', 'amount', 'currency', 'ownerId', 'expectedCloseDate'] };
+const TRIGGER_FIELDS: Record<Entity, string[]> = {
+  LEAD: ['status', 'source', 'ownerId', 'campaignId'],
+  DEAL: ['stage', 'amount', 'currency', 'ownerId', 'expectedCloseDate'],
+  ACCOUNT: ['industry', 'ownerId', 'territoryId'],
+  TICKET: ['status', 'priority', 'ownerId'],
+};
 const UPDATE_FIELDS: Record<Entity, Record<string, { enumPrefix: string; values: string[] }>> = {
   LEAD: {
     status: { enumPrefix: 'leadStatus', values: ['NEW', 'CONTACTED', 'QUALIFIED', 'UNQUALIFIED'] },
     source: { enumPrefix: 'leadSource', values: FIELDS.LEAD.source!.values! },
   },
   DEAL: { stage: { enumPrefix: 'dealStage', values: FIELDS.DEAL.stage!.values! } },
+  ACCOUNT: { industry: { enumPrefix: 'industry', values: FIELDS.ACCOUNT.industry!.values! } },
+  // 已解决、已关闭需要处理结果，不能由工作流设置 / resolved and closed need a resolution
+  TICKET: { status: { enumPrefix: 'ticketStatus', values: ['OPEN', 'IN_PROGRESS', 'WAITING_CUSTOMER'] }, priority: { enumPrefix: 'ticketPriority', values: FIELDS.TICKET.priority!.values! } },
 };
 const OPS: Record<FieldType, string[]> = {
   enum: ['EQUALS', 'NOT_EQUALS'],
@@ -102,7 +134,12 @@ interface Rule {
 type FormValues = Omit<Rule, 'id' | 'runCount' | 'lastRunAt' | 'createdBy'> & { direction?: 'before' | 'after'; offset?: number };
 
 /** 字段名称 / field label */
-const fieldLabel = (f: string) => t(`workflows.field.${f}` as MessageKey);
+/** 与对象有关的字段名称（工单的状态、类型）/ entity-specific labels (ticket status and type) */
+const ENTITY_LABELS: Partial<Record<string, MessageKey>> = { 'TICKET.status': 'tickets.status', 'TICKET.type': 'tickets.type', 'ACCOUNT.name': 'accounts.name' };
+const fieldLabel = (f: string, e?: Entity) => t((e && ENTITY_LABELS[`${e}.${f}`]) ?? (`workflows.field.${f}` as MessageKey));
+/** 各对象可用的触发时机与动作（工单没有跟进记录与标签）/ triggers and actions per entity (tickets have no activities or tags) */
+const triggersOf = (e: Entity) => TRIGGERS.filter((x) => !(e === 'TICKET' && x === 'INACTIVITY'));
+const actionsOf = (e: Entity) => ACTION_TYPES.filter((x) => !(e === 'TICKET' && x === 'ADD_TAG'));
 
 export default function WorkflowsPage() {
   const { message } = App.useApp();
@@ -125,6 +162,7 @@ export default function WorkflowsPage() {
   const formEntity = (Form.useWatch('entity', form) ?? 'LEAD') as Entity;
   const trigger = Form.useWatch('trigger', form) as Trigger | undefined;
   const conditions = (Form.useWatch('conditions', form) ?? []) as Condition[];
+  const territories = useTerritoryOptions();
   const actions = (Form.useWatch('actions', form) ?? []) as Action[];
 
   const userName = (id?: string) => owners.find((u) => u.id === id)?.name ?? t('workflows.unknownUser');
@@ -134,14 +172,15 @@ export default function WorkflowsPage() {
     if (!v) return '';
     if (def?.enumPrefix) return tEnum(def.enumPrefix, v);
     if (field === 'ownerId') return userName(v);
+    if (field === 'territoryId') return territories.find((x) => x.id === v)?.name ?? v.slice(0, 8);
     if (def?.type === 'text') return t('assignment.quoted', { value: v });
     return v;
   };
-  const conditionText = (e: Entity, c: Condition) => `${fieldLabel(c.field)} ${t(`workflows.op.${c.op}` as MessageKey)}${NO_VALUE.has(c.op) ? '' : ` ${valueText(e, c.field, c.value)}`}`;
+  const conditionText = (e: Entity, c: Condition) => `${fieldLabel(c.field, e)} ${t(`workflows.op.${c.op}` as MessageKey)}${NO_VALUE.has(c.op) ? '' : ` ${valueText(e, c.field, c.value)}`}`;
   const actionText = (e: Entity, a: Action) => {
     switch (a.type) {
       case 'UPDATE_FIELD':
-        return t('workflows.actionText.UPDATE_FIELD', { field: fieldLabel(a.field ?? ''), value: tEnum(UPDATE_FIELDS[e][a.field ?? '']?.enumPrefix ?? '', a.value) });
+        return t('workflows.actionText.UPDATE_FIELD', { field: fieldLabel(a.field ?? '', e), value: tEnum(UPDATE_FIELDS[e][a.field ?? '']?.enumPrefix ?? '', a.value) });
       case 'ASSIGN_OWNER':
         return t('workflows.actionText.ASSIGN_OWNER', { user: userName(a.userId) });
       case 'CREATE_TASK':
@@ -154,11 +193,11 @@ export default function WorkflowsPage() {
         return t('workflows.actionText.WEBHOOK', { name: webhooks.find((x) => x.id === a.webhookId)?.name ?? t('workflows.webhookHidden') });
     }
   };
-  const triggerText = (r: Pick<Rule, 'trigger' | 'triggerField' | 'triggerDays'>) => {
-    if (r.trigger === 'FIELD_CHANGE') return t('workflows.trigger.fieldChanged', { field: fieldLabel(r.triggerField ?? '') });
+  const triggerText = (r: Pick<Rule, 'trigger' | 'triggerField' | 'triggerDays' | 'entity'>) => {
+    if (r.trigger === 'FIELD_CHANGE') return t('workflows.trigger.fieldChanged', { field: fieldLabel(r.triggerField ?? '', r.entity) });
     if (r.trigger === 'DATE_RELATIVE') {
       const days = r.triggerDays ?? 0;
-      const field = fieldLabel(r.triggerField ?? '');
+      const field = fieldLabel(r.triggerField ?? '', r.entity);
       return days === 0 ? t('workflows.trigger.onDate', { field }) : t(days < 0 ? 'workflows.trigger.beforeDate' : 'workflows.trigger.afterDate', { field, n: Math.abs(days) });
     }
     if (r.trigger === 'INACTIVITY') return t('workflows.trigger.idleDays', { n: r.triggerDays ?? 0 });
@@ -270,6 +309,8 @@ export default function WorkflowsPage() {
           { value: 'ALL', label: t('workflows.all') },
           { value: 'LEAD', label: t('workflows.entity.LEAD') },
           { value: 'DEAL', label: t('workflows.entity.DEAL') },
+          { value: 'ACCOUNT', label: t('workflows.entity.ACCOUNT') },
+          { value: 'TICKET', label: t('workflows.entity.TICKET') },
         ]}
       />
       <Table<Rule>
@@ -336,7 +377,7 @@ export default function WorkflowsPage() {
               <Select
                 style={{ width: 120 }}
                 disabled={editing !== 'new'}
-                options={(['LEAD', 'DEAL'] as const).map((e) => ({ value: e, label: t(`workflows.entity.${e}`) }))}
+                options={ENTITIES.map((e) => ({ value: e, label: t(`workflows.entity.${e}`) }))}
                 onChange={(e: 'LEAD' | 'DEAL') =>
                   form.setFieldsValue({ triggerField: form.getFieldValue('trigger') === 'DATE_RELATIVE' ? DATE_FIELDS[e][0]! : null, conditions: [], actions: [{ type: 'NOTIFY', recipient: 'OWNER', message: '' }] })
                 }
@@ -345,19 +386,19 @@ export default function WorkflowsPage() {
             <Form.Item name="trigger" label={t('workflows.triggerLabel')}>
               <Select
                 style={{ width: 180 }}
-                options={TRIGGERS.map((x) => ({ value: x, label: t(`workflows.trigger.${x}`) }))}
+                options={triggersOf(formEntity).map((x) => ({ value: x, label: t(`workflows.trigger.${x}`) }))}
                 onChange={(x: Trigger) => form.setFieldsValue({ triggerField: x === 'DATE_RELATIVE' ? DATE_FIELDS[formEntity][0]! : null, triggerDays: x === 'INACTIVITY' ? 7 : null })}
               />
             </Form.Item>
             {trigger === 'FIELD_CHANGE' && (
               <Form.Item name="triggerField" label={t('workflows.triggerField')} rules={required('workflows.triggerField')}>
-                <Select style={{ width: 160 }} options={TRIGGER_FIELDS[formEntity].map((f) => ({ value: f, label: fieldLabel(f) }))} />
+                <Select style={{ width: 160 }} options={TRIGGER_FIELDS[formEntity].map((f) => ({ value: f, label: fieldLabel(f, formEntity) }))} />
               </Form.Item>
             )}
             {trigger === 'DATE_RELATIVE' && (
               <>
                 <Form.Item name="triggerField" label={t('workflows.dateField')} rules={required('workflows.dateField')}>
-                  <Select style={{ width: 140 }} options={DATE_FIELDS[formEntity].map((f) => ({ value: f, label: fieldLabel(f) }))} />
+                  <Select style={{ width: 140 }} options={DATE_FIELDS[formEntity].map((f) => ({ value: f, label: fieldLabel(f, formEntity) }))} />
                 </Form.Item>
                 <Form.Item name="direction" label={t('workflows.direction')}>
                   <Select style={{ width: 100 }} options={(['before', 'after'] as const).map((d) => ({ value: d, label: t(`workflows.direction.${d}`) }))} />
@@ -391,7 +432,7 @@ export default function WorkflowsPage() {
                       <Form.Item name={[row.name, 'field']} style={{ width: 150 }} rules={required('workflows.field')}>
                         <Select
                           aria-label={`${t('workflows.field')} ${label}`}
-                          options={Object.keys(FIELDS[formEntity]).map((f) => ({ value: f, label: fieldLabel(f) }))}
+                          options={Object.keys(FIELDS[formEntity]).map((f) => ({ value: f, label: fieldLabel(f, formEntity) }))}
                           onChange={(f: string) => {
                             const next = [...(form.getFieldValue('conditions') as Condition[])];
                             next[row.name] = { field: f, op: OPS[FIELDS[formEntity][f]!.type][0]!, value: undefined };
@@ -412,6 +453,10 @@ export default function WorkflowsPage() {
                             <Select aria-label={`${t('workflows.value')} ${label}`} options={userOptions} />
                           ) : c!.field === 'campaignId' ? (
                             <CampaignSelect aria-label={`${t('workflows.value')} ${label}`} />
+                          ) : c!.field === 'territoryId' ? (
+                            <Select aria-label={`${t('workflows.value')} ${label}`} options={territoryOptions(territories)} />
+                          ) : c!.field === 'accountId' ? (
+                            <RecordSelect resource="/api/accounts" />
                           ) : (
                             <Input aria-label={`${t('workflows.value')} ${label}`} maxLength={200} />
                           )}
@@ -444,7 +489,7 @@ export default function WorkflowsPage() {
                       <Form.Item name={[row.name, 'type']} style={{ width: 150 }}>
                         <Select
                           aria-label={`${t('workflows.actionType')} ${label}`}
-                          options={ACTION_TYPES.map((x) => ({ value: x, label: t(`workflows.action.${x}`) }))}
+                          options={actionsOf(formEntity).map((x) => ({ value: x, label: t(`workflows.action.${x}`) }))}
                           onChange={(type: Action['type']) => {
                             const next = [...(form.getFieldValue('actions') as Action[])];
                             next[row.name] =
@@ -456,7 +501,7 @@ export default function WorkflowsPage() {
                       {a?.type === 'UPDATE_FIELD' && (
                         <>
                           <Form.Item name={[row.name, 'field']} style={{ width: 130 }}>
-                            <Select aria-label={`${t('workflows.field')} ${t('workflows.action.UPDATE_FIELD')} ${label}`} options={Object.keys(UPDATE_FIELDS[formEntity]).map((f) => ({ value: f, label: fieldLabel(f) }))} />
+                            <Select aria-label={`${t('workflows.field')} ${t('workflows.action.UPDATE_FIELD')} ${label}`} options={Object.keys(UPDATE_FIELDS[formEntity]).map((f) => ({ value: f, label: fieldLabel(f, formEntity) }))} />
                           </Form.Item>
                           <Form.Item name={[row.name, 'value']} style={{ width: 160 }} rules={required('workflows.value')}>
                             <Select

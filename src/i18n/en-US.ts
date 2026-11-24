@@ -2239,4 +2239,13 @@ export const enUS: Record<MessageKey, string> = {
   'stock.auditWarehouse': 'Warehouse {warehouse}: {before} → {after}',
   'stock.auditTransfer': '{sku}: {from} → {to}, quantity {quantity}',
   'auditAction.stock_transfer': 'Transfer stock',
+  'workflows.entity.ACCOUNT': 'Accounts',
+  'workflows.entity.TICKET': 'Tickets',
+  'workflows.field.territoryId': 'Territory',
+  'workflows.field.priority': 'Priority',
+  'workflows.field.type': 'Type',
+  'workflows.field.channel': 'Channel',
+  'workflows.field.subject': 'Subject',
+  'workflows.field.accountId': 'Account',
+  'workflows.field.dueAt': 'Due time',
 };

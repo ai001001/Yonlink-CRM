@@ -2232,6 +2232,15 @@ export const zhCN = {
   'stock.auditWarehouse': '仓库 {warehouse}：{before} → {after}',
   'stock.auditTransfer': '{sku}：{from} → {to}，数量 {quantity}',
   'auditAction.stock_transfer': '仓库调拨',
+  'workflows.entity.ACCOUNT': '客户',
+  'workflows.entity.TICKET': '服务工单',
+  'workflows.field.territoryId': '区域',
+  'workflows.field.priority': '优先级',
+  'workflows.field.type': '类型',
+  'workflows.field.channel': '渠道',
+  'workflows.field.subject': '主题',
+  'workflows.field.accountId': '客户',
+  'workflows.field.dueAt': '处理期限',
 } as const;
 
 export type MessageKey = keyof typeof zhCN;

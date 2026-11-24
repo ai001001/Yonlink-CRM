@@ -40,8 +40,13 @@ async function candidates(rule: { id: string; organizationId: string; entity: Wo
     const floor = ymd(new Date(now.getTime() - CATCH_UP_DAYS * 86_400_000));
     const lower = created > floor ? created : floor;
     // 表与日期列固定，不拼接用户输入 / fixed tables and columns; no user input is interpolated
-    const table = rule.entity === WorkflowEntity.LEAD ? Prisma.sql`leads` : Prisma.sql`deals`;
-    const column = rule.triggerField === 'expectedCloseDate' ? Prisma.sql`t.expected_close_date` : Prisma.sql`(t.created_at AT TIME ZONE 'UTC')::date`;
+    const table = { LEAD: Prisma.sql`leads`, DEAL: Prisma.sql`deals`, ACCOUNT: Prisma.sql`accounts`, TICKET: Prisma.sql`tickets` }[rule.entity];
+    const column =
+      rule.triggerField === 'expectedCloseDate'
+        ? Prisma.sql`t.expected_close_date`
+        : rule.triggerField === 'dueAt'
+          ? Prisma.sql`(t.due_at AT TIME ZONE 'UTC')::date`
+          : Prisma.sql`(t.created_at AT TIME ZONE 'UTC')::date`;
     return prisma.$queryRaw<{ id: string; key: string }[]>`
       SELECT t.id, ${column}::text AS key FROM ${table} t
       WHERE t.organization_id = ${org}::uuid AND ${column} IS NOT NULL
@@ -61,6 +66,17 @@ async function candidates(rule: { id: string; organizationId: string; entity: Wo
       WHERE touched <= ${cutoff} AND NOT EXISTS (SELECT 1 FROM workflow_schedule_runs r WHERE r.rule_id = ${rule.id}::uuid AND r.record_id = x.id AND r.key = x.key)
       ORDER BY id LIMIT ${BATCH}`;
   }
+  if (rule.entity === WorkflowEntity.ACCOUNT) {
+    return prisma.$queryRaw<{ id: string; key: string }[]>`
+      SELECT id, key FROM (
+        SELECT c.id, to_char(greatest(c.created_at, coalesce((SELECT max(a.created_at) FROM activities a WHERE a.organization_id = c.organization_id AND a.account_id = c.id), c.created_at)) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') AS key,
+               greatest(c.created_at, coalesce((SELECT max(a.created_at) FROM activities a WHERE a.organization_id = c.organization_id AND a.account_id = c.id), c.created_at)) AS touched
+        FROM accounts c WHERE c.organization_id = ${org}::uuid
+      ) x
+      WHERE touched <= ${cutoff} AND NOT EXISTS (SELECT 1 FROM workflow_schedule_runs r WHERE r.rule_id = ${rule.id}::uuid AND r.record_id = x.id AND r.key = x.key)
+      ORDER BY id LIMIT ${BATCH}`;
+  }
+  if (rule.entity === WorkflowEntity.TICKET) return []; // 工单没有跟进记录（保存时已拒绝）/ tickets have no activities (refused on save)
   return prisma.$queryRaw<{ id: string; key: string }[]>`
     SELECT id, key FROM (
       SELECT d.id, to_char(greatest(d.created_at, coalesce((SELECT max(a.created_at) FROM activities a WHERE a.organization_id = d.organization_id AND a.deal_id = d.id), d.created_at)) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') AS key,
@@ -69,6 +85,26 @@ async function candidates(rule: { id: string; organizationId: string; entity: Wo
     ) x
     WHERE touched <= ${cutoff} AND NOT EXISTS (SELECT 1 FROM workflow_schedule_runs r WHERE r.rule_id = ${rule.id}::uuid AND r.record_id = x.id AND r.key = x.key)
     ORDER BY id LIMIT ${BATCH}`;
+}
+
+/**
+ * 读取触发的记录（工单以“编号 主题”作为名称）。
+ * Load the triggered record (tickets use "number subject" as the name).
+ */
+async function loadRecord(tx: Prisma.TransactionClient, entity: WorkflowEntity, organizationId: string, id: string) {
+  const where = { id, organizationId };
+  switch (entity) {
+    case WorkflowEntity.LEAD:
+      return tx.lead.findFirst({ where });
+    case WorkflowEntity.DEAL:
+      return tx.deal.findFirst({ where });
+    case WorkflowEntity.ACCOUNT:
+      return tx.account.findFirst({ where });
+    case WorkflowEntity.TICKET: {
+      const t = await tx.ticket.findFirst({ where });
+      return t && { ...t, name: `${t.ticketNumber} ${t.subject}` };
+    }
+  }
 }
 
 /**
@@ -93,10 +129,7 @@ export async function sweepScheduledWorkflows(opts: { organizationId?: string; n
             VALUES (gen_random_uuid(), ${rule.organizationId}::uuid, ${rule.id}::uuid, ${c.id}::uuid, ${c.key}, ${now})
             ON CONFLICT (rule_id, record_id, key) DO NOTHING`;
           if (inserted !== 1) return false;
-          const record =
-            rule.entity === WorkflowEntity.LEAD
-              ? await tx.lead.findFirst({ where: { id: c.id, organizationId: rule.organizationId } })
-              : await tx.deal.findFirst({ where: { id: c.id, organizationId: rule.organizationId } });
+          const record = await loadRecord(tx, rule.entity, rule.organizationId, c.id);
           if (!record) return false;
           return executeRule(tx, rule, { entity: rule.entity, before: record, after: record, actorId: null }, { ...record });
         });

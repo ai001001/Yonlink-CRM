@@ -71,7 +71,7 @@ describe('workflows R1 maintenance', () => {
     const b = await createTenant('B');
     const bad: object[] = [
       { name: '' },
-      { entity: 'TICKET' },
+      { entity: 'CONTACT' }, // 工单自 #60c 起可用，改用仍不支持的联系人 / tickets are valid since #60c; contacts are still unsupported
       { trigger: 'FIELD_CHANGE' },
       { trigger: 'FIELD_CHANGE', triggerField: 'name' },
       { trigger: 'CREATE', triggerField: 'status' },

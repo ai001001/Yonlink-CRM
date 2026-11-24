@@ -41,8 +41,10 @@ test('定时任务发出低库存提醒，经理点击后打开产品库存 / lo
   await expect(page.getByTestId('stock-drawer')).toBeVisible();
   await expect(page.locator('.ant-drawer-title')).toContainText(sku);
 
-  // 销售没有低库存提醒 / sales reps get none
-  await page.goto('/login');
+  // 销售没有低库存提醒：先退出（已登录时登录页会跳回首页）/ sales reps get none: sign out first (the login page redirects signed-in users)
+  const token = await page.evaluate(() => localStorage.getItem('yonlink-crm.token'));
+  await page.request.post('/api/auth/logout', { headers: { Authorization: `Bearer ${token}` } });
+  await page.evaluate(() => localStorage.removeItem('yonlink-crm.token'));
   await demoSignIn(page, '王芳');
   expect((await api(page, '/api/notifications?pageSize=50')).items.filter((n: { type: string }) => n.type === 'LOW_STOCK')).toEqual([]);
 });

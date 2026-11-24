@@ -11,6 +11,7 @@ import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, can, requirePe
 import { ApiError, notFound } from '../errors';
 import { customDiff, customInput, resolveCustom } from './custom-fields';
 import { INDUSTRIES } from './dictionaries';
+import { runWorkflows } from './workflows';
 import { resolveTerritory, territoryIdsFor } from './territory-rules';
 import { territoryFilter, territoryInput } from './territory-input';
 import { detachSharedActivities } from './activities';
@@ -158,6 +159,7 @@ export async function createAccount(ctx: AuthContext, input: z.infer<typeof acco
     const customChanges = customDiff(cf.defs, null, cf.values);
     await audit(tx, { ...by(ctx), action: 'account.create', entityType: 'account', entityId: account.id, changes: { after: snapshot('account', account), ...(Object.keys(customChanges).length ? { custom: customChanges } : {}) } });
     await notifyAssigned(tx, ctx, { entity: 'account', id: account.id }, account.name, account.ownerId, null);
+    await runWorkflows(tx, { entity: 'ACCOUNT', before: null, after: account, actorId: ctx.userId, meta: ctx.meta });
     return account;
   });
   return getAccount(ctx, created.id);
@@ -183,6 +185,7 @@ export async function updateAccount(ctx: AuthContext, id: string, input: z.infer
     if (Object.keys(fields).length || Object.keys(customChanges).length) {
       await audit(tx, { ...by(ctx), action: 'account.update', entityType: 'account', entityId: id, changes: { fields, ...(Object.keys(customChanges).length ? { custom: customChanges } : {}) } });
     }
+    await runWorkflows(tx, { entity: 'ACCOUNT', before: current, after: updated, actorId: ctx.userId, meta: ctx.meta });
   });
   return getAccount(ctx, id);
 }

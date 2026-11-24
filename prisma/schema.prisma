@@ -1801,6 +1801,10 @@ model DealStageHistory {
 enum WorkflowEntity {
   LEAD
   DEAL
+  /// 客户（只用于工作流规则）/ account (workflow rules only)
+  ACCOUNT
+  /// 服务工单（只用于工作流规则）/ service ticket (workflow rules only)
+  TICKET
 
   @@map("workflow_entity")
 }

@@ -22,17 +22,26 @@
  * Everyone can read rules; maintenance needs workflow.manage (admins, managers) and is audited; at most 100 rules per
  * organization. Fired by lead/deal create and edit (bulk and board included) and web-form leads; imports and deals
  * created by lead conversion do not fire.
+ *
+ * 客户与服务工单（#60c）：同样支持新建、编辑、字段变化（客户：行业、负责人、区域；工单：状态、优先级、负责人）与相对日期
+ * （客户创建日；工单处理期限或创建日）；无跟进只用于客户。动作：更新字段（客户行业；工单状态（新建、处理中、等待客户）与优先级）、
+ * 指派负责人、创建任务（工单的任务关联工单所属客户）、通知、Webhook；加标签只用于客户。触发来源为客户、工单的新建与编辑。
+ * Accounts and tickets (#60c): create, edit, field change (account industry, owner, territory; ticket status,
+ * priority, owner) and relative dates (account creation; ticket due time or creation); inactivity for accounts only.
+ * Actions: field update (account industry; ticket status among open/in progress/waiting and priority), assign owner,
+ * create task (a ticket's task links to its account), notify, webhook; tags for accounts only. Fired by account and
+ * ticket create and edit.
  */
 import { z } from 'zod';
 import { Prisma } from '@/generated/prisma/client';
-import { DealStage, LeadStatus, NotificationType, WorkflowEntity, WorkflowTrigger } from '@/generated/prisma/enums';
+import { DealStage, LeadStatus, NotificationType, TicketChannel, TicketPriority, TicketStatus, TicketType, WorkflowEntity, WorkflowTrigger } from '@/generated/prisma/enums';
 import { audit, by } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
 import { requirePermission } from '../permissions';
 import { requiredText, type Page } from '../validation';
-import { CURRENCIES, LEAD_SOURCES } from './dictionaries';
+import { CURRENCIES, INDUSTRIES, LEAD_SOURCES } from './dictionaries';
 import { enqueueDelivery } from './webhooks';
 import { activeBlueprint, BLUEPRINT_FIELD } from './blueprint-rules';
 
@@ -72,28 +81,85 @@ export const CONDITION_FIELDS: Record<WorkflowEntity, Record<string, FieldDef>> 
     ownerId: { type: 'id' },
     campaignId: { type: 'id' },
   },
+  ACCOUNT: {
+    industry: { type: 'enum', values: INDUSTRIES },
+    name: { type: 'text' },
+    phone: { type: 'text' },
+    website: { type: 'text' },
+    address: { type: 'text' },
+    description: { type: 'text' },
+    score: { type: 'number' },
+    ownerId: { type: 'id' },
+    territoryId: { type: 'id' },
+  },
+  TICKET: {
+    status: { type: 'enum', values: Object.values(TicketStatus) },
+    priority: { type: 'enum', values: Object.values(TicketPriority) },
+    type: { type: 'enum', values: Object.values(TicketType) },
+    channel: { type: 'enum', values: Object.values(TicketChannel) },
+    subject: { type: 'text' },
+    description: { type: 'text' },
+    ownerId: { type: 'id' },
+    accountId: { type: 'id' },
+  },
 };
 
 /** 可作为“指定字段变化”触发的字段 / fields usable for FIELD_CHANGE */
 export const TRIGGER_FIELDS: Record<WorkflowEntity, readonly string[]> = {
   LEAD: ['status', 'source', 'ownerId', 'campaignId'],
   DEAL: ['stage', 'amount', 'currency', 'ownerId', 'expectedCloseDate'],
+  ACCOUNT: ['industry', 'ownerId', 'territoryId'],
+  TICKET: ['status', 'priority', 'ownerId'],
 };
 
 /** 可作为“相对日期”触发的日期字段 / date fields usable for DATE_RELATIVE */
-export const DATE_FIELDS: Record<WorkflowEntity, readonly string[]> = { LEAD: ['createdAt'], DEAL: ['expectedCloseDate', 'createdAt'] };
+export const DATE_FIELDS: Record<WorkflowEntity, readonly string[]> = { LEAD: ['createdAt'], DEAL: ['expectedCloseDate', 'createdAt'], ACCOUNT: ['createdAt'], TICKET: ['dueAt', 'createdAt'] };
 
 /** 编辑时比较的字段 / fields compared for "edit" */
 const TRACKED: Record<WorkflowEntity, readonly string[]> = {
   LEAD: ['name', 'company', 'title', 'phone', 'mobile', 'email', 'source', 'status', 'description', 'ownerId', 'campaignId'],
   DEAL: ['name', 'accountId', 'amount', 'currency', 'stage', 'expectedCloseDate', 'description', 'ownerId', 'campaignId'],
+  ACCOUNT: ['name', 'industry', 'phone', 'website', 'address', 'description', 'ownerId', 'territoryId'],
+  TICKET: ['subject', 'description', 'status', 'priority', 'type', 'ownerId', 'dueAt', 'accountId', 'contactId', 'resolution'],
 };
 
 /** 可由动作更新的字段与取值 / fields an action may update, with allowed values */
 export const UPDATE_FIELDS: Record<WorkflowEntity, Record<string, readonly string[]>> = {
   LEAD: { status: Object.values(LeadStatus).filter((s) => s !== LeadStatus.CONVERTED), source: LEAD_SOURCES },
   DEAL: { stage: Object.values(DealStage) },
+  ACCOUNT: { industry: INDUSTRIES },
+  // 已解决、已关闭需要处理结果，不能由工作流设置 / resolved and closed need a resolution, so workflows cannot set them
+  TICKET: { status: [TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.WAITING_CUSTOMER], priority: Object.values(TicketPriority) },
 };
+
+/** 动作关联的记录（通知与审计）/ the record an action points at (notifications and audits) */
+const TARGET: Record<WorkflowEntity, (r: Record<string, unknown> & { id: string }) => Record<string, string>> = {
+  LEAD: (r) => ({ leadId: r.id }),
+  DEAL: (r) => ({ dealId: r.id }),
+  ACCOUNT: (r) => ({ accountId: r.id }),
+  TICKET: (r) => ({ ticketId: r.id }),
+};
+/** 任务关联的记录（跟进没有工单字段，工单的任务关联其客户）/ what a task links to (activities have no ticket link, so a ticket's task links to its account) */
+const TASK_TARGET: Record<WorkflowEntity, (r: Record<string, unknown> & { id: string }) => Record<string, string>> = {
+  ...TARGET,
+  TICKET: (r) => ({ accountId: String(r.accountId) }),
+};
+/** 审计对象类型 / audit entity type */
+const AUDIT_ENTITY = { LEAD: 'lead', DEAL: 'deal', ACCOUNT: 'account', TICKET: 'ticket' } as const satisfies Record<WorkflowEntity, string>;
+
+/** 更新触发记录的字段（工单改回未完成状态时清除解决时间）/ update the record (a ticket back to an open status clears its resolved time) */
+function updateRecord(tx: Prisma.TransactionClient, entity: WorkflowEntity, id: string, data: Record<string, unknown>) {
+  switch (entity) {
+    case WorkflowEntity.LEAD:
+      return tx.lead.update({ where: { id }, data });
+    case WorkflowEntity.DEAL:
+      return tx.deal.update({ where: { id }, data });
+    case WorkflowEntity.ACCOUNT:
+      return tx.account.update({ where: { id }, data });
+    case WorkflowEntity.TICKET:
+      return tx.ticket.update({ where: { id }, data: 'status' in data ? { ...data, resolvedAt: null } : data });
+  }
+}
 
 const OPS: Record<FieldType, readonly string[]> = {
   enum: ['EQUALS', 'NOT_EQUALS'],
@@ -166,6 +232,8 @@ function checkRule(v: { entity: WorkflowEntity; trigger: WorkflowTrigger; trigge
   } else if (v.trigger === WorkflowTrigger.INACTIVITY) {
     if (v.triggerDays === null || v.triggerDays < 1) issue(['triggerDays'], 'invalid_days');
   } else if (v.triggerDays !== null) issue(['triggerDays'], 'not_allowed');
+  // 服务工单没有跟进记录：不能用“无跟进”；工单没有标签 / tickets have no activities (no inactivity) and no tags
+  if (v.entity === WorkflowEntity.TICKET && v.trigger === WorkflowTrigger.INACTIVITY) issue(['trigger'], 'not_allowed');
   v.conditions.forEach((c, i) => checkCondition(CONDITION_FIELDS[v.entity], c, (field, message) => issue(['conditions', i, field], message)));
   v.actions.forEach((a, i) => {
     if (a.type === 'UPDATE_FIELD') {
@@ -173,6 +241,7 @@ function checkRule(v: { entity: WorkflowEntity; trigger: WorkflowTrigger; trigge
       if (!values) issue(['actions', i, 'field'], 'invalid_field');
       else if (!values.includes(a.value)) issue(['actions', i, 'value'], 'invalid_value');
     }
+    if (a.type === 'ADD_TAG' && v.entity === WorkflowEntity.TICKET) issue(['actions', i, 'type'], 'not_allowed');
   });
 }
 
@@ -365,7 +434,9 @@ export interface WorkflowEvent {
 const WEBHOOK_FIELDS = {
   LEAD: ['status', 'source', 'company', 'title', 'ownerId', 'campaignId', 'score'],
   DEAL: ['stage', 'amount', 'currency', 'expectedCloseDate', 'ownerId', 'accountId', 'campaignId', 'score'],
-} as const;
+  ACCOUNT: ['industry', 'ownerId', 'territoryId', 'score'],
+  TICKET: ['ticketNumber', 'status', 'priority', 'type', 'channel', 'ownerId', 'accountId', 'dueAt'],
+} as const satisfies Record<WorkflowEntity, readonly string[]>;
 
 /** 比较用的值（Decimal、日期转字符串）/ comparable value (Decimal and dates as strings) */
 function norm(v: unknown): string | null {
@@ -473,8 +544,8 @@ export async function executeRule(
   record: Record<string, unknown> & { id: string; name: string; ownerId: string | null },
 ): Promise<boolean> {
   const org = ev.after.organizationId;
-  const target = ev.entity === WorkflowEntity.LEAD ? { leadId: record.id } : { dealId: record.id };
-  const auditEntity = ev.entity === WorkflowEntity.LEAD ? 'lead' : 'deal';
+  const target = TARGET[ev.entity](record);
+  const auditEntity = AUDIT_ENTITY[ev.entity];
   const conditions = z.array(conditionSchema).safeParse(rule.conditions);
   const actions = z.array(actionSchema).safeParse(rule.actions);
   if (!conditions.success || !actions.success) return false; // 防御：保存时已校验 / defensive; validated on save
@@ -489,7 +560,7 @@ export async function executeRule(
           break;
         }
         // 启用流程蓝图时不修改受控字段 / a blueprint-controlled field is not changed by workflows
-        if (a.field === BLUEPRINT_FIELD[ev.entity] && (await activeBlueprint(org, ev.entity, tx))) {
+        if ((ev.entity === WorkflowEntity.LEAD || ev.entity === WorkflowEntity.DEAL) && a.field === BLUEPRINT_FIELD[ev.entity] && (await activeBlueprint(org, ev.entity, tx))) {
           skipped.push(`UPDATE_FIELD ${a.field}: blueprint`);
           break;
         }
@@ -498,8 +569,7 @@ export async function executeRule(
           done.push(`UPDATE_FIELD ${a.field}=${a.value} (unchanged)`);
           break;
         }
-        if (ev.entity === WorkflowEntity.LEAD) await tx.lead.update({ where: { id: record.id }, data: { [a.field]: a.value } });
-        else await tx.deal.update({ where: { id: record.id }, data: { [a.field]: a.value } });
+        await updateRecord(tx, ev.entity, record.id, { [a.field]: a.value });
         record[a.field] = a.value;
         await audit(tx, { organizationId: org, actorId: ev.actorId, action: `${auditEntity}.update`, entityType: auditEntity, entityId: record.id, changes: { fields: { [a.field]: [before, a.value] }, workflow: rule.name }, meta: ev.meta });
         done.push(`UPDATE_FIELD ${a.field}=${a.value}`);
@@ -516,8 +586,7 @@ export async function executeRule(
           done.push('ASSIGN_OWNER (unchanged)');
           break;
         }
-        if (ev.entity === WorkflowEntity.LEAD) await tx.lead.update({ where: { id: record.id }, data: { ownerId: user } });
-        else await tx.deal.update({ where: { id: record.id }, data: { ownerId: user } });
+        await updateRecord(tx, ev.entity, record.id, { ownerId: user });
         record.ownerId = user;
         await audit(tx, { organizationId: org, actorId: ev.actorId, action: `${auditEntity}.update`, entityType: auditEntity, entityId: record.id, changes: { fields: { ownerId: [previous, user] }, workflow: rule.name }, meta: ev.meta });
         if (user !== ev.actorId) {
@@ -531,7 +600,7 @@ export async function executeRule(
         if (a.assignTo !== 'OWNER' && !owner) skipped.push('CREATE_TASK: user_inactive → owner');
         const dueAt = new Date(Date.now() + a.dueInDays * 86_400_000);
         const task = await tx.activity.create({
-          data: { organizationId: org, type: 'TASK', subject: a.subject, dueAt, ownerId: owner ?? record.ownerId, ...target },
+          data: { organizationId: org, type: 'TASK', subject: a.subject, dueAt, ownerId: owner ?? record.ownerId, ...TASK_TARGET[ev.entity](record) },
         });
         await audit(tx, { organizationId: org, actorId: ev.actorId, action: 'activity.create', entityType: 'activity', entityId: task.id, changes: { after: { type: 'TASK', subject: a.subject, ownerId: task.ownerId }, workflow: rule.name }, meta: ev.meta });
         done.push('CREATE_TASK');
@@ -549,7 +618,7 @@ export async function executeRule(
       }
       case 'WEBHOOK': {
         // 负载只含业务状态字段，不含邮箱、电话等个人信息 / business fields only, no emails or phone numbers
-        const fields = ev.entity === WorkflowEntity.LEAD ? WEBHOOK_FIELDS.LEAD : WEBHOOK_FIELDS.DEAL;
+        const fields: readonly string[] = WEBHOOK_FIELDS[ev.entity];
         const data = {
           rule: rule.name,
           entity: ev.entity,
@@ -567,7 +636,13 @@ export async function executeRule(
           break;
         }
         if (ev.entity === WorkflowEntity.LEAD) await tx.leadTag.createMany({ data: [{ organizationId: org, leadId: record.id, tagId: tag.id }], skipDuplicates: true });
-        else await tx.dealTag.createMany({ data: [{ organizationId: org, dealId: record.id, tagId: tag.id }], skipDuplicates: true });
+        else if (ev.entity === WorkflowEntity.DEAL) await tx.dealTag.createMany({ data: [{ organizationId: org, dealId: record.id, tagId: tag.id }], skipDuplicates: true });
+        else if (ev.entity === WorkflowEntity.ACCOUNT) await tx.accountTag.createMany({ data: [{ organizationId: org, accountId: record.id, tagId: tag.id }], skipDuplicates: true });
+        else {
+          // 工单没有标签（保存时已拒绝；防御）/ tickets have no tags (refused on save; defensive)
+          skipped.push('ADD_TAG: not_supported');
+          break;
+        }
         done.push('ADD_TAG');
         break;
       }

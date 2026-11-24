@@ -31,6 +31,7 @@ import { optionalText, requiredText } from '../validation';
 import { runBulk, type BulkResult } from './bulk';
 import { getDeal } from './deals';
 import { getLead } from './leads';
+import { asRecordEntity, RECORD_ENTITIES, type RecordEntity } from './dictionaries';
 
 /** 每组织最多节奏数 / max cadences per organization */
 export const MAX_CADENCES = 50;
@@ -41,7 +42,7 @@ const SWEEP_BATCH = 500;
 const DAY = 86_400_000;
 
 /** 各对象可作为退出条件的状态 / exit states per entity */
-export const CADENCE_EXIT_STATES: Record<WorkflowEntity, readonly string[]> = {
+export const CADENCE_EXIT_STATES: Record<RecordEntity, readonly string[]> = {
   LEAD: [LeadStatus.NEW, LeadStatus.CONTACTED, LeadStatus.QUALIFIED, LeadStatus.UNQUALIFIED],
   DEAL: Object.values(DealStage),
 };
@@ -57,7 +58,7 @@ export const stepSchema = z.strictObject({
 export type Step = z.infer<typeof stepSchema>;
 
 /** 校验：步骤按天数排序、退出状态属于对象且不重复 / steps ordered by day; exit states valid and unique */
-function checkCadence(entity: WorkflowEntity, steps: Step[] | undefined, exitStates: string[] | undefined, ctx: z.RefinementCtx) {
+function checkCadence(entity: RecordEntity, steps: Step[] | undefined, exitStates: string[] | undefined, ctx: z.RefinementCtx) {
   steps?.forEach((s, i) => {
     if (i > 0 && s.day < steps[i - 1]!.day) ctx.addIssue({ code: 'custom', path: ['steps', i, 'day'], message: 'not_ordered' });
   });
@@ -71,7 +72,7 @@ export const cadenceCreateSchema = z
   .strictObject({
     name: requiredText(100),
     description: optionalText(500),
-    entity: z.enum(WorkflowEntity),
+    entity: z.enum(RECORD_ENTITIES),
     isActive: z.boolean().default(true),
     steps: z.array(stepSchema).min(1).max(10),
     exitStates: z.array(z.string().max(30)).max(10).default([]),
@@ -82,7 +83,7 @@ export const cadenceUpdateSchema = z
   .strictObject({
     name: requiredText(100),
     description: optionalText(500),
-    entity: z.enum(WorkflowEntity),
+    entity: z.enum(RECORD_ENTITIES),
     isActive: z.boolean(),
     steps: z.array(stepSchema).min(1).max(10),
     exitStates: z.array(z.string().max(30)).max(10),
@@ -93,7 +94,7 @@ export const cadenceUpdateSchema = z
     if (v.entity) checkCadence(v.entity, v.steps, v.exitStates, ctx);
   });
 /** 列表 / list */
-export const cadenceListSchema = z.strictObject({ entity: z.enum(WorkflowEntity).optional() });
+export const cadenceListSchema = z.strictObject({ entity: z.enum(RECORD_ENTITIES).optional() });
 /** 加入 / enroll */
 export const enrollSchema = z.strictObject({
   ids: z
@@ -103,7 +104,7 @@ export const enrollSchema = z.strictObject({
     .transform((v) => [...new Set(v)]),
 });
 /** 记录的参与 / a record's enrollments */
-export const enrollmentListSchema = z.strictObject({ entity: z.enum(WorkflowEntity), id: z.uuid() });
+export const enrollmentListSchema = z.strictObject({ entity: z.enum(RECORD_ENTITIES), id: z.uuid() });
 
 const select = {
   id: true,
@@ -135,7 +136,7 @@ function nameTaken(err: unknown): never {
 }
 
 /** 审计快照 / audit snapshot */
-const auditView = (c: { name: string; entity: WorkflowEntity; isActive: boolean; steps: unknown; exitStates: unknown }) => ({
+const auditView = (c: { name: string; entity: string; isActive: boolean; steps: unknown; exitStates: unknown }) => ({
   name: c.name,
   entity: c.entity,
   isActive: c.isActive,
@@ -242,7 +243,7 @@ interface TargetRecord {
   state: string;
   converted: boolean;
 }
-async function loadTarget(tx: Prisma.TransactionClient, entity: WorkflowEntity, id: string): Promise<TargetRecord | null> {
+async function loadTarget(tx: Prisma.TransactionClient, entity: RecordEntity, id: string): Promise<TargetRecord | null> {
   if (entity === WorkflowEntity.LEAD) {
     const l = await tx.lead.findUnique({ where: { id }, select: { id: true, name: true, ownerId: true, status: true, convertedAt: true } });
     return l && { id: l.id, name: l.name, ownerId: l.ownerId, state: l.status, converted: !!l.convertedAt || l.status === LeadStatus.CONVERTED };
@@ -266,7 +267,7 @@ async function activeUser(tx: Prisma.TransactionClient, org: string, id: string 
 async function processEnrollment(
   tx: Prisma.TransactionClient,
   e: { id: string; organizationId: string; currentStep: number; enrolledAt: Date; enrolledById: string; leadId: string | null; dealId: string | null },
-  cadence: { id: string; name: string; entity: WorkflowEntity; steps: unknown; exitStates: unknown },
+  cadence: { id: string; name: string; entity: RecordEntity; steps: unknown; exitStates: unknown },
   now: Date,
   actorId: string | null,
 ): Promise<number> {
@@ -312,7 +313,7 @@ async function processEnrollment(
 }
 
 /** 读取记录（可见且可编辑）/ load a visible, editable record */
-async function editableRecord(ctx: AuthContext, entity: WorkflowEntity, id: string) {
+async function editableRecord(ctx: AuthContext, entity: RecordEntity, id: string) {
   const r = entity === WorkflowEntity.LEAD ? await getLead(ctx, id) : await getDeal(ctx, id);
   assertCanUpdate(ctx, r);
   return r;
@@ -329,8 +330,8 @@ export async function enroll(ctx: AuthContext, cadenceId: string, input: z.infer
   if (!cadence.isActive) throw new ApiError(409, 'CONFLICT', 'The cadence is inactive', { cadenceId: ['inactive'] });
   const field = cadence.entity === WorkflowEntity.LEAD ? 'leadId' : 'dealId';
   const result = await runBulk(input.ids, async (id) => {
-    const record = await editableRecord(ctx, cadence.entity, id);
-    const state = String((record as unknown as Record<string, unknown>)[STATE_FIELD[cadence.entity]]);
+    const record = await editableRecord(ctx, asRecordEntity(cadence.entity), id);
+    const state = String((record as unknown as Record<string, unknown>)[STATE_FIELD[asRecordEntity(cadence.entity)]]);
     if ('convertedAt' in record && record.convertedAt) throw new ApiError(409, 'CONFLICT', 'Converted leads cannot be enrolled', { [field]: ['converted'] });
     if (exitStatesOf(cadence.exitStates).includes(state)) throw new ApiError(409, 'CONFLICT', 'The record is in an exit state', { [field]: ['exit_state'] });
     try {
@@ -340,7 +341,7 @@ export async function enroll(ctx: AuthContext, cadenceId: string, input: z.infer
           data: { organizationId: ctx.organizationId, cadenceId, [field]: id, enrolledById: ctx.userId, enrolledAt: now, nextDueAt: now },
         });
         await audit(tx, { ...by(ctx), action: 'cadence.enroll', entityType: 'cadence', entityId: cadenceId, changes: { name: cadence.name, record: record.name, recordId: id } });
-        await processEnrollment(tx, e, cadence, now, ctx.userId);
+        await processEnrollment(tx, e, { ...cadence, entity: asRecordEntity(cadence.entity) }, now, ctx.userId);
       });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') throw new ApiError(409, 'CONFLICT', 'Already enrolled', { [field]: ['already_enrolled'] });
@@ -372,7 +373,7 @@ export async function listEnrollments(ctx: AuthContext, query: z.infer<typeof en
 export async function stopEnrollment(ctx: AuthContext, id: string) {
   const e = await prisma.cadenceEnrollment.findFirst({ where: { id, organizationId: ctx.organizationId }, include: { cadence: { select: { name: true, entity: true } } } });
   if (!e) throw notFound();
-  const record = await editableRecord(ctx, e.cadence.entity, (e.leadId ?? e.dealId)!);
+  const record = await editableRecord(ctx, asRecordEntity(e.cadence.entity), (e.leadId ?? e.dealId)!);
   return prisma.$transaction(async (tx) => {
     const { count } = await tx.cadenceEnrollment.updateMany({ where: { id, status: CadenceStatus.ACTIVE }, data: { status: CadenceStatus.STOPPED, nextDueAt: null, endedAt: new Date(), endReason: 'stopped' } });
     if (!count) throw new ApiError(409, 'CONFLICT', 'The enrollment is not active', { id: ['not_active'] });
@@ -403,7 +404,7 @@ export async function sweepCadences(opts: { organizationId?: string; now?: Date 
         const [locked] = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM cadence_enrollments WHERE id = ${id}::uuid AND status = 'ACTIVE' FOR UPDATE SKIP LOCKED`;
         if (!locked) return 0;
         const e = await tx.cadenceEnrollment.findUniqueOrThrow({ where: { id } });
-        const r = await loadTarget(tx, c.entity, (e.leadId ?? e.dealId)!);
+        const r = await loadTarget(tx, asRecordEntity(c.entity), (e.leadId ?? e.dealId)!);
         if (!r) return 0;
         await tx.cadenceEnrollment.update({ where: { id }, data: { status: CadenceStatus.EXITED, nextDueAt: null, endedAt: now, endReason: r.converted ? 'converted' : `state:${r.state}` } });
         return 1;
@@ -433,7 +434,8 @@ export async function sweepCadences(opts: { organizationId?: string; now?: Date 
           const [locked] = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM cadence_enrollments WHERE id = ${d.id}::uuid AND status = 'ACTIVE' AND next_due_at <= ${now} FOR UPDATE SKIP LOCKED`;
           if (!locked) return -1;
           const e = await tx.cadenceEnrollment.findUniqueOrThrow({ where: { id: d.id } });
-          return processEnrollment(tx, e, byId.get(d.cadenceId)!, now, null);
+          const c = byId.get(d.cadenceId)!;
+          return processEnrollment(tx, e, { ...c, entity: asRecordEntity(c.entity) }, now, null);
         });
         if (n >= 0) {
           result.processed += 1;

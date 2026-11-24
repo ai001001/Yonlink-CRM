@@ -34,6 +34,7 @@ import { dealUpdateSchema, getDeal, updateDeal } from './deals';
 import { getLead, leadUpdateSchema, updateLead } from './leads';
 import { changeRecordTags } from './tags';
 import { UPDATE_FIELDS } from './workflows';
+import { asRecordEntity, RECORD_ENTITIES, type RecordEntity } from './dictionaries';
 
 /** 每组织最多宏数 / max macros per organization */
 export const MAX_MACROS = 100;
@@ -53,7 +54,7 @@ export const macroActionSchema = z.discriminatedUnion('type', [
 export type MacroAction = z.infer<typeof macroActionSchema>;
 
 /** 按对象校验动作：字段与取值、同一字段只改一次、只指派一次、同一标签不能既加又减 / validate actions per entity */
-function checkActions(entity: WorkflowEntity, actions: MacroAction[], ctx: z.RefinementCtx) {
+function checkActions(entity: RecordEntity, actions: MacroAction[], ctx: z.RefinementCtx) {
   const issue = (path: (string | number)[], message: string) => ctx.addIssue({ code: 'custom', path, message });
   const fields = new Set<string>();
   const tags = new Map<string, string>();
@@ -79,7 +80,7 @@ export const macroCreateSchema = z
   .strictObject({
     name: requiredText(100),
     description: optionalText(500),
-    entity: z.enum(WorkflowEntity),
+    entity: z.enum(RECORD_ENTITIES),
     scope: z.enum(MacroScope).default(MacroScope.PERSONAL),
     actions: z.array(macroActionSchema).min(1).max(5),
   })
@@ -89,7 +90,7 @@ export const macroUpdateSchema = z
   .strictObject({
     name: requiredText(100),
     description: optionalText(500),
-    entity: z.enum(WorkflowEntity),
+    entity: z.enum(RECORD_ENTITIES),
     scope: z.enum(MacroScope),
     actions: z.array(macroActionSchema).min(1).max(5),
   })
@@ -99,7 +100,7 @@ export const macroUpdateSchema = z
     if (v.actions && v.entity) checkActions(v.entity, v.actions, ctx);
   });
 /** 列表 / list */
-export const macroListSchema = z.strictObject({ entity: z.enum(WorkflowEntity).optional() });
+export const macroListSchema = z.strictObject({ entity: z.enum(RECORD_ENTITIES).optional() });
 /** 执行 / run */
 export const macroRunSchema = z.strictObject({
   ids: z
@@ -162,7 +163,7 @@ function nameTaken(err: unknown): never {
 }
 
 /** 审计用快照 / audit snapshot */
-const auditView = (m: { name: string; entity: WorkflowEntity; scope: MacroScope; actions: unknown }) => ({ name: m.name, entity: m.entity, scope: m.scope, actions: m.actions });
+const auditView = (m: { name: string; entity: string; scope: MacroScope; actions: unknown }) => ({ name: m.name, entity: m.entity, scope: m.scope, actions: m.actions });
 
 /**
  * 宏列表（共享的与自己的个人宏，按名称）。
@@ -250,7 +251,7 @@ export async function deleteMacro(ctx: AuthContext, id: string): Promise<void> {
  * 对一条记录执行宏的动作（以执行人的身份调用已有服务）。
  * Run a macro's actions on one record (calling the existing services as the runner).
  */
-async function runOne(ctx: AuthContext, entity: WorkflowEntity, actions: MacroAction[], id: string) {
+async function runOne(ctx: AuthContext, entity: RecordEntity, actions: MacroAction[], id: string) {
   const isLead = entity === WorkflowEntity.LEAD;
   // 1. 字段与负责人：一次修改 / fields and owner in one update
   const body: Record<string, string> = {};
@@ -297,7 +298,7 @@ export async function runMacro(ctx: AuthContext, id: string, input: z.infer<type
   if (!m) throw notFound();
   const actions = z.array(macroActionSchema).parse(m.actions);
   await checkRefs(ctx, actions);
-  const result = await runBulk(input.ids, (recordId) => runOne(ctx, m.entity, actions, recordId));
+  const result = await runBulk(input.ids, (recordId) => runOne(ctx, asRecordEntity(m.entity), actions, recordId));
   await prisma.$transaction(async (tx) => {
     await tx.macro.update({ where: { id }, data: { runCount: { increment: 1 }, lastRunAt: new Date() } });
     await audit(tx, {
