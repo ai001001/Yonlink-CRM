@@ -36,21 +36,29 @@ const REDACTED_TYPES = new Set<CustomFieldType>([CustomFieldType.TEXT, CustomFie
 /** 请求中的自定义值 / custom values in a request */
 export const customInput = z.record(z.string().max(30), z.unknown()).optional();
 
-const options = z
+/** 下拉选项（自定义模块字段共用）/ picklist options (shared with custom module fields) */
+export const fieldOptions = z
   .array(requiredText(50))
   .max(50)
   .refine((v) => new Set(v.map((x) => x.toLowerCase())).size === v.length, 'duplicate_options');
 
+/**
+ * 字段定义的组合校验：下拉必须有选项、其他类型不能有选项、勾选不能必填（自定义模块字段共用）。
+ * Cross-field checks of a definition: picklists need options, others have none, checkboxes cannot be required (shared
+ * with custom module fields).
+ */
+export function checkFieldDef(v: { type: CustomFieldType; options: string[]; required: boolean }, ctx: z.RefinementCtx): void {
+  if (v.type === CustomFieldType.PICKLIST && !v.options.length) ctx.addIssue({ code: 'custom', path: ['options'], message: 'required' });
+  if (v.type !== CustomFieldType.PICKLIST && v.options.length) ctx.addIssue({ code: 'custom', path: ['options'], message: 'not_allowed' });
+  if (v.type === CustomFieldType.CHECKBOX && v.required) ctx.addIssue({ code: 'custom', path: ['required'], message: 'not_allowed' });
+}
+
 /** 新建字段 / create a field */
 export const customFieldCreateSchema = z
-  .strictObject({ entity: z.enum(CustomEntity), label: requiredText(50), type: z.enum(CustomFieldType), options: options.default([]), required: z.boolean().default(false) })
-  .superRefine((v, ctx) => {
-    if (v.type === CustomFieldType.PICKLIST && !v.options.length) ctx.addIssue({ code: 'custom', path: ['options'], message: 'required' });
-    if (v.type !== CustomFieldType.PICKLIST && v.options.length) ctx.addIssue({ code: 'custom', path: ['options'], message: 'not_allowed' });
-    if (v.type === CustomFieldType.CHECKBOX && v.required) ctx.addIssue({ code: 'custom', path: ['required'], message: 'not_allowed' });
-  });
-/** 修改字段（类型与对象不可改）/ update a field (type and entity are fixed) */
-export const customFieldUpdateSchema = z.strictObject({ label: requiredText(50), options, required: z.boolean(), isActive: z.boolean() }).partial();
+  .strictObject({ entity: z.enum(CustomEntity), label: requiredText(50), type: z.enum(CustomFieldType), options: fieldOptions.default([]), required: z.boolean().default(false) })
+  .superRefine(checkFieldDef);
+/** 修改字段（类型与对象不可改；自定义模块字段共用）/ update a field (type and entity are fixed; shared with module fields) */
+export const customFieldUpdateSchema = z.strictObject({ label: requiredText(50), options: fieldOptions, required: z.boolean(), isActive: z.boolean() }).partial();
 /** 列表 / list */
 export const customFieldListSchema = z.strictObject({ entity: z.enum(CustomEntity).optional() });
 
@@ -205,7 +213,16 @@ export function normalize(field: Pick<Field, 'type' | 'options'>, raw: unknown):
  * @returns 合并后的值与定义（用于审计）/ the merged values and definitions (for auditing)
  */
 export async function resolveCustom(organizationId: string, entity: CustomEntity, input: Record<string, unknown> | undefined, current: Prisma.JsonValue | null) {
-  const defs = await fieldsOf(organizationId, entity);
+  return mergeCustom(await fieldsOf(organizationId, entity), input, current);
+}
+
+/**
+ * 按给定定义合并并校验自定义值（自定义模块的记录共用）；错误键为 custom.字段键。
+ * Merge and validate custom values against the given definitions (shared with custom module records); error keys are
+ * custom.<key>.
+ * @param current 现有值；null 表示新建 / existing values; null on create
+ */
+export function mergeCustom<D extends Pick<Field, 'key' | 'type' | 'options' | 'required' | 'isActive'>>(defs: D[], input: Record<string, unknown> | undefined, current: Prisma.JsonValue | null) {
   const merged: Record<string, unknown> = current && typeof current === 'object' && !Array.isArray(current) ? { ...(current as Record<string, unknown>) } : {};
   const errors: Record<string, string[]> = {};
   for (const [key, raw] of Object.entries(input ?? {})) {

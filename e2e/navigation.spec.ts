@@ -36,6 +36,9 @@ const PATHS: Record<string, string> = {
   工作流规则: '/workflows',
   验证规则: '/validation-rules',
   自定义字段: '/custom-fields',
+  模块管理: '/custom-modules',
+  '【演示】合同': '/modules',
+  '【演示】设备档案': '/modules',
   区域管理: '/territories',
   流程蓝图: '/blueprints',
   销售节奏: '/cadences',
@@ -52,13 +55,19 @@ const BUSINESS = ['工作台', '线索', '联系人', '客户', '商机', '销�
 /** 有 purchase.read 的角色在“库存”组多出采购单（销售订单后）与供应商（发票后）/ roles with purchase.read also see purchase orders and vendors */
 const WITH_PURCHASE = ['工作台', '线索', '联系人', '客户', '商机', '销售预测', '市场活动', '网页表单', '跟进', '审批', '产品', '价格表', '报价单', '销售订单', '采购单', '发票', '供应商', '服务工单', '知识库', '报表'];
 const GROUPS = ['销售', '营销', '活动', '库存', '服务', '分析', '设置'];
+/** 演示组织有两个启用的自定义模块，显示在“服务”与“分析”之间的“自定义模块”组（#61）/ the demo org's two active custom modules (#61) */
+const MODULES = ['【演示】合同', '【演示】设备档案'];
+const DEMO_GROUPS = ['销售', '营销', '活动', '库存', '服务', '自定义模块', '分析', '设置'];
+/** 在“知识库”后插入自定义模块 / insert the custom modules after the knowledge base */
+const withModules = (items: string[]) => items.flatMap((x) => (x === '知识库' ? [x, ...MODULES] : [x]));
 
 /** 各角色应看到的菜单（按顺序）/ entries each role should see, in order */
-const ROLES: { name: string; login: (page: Page) => Promise<void>; items: string[] }[] = [
-  { name: '系统管理员', login: signIn, items: [...WITH_PURCHASE, '用户管理', '工作流规则', '验证规则', '自定义字段', '区域管理', '流程蓝图', '销售节奏', '客户门户', '宏', '集成', '汇率', '查重合并', '回收站', '审计日志'] },
-  { name: '销售经理', login: (p) => demo(p, '郑经理'), items: [...WITH_PURCHASE, '工作流规则', '验证规则', '区域管理', '流程蓝图', '销售节奏', '客户门户', '宏', '汇率', '查重合并', '回收站'] },
-  { name: '销售代表', login: (p) => demo(p, '王芳'), items: [...BUSINESS, '宏', '汇率', '查重合并'] },
-  { name: '只读用户', login: (p) => demo(p, '周会计'), items: [...WITH_PURCHASE, '汇率', '查重合并'] },
+// 系统管理员属于 E2E 测试组织（没有自定义模块）；其余为演示组织的账号 / the admin is in the E2E org (no custom modules); the rest are demo accounts
+const ROLES: { name: string; login: (page: Page) => Promise<void>; groups: string[]; items: string[] }[] = [
+  { name: '系统管理员', login: signIn, groups: GROUPS, items: [...WITH_PURCHASE, '用户管理', '工作流规则', '验证规则', '自定义字段', '模块管理', '区域管理', '流程蓝图', '销售节奏', '客户门户', '宏', '集成', '汇率', '查重合并', '回收站', '审计日志'] },
+  { name: '销售经理', login: (p) => demo(p, '郑经理'), groups: DEMO_GROUPS, items: [...withModules(WITH_PURCHASE), '工作流规则', '验证规则', '区域管理', '流程蓝图', '销售节奏', '客户门户', '宏', '汇率', '查重合并', '回收站'] },
+  { name: '销售代表', login: (p) => demo(p, '王芳'), groups: DEMO_GROUPS, items: [...withModules(BUSINESS), '宏', '汇率', '查重合并'] },
+  { name: '只读用户', login: (p) => demo(p, '周会计'), groups: DEMO_GROUPS, items: [...withModules(WITH_PURCHASE), '汇率', '查重合并'] },
 ];
 
 /** 演示账号登录 / demo sign-in */
@@ -84,7 +93,7 @@ for (const role of ROLES) {
     const menu = sideMenu(page);
 
     // 分组标题与菜单顺序（默认全部展开）/ group headers and entry order (all groups open by default)
-    await expect(menu.locator('.ant-menu-submenu-title')).toHaveText(GROUPS);
+    await expect(menu.locator('.ant-menu-submenu-title')).toHaveText(role.groups);
     await expect(menu.locator('.ant-menu-item')).toHaveText(role.items);
     // 通知中心不在导航中 / the notification centre is not in the menu
     await expect(menu.getByRole('link', { name: '通知中心' })).toHaveCount(0);

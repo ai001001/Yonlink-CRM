@@ -81,6 +81,9 @@ model Organization {
   portalSettings       PortalSettings?
   portalUsers          PortalUser[]
   warehouses           Warehouse[]
+  customModules        CustomModule[]
+  customModuleFields   CustomModuleField[]
+  customRecords        CustomRecord[]
   productStocks        ProductStock[]
   cadenceEnrollments   CadenceEnrollment[]
   territoryMembers     TerritoryMember[]
@@ -95,66 +98,69 @@ model Organization {
 }
 
 model User {
-  id                 String                  @id @default(uuid()) @db.Uuid
-  organizationId     String                  @map("organization_id") @db.Uuid
-  email              String                  @db.VarChar(254)
-  name               String                  @db.VarChar(100)
-  passwordHash       String                  @map("password_hash")
-  notifications      Notification[]          @relation("NotificationRecipient")
-  notificationsSent  Notification[]          @relation("NotificationActor")
-  createdOrders      SalesOrder[]            @relation("OrderCreator")
-  createdInvoices    Invoice[]               @relation("InvoiceCreator")
-  recordedPayments   InvoicePayment[]        @relation("PaymentRecorder")
-  ratesCreated       ExchangeRate[]          @relation("RateCreator")
-  ownedCampaigns     Campaign[]              @relation("CampaignOwner")
+  id                   String                  @id @default(uuid()) @db.Uuid
+  organizationId       String                  @map("organization_id") @db.Uuid
+  email                String                  @db.VarChar(254)
+  name                 String                  @db.VarChar(100)
+  passwordHash         String                  @map("password_hash")
+  notifications        Notification[]          @relation("NotificationRecipient")
+  notificationsSent    Notification[]          @relation("NotificationActor")
+  createdOrders        SalesOrder[]            @relation("OrderCreator")
+  createdInvoices      Invoice[]               @relation("InvoiceCreator")
+  recordedPayments     InvoicePayment[]        @relation("PaymentRecorder")
+  ratesCreated         ExchangeRate[]          @relation("RateCreator")
+  ownedCampaigns       Campaign[]              @relation("CampaignOwner")
   /// 角色（服务端每个请求从数据库读取）/ role (read from the DB on every request)
-  role               UserRole                @default(SALES)
-  isActive           Boolean                 @default(true) @map("is_active")
+  role                 UserRole                @default(SALES)
+  isActive             Boolean                 @default(true) @map("is_active")
   /// 演示账号：仅在 DEMO_LOGIN_ENABLED=1 时可免密一键登录 / demo account: password-less login only when DEMO_LOGIN_ENABLED=1
-  isDemo             Boolean                 @default(false) @map("is_demo")
-  createdAt          DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization       Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  sessions           Session[]
-  ownedLeads         Lead[]                  @relation("LeadOwner")
-  ownedAccounts      Account[]               @relation("AccountOwner")
-  ownedDeals         Deal[]                  @relation("DealOwner")
-  ownedActivities    Activity[]              @relation("ActivityOwner")
-  auditLogs          AuditLog[]              @relation("AuditActor")
-  notes              Note[]                  @relation("NoteAuthor")
-  createdQuotes      Quote[]                 @relation("QuoteCreator")
-  deletedItems       RecycleBinItem[]        @relation("RecycleDeleter")
-  savedViews         SavedView[]
-  viewDefaults       UserViewDefault[]
-  dashboardLayout    UserDashboardLayout?
-  tickets            Ticket[]                @relation("TicketOwner")
-  slaEscalations     TicketSlaPolicy[]       @relation("SlaEscalateTo")
-  kbArticles         KbArticle[]             @relation("KbArticleAuthor")
-  ticketArticleLinks TicketArticle[]         @relation("TicketArticleLinker")
-  purchaseOrders     PurchaseOrder[]         @relation("PurchaseOrderCreator")
-  webFormsOwned      WebForm[]               @relation("WebFormOwner")
-  webFormsCreated    WebForm[]               @relation("WebFormCreator")
-  ticketComments     TicketComment[]         @relation("TicketCommentAuthor")
-  uploads            Attachment[]            @relation("AttachmentUploader")
-  salesTargets       SalesTarget[]           @relation("TargetOwner")
-  targetsUpdated     SalesTarget[]           @relation("TargetUpdater")
-  assignmentRules    AssignmentRuleUser[]
-  dealStageChanges   DealStageHistory[]      @relation("StageChanger")
-  workflowRules      WorkflowRule[]          @relation("WorkflowCreator")
-  quoteApprovals     QuoteApproval[]         @relation("ApprovalActor")
-  approvalSettings   QuoteApprovalSettings[] @relation("ApprovalSettingsUpdater")
-  stockMovements     StockMovement[]         @relation("StockActor")
-  apiKeys            ApiKey[]                @relation("ApiKeyUser")
-  apiKeysCreated     ApiKey[]                @relation("ApiKeyCreator")
-  webhooksCreated    Webhook[]               @relation("WebhookCreator")
-  validationRules    ValidationRule[]        @relation("ValidationCreator")
-  territoriesManaged Territory[]             @relation("TerritoryManager")
-  macrosCreated      Macro[]                 @relation("MacroCreator")
-  blueprintsCreated  Blueprint[]             @relation("BlueprintCreator")
-  cadencesCreated    Cadence[]               @relation("CadenceCreator")
-  portalInvites      PortalUser[]            @relation("PortalInviter")
-  cadenceEnrollments CadenceEnrollment[]     @relation("CadenceEnroller")
-  territoryMembers   TerritoryMember[]
+  isDemo               Boolean                 @default(false) @map("is_demo")
+  createdAt            DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization         Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sessions             Session[]
+  ownedLeads           Lead[]                  @relation("LeadOwner")
+  ownedAccounts        Account[]               @relation("AccountOwner")
+  ownedDeals           Deal[]                  @relation("DealOwner")
+  ownedActivities      Activity[]              @relation("ActivityOwner")
+  auditLogs            AuditLog[]              @relation("AuditActor")
+  notes                Note[]                  @relation("NoteAuthor")
+  createdQuotes        Quote[]                 @relation("QuoteCreator")
+  deletedItems         RecycleBinItem[]        @relation("RecycleDeleter")
+  savedViews           SavedView[]
+  viewDefaults         UserViewDefault[]
+  dashboardLayout      UserDashboardLayout?
+  tickets              Ticket[]                @relation("TicketOwner")
+  slaEscalations       TicketSlaPolicy[]       @relation("SlaEscalateTo")
+  kbArticles           KbArticle[]             @relation("KbArticleAuthor")
+  ticketArticleLinks   TicketArticle[]         @relation("TicketArticleLinker")
+  purchaseOrders       PurchaseOrder[]         @relation("PurchaseOrderCreator")
+  webFormsOwned        WebForm[]               @relation("WebFormOwner")
+  webFormsCreated      WebForm[]               @relation("WebFormCreator")
+  ticketComments       TicketComment[]         @relation("TicketCommentAuthor")
+  uploads              Attachment[]            @relation("AttachmentUploader")
+  salesTargets         SalesTarget[]           @relation("TargetOwner")
+  targetsUpdated       SalesTarget[]           @relation("TargetUpdater")
+  assignmentRules      AssignmentRuleUser[]
+  dealStageChanges     DealStageHistory[]      @relation("StageChanger")
+  workflowRules        WorkflowRule[]          @relation("WorkflowCreator")
+  quoteApprovals       QuoteApproval[]         @relation("ApprovalActor")
+  approvalSettings     QuoteApprovalSettings[] @relation("ApprovalSettingsUpdater")
+  stockMovements       StockMovement[]         @relation("StockActor")
+  apiKeys              ApiKey[]                @relation("ApiKeyUser")
+  apiKeysCreated       ApiKey[]                @relation("ApiKeyCreator")
+  webhooksCreated      Webhook[]               @relation("WebhookCreator")
+  validationRules      ValidationRule[]        @relation("ValidationCreator")
+  territoriesManaged   Territory[]             @relation("TerritoryManager")
+  customModulesCreated CustomModule[]          @relation("CustomModuleCreator")
+  customRecordsOwned   CustomRecord[]          @relation("CustomRecordOwner")
+  customRecordsCreated CustomRecord[]          @relation("CustomRecordCreator")
+  macrosCreated        Macro[]                 @relation("MacroCreator")
+  blueprintsCreated    Blueprint[]             @relation("BlueprintCreator")
+  cadencesCreated      Cadence[]               @relation("CadenceCreator")
+  portalInvites        PortalUser[]            @relation("PortalInviter")
+  cadenceEnrollments   CadenceEnrollment[]     @relation("CadenceEnroller")
+  territoryMembers     TerritoryMember[]
 
   // 支持 (organization_id, id) 复合外键，防止跨组织引用负责人
   // composite key so owner FKs cannot point at another organization's user
@@ -293,10 +299,11 @@ model Account {
   custom Json @default("{}")
 
   /// 所属区域（按区域规则自动分配，或手工指定）/ territory (assigned by territory rules, or set by hand)
-  territoryId     String?    @map("territory_id") @db.Uuid
-  territory       Territory? @relation(fields: [organizationId, territoryId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  territoryId     String?        @map("territory_id") @db.Uuid
+  territory       Territory?     @relation(fields: [organizationId, territoryId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
   /// 手工指定的区域不被规则覆盖 / a hand-set territory is not overridden by rules
-  territoryManual Boolean    @default(false) @map("territory_manual")
+  territoryManual Boolean        @default(false) @map("territory_manual")
+  customRecords   CustomRecord[]
 
   @@unique([organizationId, id])
   @@index([organizationId, createdAt(sort: Desc)])
@@ -2428,4 +2435,75 @@ model ProductStock {
   @@id([productId, warehouseId])
   @@index([organizationId, warehouseId])
   @@map("product_stocks")
+}
+
+/// 自定义模块（管理员自建的记录类型，如“合同”“设备”）/ custom module (an admin-defined record type, e.g. contracts or equipment)
+model CustomModule {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  /// 模块名称（组织内不区分大小写唯一）/ module name (unique per organization, case-insensitive)
+  name           String              @db.VarChar(50)
+  description    String?             @db.VarChar(500)
+  isActive       Boolean             @default(true) @map("is_active")
+  position       Int
+  createdById    String?             @map("created_by_id") @db.Uuid
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User?               @relation("CustomModuleCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  fields         CustomModuleField[]
+  records        CustomRecord[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, position])
+  @@map("custom_modules")
+}
+
+/// 自定义模块的字段（类型与自定义字段相同）/ a custom module field (same types as custom fields)
+model CustomModuleField {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  moduleId       String          @map("module_id") @db.Uuid
+  key            String          @db.VarChar(30)
+  label          String          @db.VarChar(50)
+  type           CustomFieldType
+  /// 下拉选项 / picklist options
+  options        Json            @default("[]")
+  required       Boolean         @default(false)
+  isActive       Boolean         @default(true) @map("is_active")
+  position       Int
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  module         CustomModule    @relation(fields: [organizationId, moduleId], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([moduleId, key])
+  @@index([organizationId, moduleId, position])
+  @@map("custom_module_fields")
+}
+
+/// 自定义模块的记录：名称、负责人、关联客户与各字段的值 / a custom module record: name, owner, related account and field values
+model CustomRecord {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  moduleId       String       @map("module_id") @db.Uuid
+  name           String       @db.VarChar(200)
+  ownerId        String?      @map("owner_id") @db.Uuid
+  /// 关联客户（客户删除时清空）/ related account (cleared when the account is deleted)
+  accountId      String?      @map("account_id") @db.Uuid
+  /// 字段值（键为字段键）/ field values keyed by field key
+  values         Json         @default("{}")
+  createdById    String?      @map("created_by_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  module         CustomModule @relation(fields: [organizationId, moduleId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  owner          User?        @relation("CustomRecordOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy      User?        @relation("CustomRecordCreator", fields: [organizationId, createdById], references: [organizationId, id], onDelete: NoAction, onUpdate: NoAction)
+  account        Account?     @relation(fields: [organizationId, accountId], references: [organizationId, id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([organizationId, moduleId, createdAt(sort: Desc)])
+  @@index([organizationId, accountId])
+  @@index([organizationId, ownerId])
+  @@map("custom_records")
 }

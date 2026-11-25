@@ -146,6 +146,7 @@ const fieldLabel = (field: string, entityType: string): string => {
   if (entityType === 'contact' && field === 'name') return t('contacts.name');
   if (entityType === 'account' && field === 'name') return t('accounts.name');
   if (entityType === 'deal' && field === 'name') return t('deals.name');
+  if (entityType === 'customrecord' && field === 'name') return t('modules.recordName');
   if (entityType === 'note' && field === 'content') return t('notes.title');
   if (entityType === 'user' && field === 'name') return t('users.name');
   if (entityType === 'user' && field === 'email') return t('users.email');
@@ -408,6 +409,23 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
       }
     }
   }
+  if (entry.entityType === 'customrecord' && typeof c.module === 'string') {
+    // 自定义模块记录：所属模块 / custom module record: its module
+    lines.push(`${t('modules.module')}${t('common.colon')}${c.module}`);
+  }
+  if (entry.entityType === 'module') {
+    // 自定义模块：名称；修改列出变化；字段的新建、修改、删除 / module: name; updates; field create, update and delete
+    const snapM = (c.after ?? c.before) as { name?: string } | undefined;
+    lines.push(t('modules.auditName', { name: String(snapM?.name ?? c.name ?? '') }));
+    const f = c.field as { label?: string; type?: string } | undefined;
+    if (f) lines.push(t('modules.auditField', { label: String(f.label ?? ''), type: tEnum('customFields.type', String(f.type ?? '')) }));
+    if (typeof c.cleared === 'number') lines.push(t('customFields.deleted', { n: c.cleared }));
+    if (fields) {
+      const LABEL: Record<string, MessageKey> = { name: 'modules.name', description: 'modules.description', isActive: 'modules.active', label: 'customFields.label', options: 'customFields.options', required: 'customFields.required' };
+      const list = Object.entries(fields).map(([k, [b, a]]) => `${LABEL[k] ? t(LABEL[k]) : k}${t('common.colon')}${Array.isArray(b) ? b.join('/') : value(k, b, users)} → ${Array.isArray(a) ? a.join('/') : value(k, a, users)}`);
+      lines.push(typeof c.key === 'string' ? t('modules.auditFieldChanged', { key: c.key, list: list.join(t('common.listSep')) }) : list.join(t('common.listSep')));
+    }
+  }
   if (entry.entityType === 'customfield') {
     // 自定义字段定义：对象、名称、类型；修改列出变化项 / definitions: entity, name, type; updates list changes
     const d = (c.after ?? c.before) as { entity?: string; label?: string; type?: string } | undefined;
@@ -438,9 +456,9 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
       const show = (f: string, v: unknown) => (Array.isArray(v) ? t('workflows.auditCount', { n: v.length }) : f === 'trigger' ? tEnum('workflows.trigger', String(v)) : value(f, v, users));
       for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${LABEL[f] ? t(LABEL[f]) : f}${t('common.colon')}${show(f, b)} → ${show(f, a)}`);
     }
-  } else if (fields && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'portal' && entry.entityType !== 'warehouse') {
+  } else if (fields && entry.entityType !== 'module' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'portal' && entry.entityType !== 'warehouse') {
     for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, b, users, entry.entityType)} → ${value(f, a, users, entry.entityType)}`);
-  } else if (snap && entry.entityType !== 'customfield' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'warehouse') {
+  } else if (snap && entry.entityType !== 'customfield' && entry.entityType !== 'module' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'warehouse') {
     for (const [f, v] of Object.entries(snap)) if (v !== null) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, v, users, entry.entityType)}`);
   } else if (typeof c.reason === 'string') {
     lines.push(tEnum('auditReason', c.reason));

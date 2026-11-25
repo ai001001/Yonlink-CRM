@@ -17,6 +17,7 @@ import { TagEditor, TagFilter, TagList, tagsOf } from '@/components/Tags';
 import { ExportButton } from '@/components/ExportButton';
 import { ImportModal } from '@/components/ImportModal';
 import { NotesPanel } from '@/components/NotesPanel';
+import { AccountModuleRecords } from '@/components/AccountModuleRecords';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { AuditTrail } from '@/components/AuditTrail';
 import { ContactsPanel } from '@/components/ContactsPanel';
@@ -341,6 +342,7 @@ export default function AccountsPage() {
               },
               { key: 'deals', label: `${t('accounts.tabDeals')} (${detail._count.deals})`, children: <AccountDeals accountId={detail.id} /> },
               { key: 'activities', label: t('accounts.tabActivities'), children: <RelatedActivities relation={{ accountId: detail.id }} /> },
+              { key: 'modules', label: t('nav.group.modules'), children: <AccountModuleRecords accountId={detail.id} /> },
               { key: 'audit', label: t('audit.trail'), children: <AuditTrail entityType="account" entityId={detail.id} version={detail.updatedAt} /> },
             ]}
           />

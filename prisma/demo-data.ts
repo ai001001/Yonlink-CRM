@@ -1668,3 +1668,59 @@ export const DEMO_TRANSFERS: { product: number; to: 'GZ' | 'TJ'; quantity: numbe
   { product: 4, to: 'TJ', quantity: 10 },
   { product: 5, to: 'GZ', quantity: 6 },
 ];
+
+/** 演示自定义模块的字段 / a demo custom module field */
+interface DemoModuleField {
+  label: string;
+  type: 'TEXT' | 'TEXTAREA' | 'NUMBER' | 'DATE' | 'PICKLIST' | 'CHECKBOX';
+  options?: string[];
+  required?: boolean;
+}
+
+/**
+ * 演示自定义模块（演示数据）：“合同”与“设备档案”两个模块及其记录；记录关联演示客户（按键），字段值按字段名称写入。
+ * Demo custom modules (demo data): contracts and equipment with records linked to demo accounts (by key); values are
+ * keyed by field label.
+ */
+export const DEMO_MODULES: {
+  name: string;
+  description: string;
+  fields: DemoModuleField[];
+  records: { name: string; owner: OwnerKey; account: string; values: Record<string, string | boolean> }[];
+}[] = [
+  {
+    name: '【演示】合同',
+    description: '与客户签订的销售与服务合同（演示数据）',
+    fields: [
+      { label: '合同金额', type: 'NUMBER', required: true },
+      { label: '合同类型', type: 'PICKLIST', options: ['年度框架', '单次采购', '维修服务'], required: true },
+      { label: '签订日期', type: 'DATE' },
+      { label: '到期日期', type: 'DATE' },
+      { label: '已盖章', type: 'CHECKBOX' },
+      { label: '备注', type: 'TEXTAREA' },
+    ],
+    records: [
+      { name: '【演示】北湖配件 2027 年度供货框架合同', owner: 'sales1', account: 'northlake', values: { 合同金额: '320000', 合同类型: '年度框架', 签订日期: '2026-10-15', 到期日期: '2027-12-31', 已盖章: true, 备注: '按季度下单，价格随北美经销商价格表调整。' } },
+      { name: '【演示】莱茵汽配 增压器单次采购合同', owner: 'sales1', account: 'rhein', values: { 合同金额: '86000', 合同类型: '单次采购', 签订日期: '2026-11-02', 已盖章: false } },
+      { name: '【演示】南洋汽配 2027 年度框架合同', owner: 'sales2', account: 'nanyang', values: { 合同金额: '150000', 合同类型: '年度框架', 签订日期: '2026-09-20', 到期日期: '2027-09-19', 已盖章: true } },
+      { name: '【演示】海湾重卡 维修服务合同', owner: 'sales2', account: 'gulf', values: { 合同金额: '42000', 合同类型: '维修服务', 签订日期: '2026-08-01', 到期日期: '2027-07-31', 已盖章: true } },
+      { name: '【演示】华东再制造 年度框架合同', owner: 'manager', account: 'huadong', values: { 合同金额: '560000', 合同类型: '年度框架', 签订日期: '2026-07-01', 到期日期: '2027-06-30', 已盖章: true, 备注: '含年度返利条款。' } },
+      { name: '【演示】北方重卡 维修服务合同', owner: 'manager', account: 'beifang', values: { 合同金额: '68000', 合同类型: '维修服务', 签订日期: '2026-11-10', 已盖章: false } },
+    ],
+  },
+  {
+    name: '【演示】设备档案',
+    description: '客户现场在用的试验台与检测设备（演示数据）',
+    fields: [
+      { label: '序列号', type: 'TEXT', required: true },
+      { label: '设备型号', type: 'PICKLIST', options: ['动平衡机 VB-2', '增压器试验台 TB-5', '流量检测仪 FM-1'] },
+      { label: '安装日期', type: 'DATE' },
+      { label: '保修到期', type: 'DATE' },
+    ],
+    records: [
+      { name: '【演示】北湖配件 动平衡机', owner: 'sales1', account: 'northlake', values: { 序列号: 'VB2-2025-0118', 设备型号: '动平衡机 VB-2', 安装日期: '2025-03-12', 保修到期: '2027-03-11' } },
+      { name: '【演示】南洋汽配 增压器试验台', owner: 'sales2', account: 'nanyang', values: { 序列号: 'TB5-2024-0042', 设备型号: '增压器试验台 TB-5', 安装日期: '2024-06-20', 保修到期: '2026-06-19' } },
+      { name: '【演示】华东再制造 流量检测仪', owner: 'manager', account: 'huadong', values: { 序列号: 'FM1-2026-0007', 设备型号: '流量检测仪 FM-1', 安装日期: '2026-02-08', 保修到期: '2028-02-07' } },
+    ],
+  },
+];

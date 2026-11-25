@@ -5,9 +5,9 @@
  */
 'use client';
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Avatar, Button, Dropdown, Grid, Layout, Menu, Spin, Tag, Tooltip, Typography, type MenuProps } from 'antd';
 import {
   AccountBookOutlined,
@@ -46,8 +46,11 @@ import {
   GlobalOutlined,
   PlayCircleOutlined,
   ApartmentOutlined,
+  ProfileOutlined,
 } from '@ant-design/icons';
 import { t, tEnum } from '@/i18n';
+import { api } from '@/lib/api';
+import { MODULES_CHANGED, type CustomModule } from '@/lib/modules';
 import { useAuth } from './AuthProvider';
 import { ContactInfo } from './ContactInfo';
 import { GlobalSearch } from './GlobalSearch';
@@ -125,6 +128,8 @@ const NAV_GROUPS: { key: string; label: string | null; icon?: React.ReactNode; i
       { key: '/kb', icon: <ReadOutlined />, label: t('nav.kb') },
     ],
   },
+  // 自定义模块：菜单项按启用的模块动态生成 / custom modules: entries come from the active modules at run time
+  { key: 'modules', label: t('nav.group.modules'), icon: <ProfileOutlined />, items: [] },
   { key: 'analytics', label: t('nav.group.analytics'), icon: <BarChartOutlined />, items: [{ key: '/reports', icon: <BarChartOutlined />, label: t('nav.reports') }] },
   {
     key: 'setup',
@@ -135,6 +140,7 @@ const NAV_GROUPS: { key: string; label: string | null; icon?: React.ReactNode; i
       { key: '/workflows', icon: <ThunderboltOutlined />, label: t('nav.workflows'), permission: 'workflow.manage' },
       { key: '/validation-rules', icon: <SafetyOutlined />, label: t('nav.validationRules'), permission: 'validation.manage' },
       { key: '/custom-fields', icon: <FormOutlined />, label: t('nav.customFields'), permission: 'customfield.manage' },
+      { key: '/custom-modules', icon: <ProfileOutlined />, label: t('nav.customModules'), permission: 'customfield.manage' },
       { key: '/territories', icon: <GlobalOutlined />, label: t('nav.territories'), permission: 'territory.manage' },
       { key: '/blueprints', icon: <ApartmentOutlined />, label: t('nav.blueprints'), permission: 'blueprint.manage' },
       { key: '/cadences', icon: <ScheduleOutlined />, label: t('nav.cadences'), permission: 'cadence.manage' },
@@ -149,6 +155,11 @@ const NAV_GROUPS: { key: string; label: string | null; icon?: React.ReactNode; i
   },
 ];
 
+/** 自定义模块菜单项的键前缀 / key prefix of custom module entries */
+const MODULE_PREFIX = '/modules?m=';
+/** 自定义模块菜单项的键（即链接地址）/ key (the link) of a custom module entry */
+const moduleKey = (id: string) => `${MODULE_PREFIX}${id}`;
+
 /** 全部菜单项（用于高亮判断）/ every entry (for highlighting) */
 const NAV = NAV_GROUPS.flatMap((g) => g.items);
 
@@ -156,10 +167,10 @@ const NAV = NAV_GROUPS.flatMap((g) => g.items);
  * 当前用户可见的菜单（antd 分组格式）。
  * Menu items visible to the user (antd group format).
  */
-function menuItems(permissions: string[]): MenuProps['items'] {
+function menuItems(permissions: string[], modules: CustomModule[]): MenuProps['items'] {
   return NAV_GROUPS.flatMap((g): NonNullable<MenuProps['items']> => {
-    const items = g.items
-      .filter((n) => !n.permission || permissions.includes(n.permission))
+    const items = (g.key === 'modules' ? modules.map((m) => ({ key: moduleKey(m.id), icon: <ProfileOutlined />, label: m.name })) : g.items)
+      .filter((n) => !('permission' in n) || !n.permission || permissions.includes(n.permission))
       .map((n) => ({ key: n.key, icon: n.icon, label: <Link href={n.key}>{n.label}</Link> }));
     if (!items.length) return [];
     return g.label ? [{ key: g.key, icon: g.icon, label: g.label, children: items }] : items;
@@ -174,6 +185,7 @@ const GROUP_KEYS = NAV_GROUPS.filter((g) => g.label).map((g) => g.key);
  * Group of a menu entry.
  */
 function groupOf(key: string): string | undefined {
+  if (key.startsWith(MODULE_PREFIX)) return 'modules';
   return NAV_GROUPS.find((g) => g.label && g.items.some((n) => n.key === key))?.key;
 }
 
@@ -191,6 +203,16 @@ function selectedKey(pathname: string): string {
   return NAV.find((n) => n.key !== '/' && path.startsWith(n.key))?.key ?? '';
 }
 
+/**
+ * 读取地址中的自定义模块 ID（useSearchParams 需在 Suspense 内）。
+ * Report the custom module id from the URL (useSearchParams must sit inside Suspense).
+ */
+function ModuleParam({ onChange }: { onChange: (id: string | null) => void }) {
+  const m = useSearchParams().get('m');
+  useEffect(() => onChange(m), [m, onChange]);
+  return null;
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const { me, loading, signOut } = useAuth();
   const router = useRouter();
@@ -201,7 +223,22 @@ export function AppShell({ children }: { children: ReactNode }) {
   // 用户自己选择的收起状态（窄屏时会被临时覆盖，回到宽屏时恢复）/ the user's own choice (overridden on narrow screens, restored on wide ones)
   const [preferCollapsed, setPreferCollapsed] = useState(false);
   const [openKeys, setOpenKeys] = useState<string[]>(GROUP_KEYS);
-  const current = selectedKey(pathname);
+  // 自定义模块（启用的）与当前模块 ID / active custom modules and the current module id
+  const [modules, setModules] = useState<CustomModule[]>([]);
+  const [moduleParam, setModuleParam] = useState<string | null>(null);
+  const onModulesPage = (pathname.replace(/\/$/, '') || '/') === '/modules';
+  const current = onModulesPage && moduleParam ? moduleKey(moduleParam) : selectedKey(pathname);
+
+  const loadModules = useCallback(() => {
+    api<{ items: CustomModule[] }>('/api/custom-modules?active=true')
+      .then((r) => setModules(r.items))
+      .catch(() => setModules([]));
+  }, []);
+  useEffect(() => {
+    if (me) loadModules();
+    window.addEventListener(MODULES_CHANGED, loadModules);
+    return () => window.removeEventListener(MODULES_CHANGED, loadModules);
+  }, [me, loadModules]);
 
   useEffect(() => {
     if (!loading && !me) router.replace('/login');
@@ -303,8 +340,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               selectedKeys={[current]}
               // 收起侧栏时由菜单自行以弹出方式显示分组 / when collapsed the menu shows groups as pop-ups
               {...(collapsed ? {} : { openKeys, onOpenChange: changeOpen })}
-              items={menuItems(me.permissions)}
+              items={menuItems(me.permissions, modules)}
             />
+            <Suspense>
+              <ModuleParam onChange={setModuleParam} />
+            </Suspense>
           </div>
           {collapsed ? (
             <div style={{ textAlign: 'center', padding: '8px 0 12px' }}>

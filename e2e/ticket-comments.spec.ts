@@ -46,9 +46,15 @@ test.describe.serial('工单评论往来 / ticket comments', () => {
   test('负责人收到通知并回复、修改、删除 / owner is notified and replies', async ({ page }) => {
     await demoSignIn(page, '王芳');
     // 通知中心从顶部铃铛进入 / the notification centre is opened from the bell
-    await page.getByTestId('notification-bell').click();
-    await page.getByTestId('notification-popover').getByRole('link', { name: '查看全部通知' }).click();
-    await expect(page).toHaveURL(/\/notifications\/?$/);
+    // 按结果确认：未跳转时重新打开铃铛再点（与导航用例相同；高负载下偶发点击未生效）
+    // confirm by outcome; retry when the click did not navigate (as in the navigation spec; clicks can be lost under load)
+    await expect(async () => {
+      if (!/\/notifications\/?$/.test(page.url())) {
+        if (!(await page.getByTestId('notification-popover').isVisible())) await page.getByTestId('notification-bell').click({ timeout: 2000 });
+        await page.getByTestId('notification-popover').getByRole('link', { name: '查看全部通知' }).click({ timeout: 2000 });
+      }
+      await expect(page).toHaveURL(/\/notifications\/?$/, { timeout: 3000 });
+    }).toPass({ timeout: 20000 });
     // 只在页面主体中查找：铃铛弹窗关闭动画期间其中的同名链接仍在页面上 / search the page body only: the bell popover still holds the same link while it fades out
     const note = page.getByRole('main').getByRole('link', { name: /郑经理 评论了工单 CS-\d{4}-\d{4} 【演示】涡轮增压器异响/ });
     await expect(note).toBeVisible();
