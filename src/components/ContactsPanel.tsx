@@ -11,6 +11,7 @@ import { t } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
 import { toFormErrors } from '@/lib/hooks';
 import type { Contact } from '@/lib/types';
+import { EmailLink, PhoneLink } from '@/components/PhoneLink';
 import { CustomFieldItems, useCustomFields } from './CustomFields';
 
 interface Props {
@@ -90,8 +91,8 @@ export function ContactsPanel({ accountId, editable, contacts, onChanged }: Prop
             ),
           },
           { title: t('contacts.title'), dataIndex: 'title' },
-          { title: t('contacts.phone'), dataIndex: 'phone' },
-          { title: t('contacts.email'), dataIndex: 'email' },
+          { title: t('contacts.phone'), render: (_, r) => <PhoneLink value={r.phone} /> },
+          { title: t('contacts.email'), render: (_, r) => <EmailLink value={r.email} /> },
           {
             title: t('common.actions'),
             hidden: !editable,

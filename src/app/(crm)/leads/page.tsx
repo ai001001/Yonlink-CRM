@@ -13,6 +13,7 @@ import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
 import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch, useSelection } from '@/lib/hooks';
 import { AuditTrail } from '@/components/AuditTrail';
+import { EmailLink, PhoneLink } from '@/components/PhoneLink';
 import { usePermissions } from '@/components/AuthProvider';
 import { AssignmentRulesModal } from '@/components/AssignmentRules';
 import { BulkBar } from '@/components/BulkBar';
@@ -357,9 +358,15 @@ export default function LeadsPage() {
               <Descriptions.Item label={t('leads.name')}>{detail.name}</Descriptions.Item>
               <Descriptions.Item label={t('leads.company')}>{detail.company}</Descriptions.Item>
               <Descriptions.Item label={t('leads.jobTitle')}>{detail.title}</Descriptions.Item>
-              <Descriptions.Item label={t('leads.email')}>{detail.email}</Descriptions.Item>
-              <Descriptions.Item label={t('leads.phone')}>{detail.phone}</Descriptions.Item>
-              <Descriptions.Item label={t('leads.mobile')}>{detail.mobile}</Descriptions.Item>
+              <Descriptions.Item label={t('leads.email')}>
+                <EmailLink value={detail.email} />
+              </Descriptions.Item>
+              <Descriptions.Item label={t('leads.phone')}>
+                <PhoneLink value={detail.phone} />
+              </Descriptions.Item>
+              <Descriptions.Item label={t('leads.mobile')}>
+                <PhoneLink value={detail.mobile} />
+              </Descriptions.Item>
               <Descriptions.Item label={t('leads.source')}>{tEnum('leadSource', detail.source)}</Descriptions.Item>
               <Descriptions.Item label={t('campaigns.source')}>
                 {detail.campaign ? <Link href={`/campaigns?id=${detail.campaign.id}`}>{detail.campaign.name}</Link> : null}

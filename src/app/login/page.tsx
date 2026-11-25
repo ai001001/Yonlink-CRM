@@ -66,7 +66,8 @@ export default function LoginPage() {
   if (!mounted) return <div style={{ minHeight: '100vh', background }} />;
 
   return (
-    <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '32px 16px', background, position: 'relative' }}>
+    // 单列且可收缩，窄屏时卡片不超出屏幕 / a single shrinkable column so the card never overflows narrow screens
+    <div style={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', placeItems: 'center', padding: '64px 16px 32px', background, position: 'relative' }}>
       <div style={{ position: 'absolute', top: 16, right: 16 }}>
         <LanguageSwitch />
       </div>
@@ -125,7 +126,8 @@ export default function LoginPage() {
                     </>
                   ),
                 },
-                { title: t('users.email'), dataIndex: 'email', render: (v: string) => <Typography.Text code>{v}</Typography.Text> },
+                // 手机上不显示邮箱列 / the email column is hidden on phones
+                { title: t('users.email'), dataIndex: 'email', responsive: ['sm'], render: (v: string) => <Typography.Text code>{v}</Typography.Text> },
                 {
                   title: '',
                   align: 'right',

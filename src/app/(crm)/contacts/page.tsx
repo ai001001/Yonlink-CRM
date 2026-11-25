@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { App, Button, Card, Checkbox, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import { PlusOutlined, StarFilled, StarOutlined } from '@ant-design/icons';
 import { usePermissions } from '@/components/AuthProvider';
+import { EmailLink, PhoneLink } from '@/components/PhoneLink';
 import { ExportButton } from '@/components/ExportButton';
 import { ScoreDetail, ScoreFilters, ScoreTag, ScoringRulesModal, useScoring } from '@/components/Scoring';
 import { RecordSelect } from '@/components/RecordSelect';
@@ -163,8 +164,8 @@ export default function ContactsPage() {
             ),
           },
           { title: t('contacts.title'), dataIndex: 'title' },
-          { title: t('contacts.phone'), dataIndex: 'phone' },
-          { title: t('contacts.email'), dataIndex: 'email' },
+          { title: t('contacts.phone'), render: (_, r) => <PhoneLink value={r.phone} /> },
+          { title: t('contacts.email'), render: (_, r) => <EmailLink value={r.email} /> },
           { title: t('contacts.account'), render: (_, r) => <Link href={`/accounts?id=${r.account.id}`}>{r.account.name}</Link> },
           { title: t('common.owner'), render: (_, r) => r.account.owner?.name ?? t('common.unassigned') },
           { title: t('scoring.score'), dataIndex: 'score', render: (v: number) => <ScoreTag score={v} config={scoring.config} /> },
@@ -204,8 +205,12 @@ export default function ContactsPage() {
                 </Space>
               </Descriptions.Item>
               <Descriptions.Item label={t('contacts.title')}>{detail.title}</Descriptions.Item>
-              <Descriptions.Item label={t('contacts.phone')}>{detail.phone}</Descriptions.Item>
-              <Descriptions.Item label={t('contacts.email')}>{detail.email}</Descriptions.Item>
+              <Descriptions.Item label={t('contacts.phone')}>
+                <PhoneLink value={detail.phone} />
+              </Descriptions.Item>
+              <Descriptions.Item label={t('contacts.email')}>
+                <EmailLink value={detail.email} />
+              </Descriptions.Item>
               <Descriptions.Item label={t('contacts.account')}>
                 <Link href={`/accounts?id=${detail.account.id}`}>{detail.account.name}</Link>
               </Descriptions.Item>

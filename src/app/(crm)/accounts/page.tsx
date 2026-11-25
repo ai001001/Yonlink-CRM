@@ -9,6 +9,7 @@ import { useCallback, useState } from 'react';
 import { App, Button, Card, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tabs, Tag } from 'antd';
 import { PlusOutlined, StarFilled, StarOutlined, UploadOutlined } from '@ant-design/icons';
 import { AccountDeals } from '@/components/AccountDeals';
+import { PhoneLink } from '@/components/PhoneLink';
 import { usePermissions } from '@/components/AuthProvider';
 import { BulkBar } from '@/components/BulkBar';
 import { ScoreDetail, ScoreFilters, ScoreTag, ScoringRulesModal, useScoring } from '@/components/Scoring';
@@ -177,7 +178,7 @@ export default function AccountsPage() {
             ),
           },
           { title: t('accounts.industry'), dataIndex: 'industry', render: (v: string | null) => tEnum('industry', v) },
-          { title: t('accounts.phone'), dataIndex: 'phone' },
+          { title: t('accounts.phone'), render: (_, r) => <PhoneLink value={r.phone} /> },
           { title: t('territories.territory'), render: (_, r) => r.territory?.name ?? '—' },
           { title: t('accounts.contactCount'), render: (_, r) => r._count.contacts },
           { title: t('accounts.dealCount'), render: (_, r) => r._count.deals },
@@ -271,7 +272,9 @@ export default function AccountsPage() {
                     <Descriptions column={2} bordered size="small">
                       <Descriptions.Item label={t('accounts.name')}>{detail.name}</Descriptions.Item>
                       <Descriptions.Item label={t('accounts.industry')}>{tEnum('industry', detail.industry)}</Descriptions.Item>
-                      <Descriptions.Item label={t('accounts.phone')}>{detail.phone}</Descriptions.Item>
+                      <Descriptions.Item label={t('accounts.phone')}>
+                        <PhoneLink value={detail.phone} />
+                      </Descriptions.Item>
                       <Descriptions.Item label={t('accounts.website')}>{detail.website}</Descriptions.Item>
                       <Descriptions.Item label={t('accounts.address')} span={2}>
                         {detail.address}

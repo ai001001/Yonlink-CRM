@@ -8,7 +8,7 @@
 import { Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Avatar, Button, Dropdown, Grid, Layout, Menu, Spin, Tag, Tooltip, Typography, type MenuProps } from 'antd';
+import { Avatar, Button, Drawer, Dropdown, Grid, Layout, Menu, Spin, Tag, Tooltip, Typography, type MenuProps } from 'antd';
 import {
   AccountBookOutlined,
   AimOutlined,
@@ -47,6 +47,8 @@ import {
   PlayCircleOutlined,
   ApartmentOutlined,
   ProfileOutlined,
+  MenuOutlined,
+  EllipsisOutlined,
 } from '@ant-design/icons';
 import { t, tEnum } from '@/i18n';
 import { api } from '@/lib/api';
@@ -240,6 +242,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(MODULES_CHANGED, loadModules);
   }, [me, loadModules]);
 
+  // 手机（宽度 < 768px）：侧栏改为抽屉菜单，底部显示常用入口 / phones (< 768px): the sider becomes a drawer, with a bottom tab bar
+  const mobile = screens.md === false;
+  const [menuOpen, setMenuOpen] = useState(false);
+  // 换页后关闭抽屉菜单 / close the drawer menu after navigating
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMenuOpen(false);
+  }, [pathname, moduleParam]);
+
   useEffect(() => {
     if (!loading && !me) router.replace('/login');
   }, [loading, me, router]);
@@ -292,6 +303,101 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div style={{ display: 'grid', placeItems: 'center', height: '100vh' }}>
         <Spin />
       </div>
+    );
+  }
+
+  // 头像菜单（个人设置、退出）/ avatar menu (profile, sign out)
+  const userMenu = (
+    <Dropdown
+      // 触屏没有悬停，手机上点击展开 / touch screens have no hover, so phones open it on tap
+      trigger={mobile ? ['click'] : ['hover']}
+      menu={{
+        items: [
+          { key: 'profile', icon: <UserOutlined />, label: t('nav.profile') },
+          { key: 'logout', icon: <LogoutOutlined />, label: t('nav.logout') },
+        ],
+        onClick: async ({ key }) => {
+          if (key === 'profile') {
+            router.push('/profile');
+            return;
+          }
+          await signOut();
+          router.replace('/login');
+        },
+      }}
+    >
+      <span style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }} data-testid="user-menu" aria-label={me.name}>
+        <Avatar style={{ background: '#1f5fbf' }}>{me.name.slice(0, 1)}</Avatar>
+        {!mobile && me.name}
+      </span>
+    </Dropdown>
+  );
+
+  if (mobile) {
+    // 手机布局：顶部栏（菜单、搜索、通知、头像）、抽屉菜单（品牌、组织与角色、语言、完整导航、咨询方式）、底部常用入口
+    // phone layout: header (menu, search, bell, avatar), drawer menu (brand, organization and role, language, full
+    // navigation, contact details) and a bottom tab bar
+    const tabs: { key: string; icon: ReactNode; label: string }[] = [
+      { key: '/', icon: <DashboardOutlined />, label: t('nav.dashboard') },
+      { key: '/accounts', icon: <BankOutlined />, label: t('nav.accounts') },
+      { key: '/deals', icon: <FundOutlined />, label: t('nav.deals') },
+      { key: '/activities', icon: <ScheduleOutlined />, label: t('nav.activities') },
+    ];
+    return (
+      <Layout style={{ minHeight: '100vh' }}>
+        <Layout.Header
+          style={{ background: '#fff', padding: '0 8px', display: 'flex', alignItems: 'center', gap: 4, borderBottom: '1px solid #e8ecf2', position: 'sticky', top: 0, zIndex: 100, height: 56, lineHeight: '56px' }}
+        >
+          <Button type="text" icon={<MenuOutlined />} onClick={() => setMenuOpen(true)} aria-label={t('nav.openMenu')} data-testid="mobile-menu-toggle" />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <GlobalSearch />
+          </div>
+          <NotificationBell />
+          {userMenu}
+        </Layout.Header>
+        <Drawer
+          placement="left"
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          size={280}
+          closable={false}
+          data-testid="mobile-menu"
+          styles={{ body: { padding: 0, background: '#001529', display: 'flex', flexDirection: 'column' } }}
+        >
+          <div style={{ color: '#fff', padding: '16px 20px 8px', fontSize: 18, fontWeight: 600 }}>
+            {t('app.name')}
+            <div style={{ fontSize: 12, fontWeight: 400, opacity: 0.65 }}>{me.organization.name}</div>
+            <div style={{ marginTop: 8, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+              {me.isDemo && <Tag color="orange">{t('demo.badge')}</Tag>}
+              <Tag color="blue" data-testid="current-role">
+                {tEnum('role', me.role)}
+              </Tag>
+              <LanguageSwitch />
+            </div>
+          </div>
+          <div style={{ flex: 1 }}>
+            <Menu theme="dark" mode="inline" selectedKeys={[current]} openKeys={openKeys} onOpenChange={changeOpen} items={menuItems(me.permissions, modules)} onClick={() => setMenuOpen(false)} />
+          </div>
+          <ContactInfo variant="block" />
+        </Drawer>
+        <Suspense>
+          <ModuleParam onChange={setModuleParam} />
+        </Suspense>
+        {/* 底部留出常用入口栏的高度（含全面屏底部安全区）/ leave room for the tab bar (and the home-indicator safe area) */}
+        <Layout.Content style={{ padding: 12, paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}>{children}</Layout.Content>
+        <nav className="mobile-tabbar" data-testid="mobile-tabbar" aria-label={t('nav.tabbar')}>
+          {tabs.map((tab) => (
+            <Link key={tab.key} href={tab.key} className={current === tab.key ? 'active' : undefined} aria-current={current === tab.key ? 'page' : undefined}>
+              {tab.icon}
+              <span>{tab.label}</span>
+            </Link>
+          ))}
+          <button type="button" onClick={() => setMenuOpen(true)} data-testid="mobile-more">
+            <EllipsisOutlined />
+            <span>{t('nav.more')}</span>
+          </button>
+        </nav>
+      </Layout>
     );
   }
 
@@ -372,27 +478,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Tag color="blue" data-testid="current-role">
             {tEnum('role', me.role)}
           </Tag>
-          <Dropdown
-            menu={{
-              items: [
-                { key: 'profile', icon: <UserOutlined />, label: t('nav.profile') },
-                { key: 'logout', icon: <LogoutOutlined />, label: t('nav.logout') },
-              ],
-              onClick: async ({ key }) => {
-                if (key === 'profile') {
-                  router.push('/profile');
-                  return;
-                }
-                await signOut();
-                router.replace('/login');
-              },
-            }}
-          >
-            <span style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }} data-testid="user-menu">
-              <Avatar style={{ background: '#1f5fbf' }}>{me.name.slice(0, 1)}</Avatar>
-              {me.name}
-            </span>
-          </Dropdown>
+          {userMenu}
         </Layout.Header>
         <Layout.Content style={{ padding: 24 }}>{children}</Layout.Content>
       </Layout>

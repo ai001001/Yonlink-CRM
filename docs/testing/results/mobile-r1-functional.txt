@@ -1,0 +1,15 @@
+Loaded Prisma config from prisma.config.ts.
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+63 migrations found in prisma/migrations
+No pending migrations to apply.
+已创建组织与管理员 / created organization and admin: E2E 测试组织 / e2e-admin@yonlink.test
+演示数据已创建：31 客户（含 1 条重复）、66 联系人、66 线索（含 2 条重复）、48 商机、172 跟进、50 备注、24 产品、55 产品明细、21 报价单、7 销售订单、5 发票、8 条汇率、4 个市场活动、48 个竞争对手、101 个联系人角色、10 个服务工单（7 条处理记录）、6 篇知识库文章、4 个供应商、4 张采购单、3 张价格表、3 个网页表单、4 条分配规则、8 条工作流规则、5 个区域、3 个宏、1 个流程蓝图（停用）、2 个销售节奏、客户门户（已启用）、3 个仓库、2 个自定义模块（9 条记录）、37 条评分规则、6 标签、11 附件、24 条销售目标、9 条通知 / demo data ready
+Running 6 tests using 1 worker
+  ✓  1 e2e/mobile.spec.ts:24:1 › 登录页与外壳：顶部栏、抽屉菜单、语言切换 / login page and shell (13.6s)
+  ✓  2 e2e/mobile.spec.ts:61:1 › 底部常用入口：跳转、高亮与“更多” / tab bar (9.1s)
+  ✓  3 e2e/mobile.spec.ts:80:1 › 客户详情、电话可点拨、手机上新建跟进 / details, tap to call, create on a phone (11.4s)
+  ✓  4 e2e/mobile.spec.ts:109:1 › 头像菜单：个人设置与退出 / avatar menu: profile and sign out (5.8s)
+  ✓  5 e2e/mobile.spec.ts:128:1 › 可安装网页应用：清单、图标、主题色 / installable web app (2.0s)
+  ✓  6 e2e/mobile.spec.ts:148:3 › 桌面宽度 / desktop width › 仍是侧栏布局，没有底部栏 / sider layout, no tab bar (4.8s)
+  6 passed (1.0m)
