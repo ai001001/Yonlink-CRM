@@ -48,6 +48,7 @@ import {
   ApartmentOutlined,
   ProfileOutlined,
   MenuOutlined,
+  PieChartOutlined,
   UnorderedListOutlined,
   EllipsisOutlined,
 } from '@ant-design/icons';
@@ -134,7 +135,7 @@ const NAV_GROUPS: { key: string; label: string | null; icon?: React.ReactNode; i
   },
   // 自定义模块：菜单项按启用的模块动态生成 / custom modules: entries come from the active modules at run time
   { key: 'modules', label: t('nav.group.modules'), icon: <ProfileOutlined />, items: [] },
-  { key: 'analytics', label: t('nav.group.analytics'), icon: <BarChartOutlined />, items: [{ key: '/reports', icon: <BarChartOutlined />, label: t('nav.reports') }] },
+  { key: 'analytics', label: t('nav.group.analytics'), icon: <BarChartOutlined />, items: [{ key: '/reports', icon: <BarChartOutlined />, label: t('nav.reports') }, { key: '/custom-reports', icon: <PieChartOutlined />, label: t('nav.customReports') }] },
   {
     key: 'setup',
     label: t('nav.group.setup'),

@@ -1735,3 +1735,49 @@ export const DEMO_PICKLISTS: { field: 'LEAD_SOURCE' | 'INDUSTRY'; value: string;
   { field: 'LEAD_SOURCE', value: 'C_DEMO_VIDEO', label: '【演示】短视频平台' },
   { field: 'INDUSTRY', value: 'C_DEMO_EV', label: '【演示】新能源汽车' },
 ];
+
+/**
+ * 演示自定义报表（演示数据）：郑经理共享的两个汇总报表与王芳的一个私有明细报表；名称带【演示】。
+ * Demo custom reports (demo data): two shared summaries by the manager and one private detail report of 王芳.
+ */
+export const DEMO_REPORTS: { owner: 'manager' | 'sales1'; name: string; description: string; shared: boolean; entity: 'LEAD' | 'DEAL'; columns: string[]; filters: { field: string; op: string; value?: string }[]; groupBy: { field: string; unit?: string } | null; measures: { fn: string; field: string }[]; chart: 'NONE' | 'BAR' | 'COLUMN'; sort: { field: string; dir: 'asc' | 'desc' } | null }[] = [
+  {
+    owner: 'manager',
+    name: '【演示】各阶段商机金额（美元）',
+    description: '按销售阶段汇总美元商机的数量与金额（演示数据）',
+    shared: true,
+    entity: 'DEAL',
+    columns: [],
+    filters: [{ field: 'currency', op: 'EQUALS', value: 'USD' }],
+    groupBy: { field: 'stage' },
+    measures: [{ fn: 'SUM', field: 'amount' }, { fn: 'AVG', field: 'amount' }],
+    chart: 'BAR',
+    sort: null,
+  },
+  {
+    owner: 'manager',
+    name: '【演示】线索来源分布',
+    description: '各来源的线索数量与平均评分（演示数据）',
+    shared: true,
+    entity: 'LEAD',
+    columns: [],
+    filters: [],
+    groupBy: { field: 'source' },
+    measures: [{ fn: 'AVG', field: 'score' }],
+    chart: 'COLUMN',
+    sort: null,
+  },
+  {
+    owner: 'sales1',
+    name: '【演示】我的谈判中商机',
+    description: '处于商务谈判阶段、按金额从高到低（演示数据）',
+    shared: false,
+    entity: 'DEAL',
+    columns: ['name', 'accountId', 'amount', 'expectedCloseDate'],
+    filters: [{ field: 'stage', op: 'EQUALS', value: 'NEGOTIATION' }],
+    groupBy: null,
+    measures: [],
+    chart: 'NONE',
+    sort: { field: 'amount', dir: 'desc' },
+  },
+];

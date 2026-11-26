@@ -85,6 +85,7 @@ model Organization {
   customModuleFields   CustomModuleField[]
   customRecords        CustomRecord[]
   picklistValues       PicklistValue[]
+  customReports        CustomReport[]
   productStocks        ProductStock[]
   cadenceEnrollments   CadenceEnrollment[]
   territoryMembers     TerritoryMember[]
@@ -156,6 +157,7 @@ model User {
   customModulesCreated CustomModule[]          @relation("CustomModuleCreator")
   customRecordsOwned   CustomRecord[]          @relation("CustomRecordOwner")
   customRecordsCreated CustomRecord[]          @relation("CustomRecordCreator")
+  customReports        CustomReport[]          @relation("CustomReportOwner")
   macrosCreated        Macro[]                 @relation("MacroCreator")
   blueprintsCreated    Blueprint[]             @relation("BlueprintCreator")
   cadencesCreated      Cadence[]               @relation("CadenceCreator")
@@ -2540,4 +2542,45 @@ model PicklistValue {
   @@unique([organizationId, field, value])
   @@index([organizationId, field, position])
   @@map("picklist_values")
+}
+
+/// 自定义报表的对象 / custom report entity
+enum ReportEntity {
+  LEAD
+  ACCOUNT
+  DEAL
+  ACTIVITY
+
+  @@map("report_entity")
+}
+
+/// 自定义报表（定义保存，运行时按查看者的可见范围取数）/ a custom report (definition stored; data follows the viewer's visibility at run time)
+model CustomReport {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  ownerId        String       @map("owner_id") @db.Uuid
+  name           String       @db.VarChar(100)
+  description    String?      @db.VarChar(500)
+  entity         ReportEntity
+  /// 明细列（字段键数组）/ detail columns (field keys)
+  columns        Json         @default("[]")
+  /// 筛选条件（全部满足）/ filters (all must hold)
+  filters        Json         @default("[]")
+  /// 分组（字段键与日期粒度），为空时为明细报表 / grouping (field key and date unit); null for a detail report
+  groupBy        Json?        @map("group_by")
+  /// 汇总指标 / summary measures
+  measures       Json         @default("[]")
+  /// 图表：NONE、BAR、COLUMN / chart type
+  chart          String       @default("NONE") @db.VarChar(10)
+  /// 明细排序 / detail sort
+  sort           Json?
+  shared         Boolean      @default(false)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner          User         @relation("CustomReportOwner", fields: [organizationId, ownerId], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId, ownerId])
+  @@index([organizationId, shared])
+  @@map("custom_reports")
 }

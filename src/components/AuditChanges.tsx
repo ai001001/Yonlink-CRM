@@ -413,6 +413,18 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     // 自定义模块记录：所属模块 / custom module record: its module
     lines.push(`${t('modules.module')}${t('common.colon')}${c.module}`);
   }
+  const customReport = entry.action.startsWith('customreport.');
+  if (customReport) {
+    // 自定义报表：名称、对象、共享；修改列出变化项；导出显示格式与行数 / custom reports: name, module, sharing; changes; exports
+    const snapR = (c.after ?? c.before) as { name?: string; entity?: string; shared?: boolean } | undefined;
+    lines.push(t('customReports.audit', { name: String(snapR?.name ?? c.name ?? '') }));
+    if (snapR?.entity) lines.push(`${t('customReports.entity')}${t('common.colon')}${t(`customReports.entity.${snapR.entity}` as MessageKey)}${snapR.shared ? ` · ${t('customReports.shared')}` : ''}`);
+    if (fields) {
+      const LABEL: Record<string, MessageKey> = { name: 'customReports.name', shared: 'customReports.shared', columns: 'customReports.columns', filters: 'customReports.filters', groupBy: 'customReports.groupBy', measures: 'customReports.measures', chart: 'customReports.chart' };
+      lines.push(t('customReports.auditChanged', { list: Object.keys(fields).map((f) => (LABEL[f] ? t(LABEL[f]) : f)).join(t('common.listSep')) }));
+    }
+    if (entry.action === 'customreport.export') lines.push(t('export.done', { n: Number(c.rows ?? 0) }));
+  }
   if (entry.entityType === 'picklist' && typeof c.field === 'string') {
     // 下拉选项：字段与变化的选项（名称、启用、概率、新增、删除）/ pick list: the field and the changed options
     type O = { value: string; label: string | null; isActive: boolean; probability: number | null };
@@ -470,9 +482,9 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
       const show = (f: string, v: unknown) => (Array.isArray(v) ? t('workflows.auditCount', { n: v.length }) : f === 'trigger' ? tEnum('workflows.trigger', String(v)) : value(f, v, users));
       for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${LABEL[f] ? t(LABEL[f]) : f}${t('common.colon')}${show(f, b)} → ${show(f, a)}`);
     }
-  } else if (fields && entry.entityType !== 'module' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'portal' && entry.entityType !== 'warehouse') {
+  } else if (fields && !customReport && entry.entityType !== 'module' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'portal' && entry.entityType !== 'warehouse') {
     for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, b, users, entry.entityType)} → ${value(f, a, users, entry.entityType)}`);
-  } else if (snap && entry.entityType !== 'customfield' && entry.entityType !== 'module' && entry.entityType !== 'picklist' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'warehouse') {
+  } else if (snap && !customReport && entry.entityType !== 'customfield' && entry.entityType !== 'module' && entry.entityType !== 'picklist' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'warehouse') {
     for (const [f, v] of Object.entries(snap)) if (v !== null) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, v, users, entry.entityType)}`);
   } else if (typeof c.reason === 'string') {
     lines.push(tEnum('auditReason', c.reason));
