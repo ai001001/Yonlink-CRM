@@ -220,7 +220,7 @@ export function ActivityCalendar({ onOpen, onCreate, version }: Props) {
             allowClear
             placeholder={t('activities.type')}
             style={{ width: 120 }}
-            options={activityTypeOptions}
+            options={activityTypeOptions()}
             value={type}
             onChange={setType}
           />

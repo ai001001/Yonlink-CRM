@@ -10,6 +10,7 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
+import { assertOption } from './picklists';
 import { notifyAssigned, withdrawReminders } from './notifications';
 import { containsText, listQuery, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 
@@ -175,6 +176,8 @@ export async function listCalendar(ctx: AuthContext, query: z.infer<typeof activ
 export async function createActivity(ctx: AuthContext, input: z.infer<typeof activityCreateSchema>) {
   const { ownerId, ...data } = input;
   requirePermission(ctx, 'record.create');
+  // 类型须为启用的选项 / the type must be active
+  await assertOption(ctx.organizationId, 'ACTIVITY_TYPE', input.type, null, 'type');
   assertOwnerAssignable(ctx, ownerId);
   await assertRelated(ctx, data);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
@@ -206,6 +209,7 @@ export async function getActivity(ctx: AuthContext, id: string) {
 export async function updateActivity(ctx: AuthContext, id: string, input: z.infer<typeof activityUpdateSchema>) {
   const current = await getActivity(ctx, id);
   assertCanUpdate(ctx, current);
+  await assertOption(ctx.organizationId, 'ACTIVITY_TYPE', input.type, current.type, 'type');
   const { ownerId, ...data } = input;
   assertOwnerAssignable(ctx, ownerId);
   await assertRelated(ctx, data);

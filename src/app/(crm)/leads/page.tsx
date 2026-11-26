@@ -9,6 +9,7 @@ import { App, Button, Card, Descriptions, Drawer, Form, Input, Modal, Popconfirm
 import Link from 'next/link';
 import { ApartmentOutlined, PlusOutlined, StarOutlined, SwapOutlined, UploadOutlined } from '@ant-design/icons';
 import { t, tEnum, type MessageKey } from '@/i18n';
+import { pickOptions } from '@/lib/picklists';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
 import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch, useSelection } from '@/lib/hooks';
@@ -69,10 +70,9 @@ const STATUSES = ['NEW', 'CONTACTED', 'QUALIFIED', 'UNQUALIFIED', 'CONVERTED'] a
 const SOURCES = ['WEBSITE', 'REFERRAL', 'EXHIBITION', 'COLD_CALL', 'ADVERTISEMENT', 'SOCIAL_MEDIA', 'OTHER'] as const;
 const STATUS_COLOR: Record<string, string> = { NEW: 'blue', CONTACTED: 'cyan', QUALIFIED: 'green', UNQUALIFIED: 'default', CONVERTED: 'purple' };
 
-const statusOptions = STATUSES.map((s) => ({ value: s, label: tEnum('leadStatus', s) }));
+// 选项按组织配置（筛选含已停用的，表单只含启用的并保留当前值）/ options follow the organization's setup (filters include inactive ones; forms list active ones and keep the current value)
 // “已转化”只能通过转化操作设置 / CONVERTED is only set by the conversion action
-const editableStatusOptions = statusOptions.filter((o) => o.value !== 'CONVERTED');
-const sourceOptions = SOURCES.map((s) => ({ value: s, label: tEnum('leadSource', s) }));
+const EDITABLE_STATUSES = STATUSES.filter((s) => s !== 'CONVERTED');
 const req = (key: MessageKey) => [{ required: true, whitespace: true, message: t('common.required', { field: t(key) }) }];
 
 export default function LeadsPage() {
@@ -200,8 +200,8 @@ export default function LeadsPage() {
         <SavedViews entity="leads" filters={{ q, status, source, tagId }} onApply={applyView} />
         <Input.Search allowClear placeholder={t('leads.searchPlaceholder')} style={{ width: 280 }} {...search.inputProps} data-testid="leads-search" />
         <TagFilter value={tagId} onChange={setTagId} onManaged={() => void reload()} />
-        <Select allowClear aria-label={t('leads.status')} placeholder={t('leads.status')} style={{ width: 140 }} options={statusOptions} value={status} onChange={setStatus} />
-        <Select allowClear aria-label={t('leads.source')} placeholder={t('leads.source')} style={{ width: 140 }} options={sourceOptions} value={source} onChange={setSource} />
+        <Select allowClear aria-label={t('leads.status')} placeholder={t('leads.status')} style={{ width: 140 }} options={pickOptions('leadStatus', STATUSES)} value={status} onChange={setStatus} />
+        <Select allowClear aria-label={t('leads.source')} placeholder={t('leads.source')} style={{ width: 140 }} options={pickOptions('leadSource', SOURCES)} value={source} onChange={setSource} />
         <ScoreFilters grade={grade} onGrade={setGrade} sort={sort} onSort={setSort} />
         <CampaignSelect aria-label={t('campaigns.filter')} placeholder={t('campaigns.filter')} style={{ width: 180 }} value={campaignId} onChange={(v) => setCampaignId(v ?? undefined)} />
       </Space>
@@ -213,7 +213,7 @@ export default function LeadsPage() {
         cadenceEntity="LEAD"
         selected={sel.selected}
         names={Object.fromEntries(data.items.map((r) => [r.id, r.name]))}
-        valueChange={{ action: 'status', field: 'status', options: editableStatusOptions }}
+        valueChange={{ action: 'status', field: 'status', options: pickOptions('leadStatus', EDITABLE_STATUSES, 'active') }}
         onDone={() => {
           sel.clear();
           void reload();
@@ -307,14 +307,14 @@ export default function LeadsPage() {
           </div>
           <div className="form-row">
             <Form.Item name="source" label={t('leads.source')}>
-              <Select allowClear options={sourceOptions} />
+              <Select allowClear options={pickOptions('leadSource', SOURCES, 'active', editing && editing !== 'new' ? editing.source : null)} />
             </Form.Item>
             <Form.Item
               name="status"
               label={t('leads.status')}
               extra={editingConverted ? t('convert.statusLocked') : blueprint && editing !== 'new' ? t('blueprints.lockedHint', { name: blueprint.name }) : undefined}
             >
-              <Select options={editingConverted ? statusOptions : editableStatusOptions} disabled={editingConverted || (!!blueprint && editing !== 'new')} />
+              <Select options={editingConverted ? pickOptions('leadStatus', STATUSES) : pickOptions('leadStatus', EDITABLE_STATUSES, 'active', editing && editing !== 'new' ? editing.status : null)} disabled={editingConverted || (!!blueprint && editing !== 'new')} />
             </Form.Item>
             <Form.Item name="ownerId" label={t('common.owner')} extra={perm.canAssign ? undefined : t('common.ownerLocked')}>
               <Select allowClear={perm.canAssign} disabled={!perm.canAssign} options={owners.map((u) => ({ value: u.id, label: u.name }))} />

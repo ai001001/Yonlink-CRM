@@ -14,6 +14,7 @@ import type { AuthContext } from '../auth';
 import { toCsv } from '../csv';
 import { prisma } from '../db';
 import { requirePermission } from '../permissions';
+import { withOptionLabels } from './picklists';
 import { forecastQuerySchema, getForecast } from './forecasts';
 import { parseLang, type ExportResult } from './import-export';
 import { reportQuerySchema, salesReport } from './reports';
@@ -50,7 +51,10 @@ export function localeTools(lang: string | undefined) {
 export async function exportSalesReport(ctx: AuthContext, input: Record<string, string>): Promise<ExportResult> {
   requirePermission(ctx, 'data.export');
   const { lang, ...params } = input;
-  const { t, tEnum, percent } = localeTools(lang);
+  const tools = localeTools(lang);
+  const { t, percent } = tools;
+  // 组织自定义的下拉选项名称优先 / the organization's custom option labels take precedence
+  const tEnum = await withOptionLabels(ctx.organizationId, tools.tEnum);
   const query = reportQuerySchema.parse(params);
   const r = await salesReport(ctx, query);
   const owner = query.ownerId ? ((await prisma.user.findFirst({ where: { id: query.ownerId, organizationId: ctx.organizationId }, select: { name: true } }))?.name ?? '') : t('reports.allOwners');

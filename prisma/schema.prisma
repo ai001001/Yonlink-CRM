@@ -84,6 +84,7 @@ model Organization {
   customModules        CustomModule[]
   customModuleFields   CustomModuleField[]
   customRecords        CustomRecord[]
+  picklistValues       PicklistValue[]
   productStocks        ProductStock[]
   cadenceEnrollments   CadenceEnrollment[]
   territoryMembers     TerritoryMember[]
@@ -2506,4 +2507,37 @@ model CustomRecord {
   @@index([organizationId, accountId])
   @@index([organizationId, ownerId])
   @@map("custom_records")
+}
+
+/// 可配置的标准下拉字段 / configurable standard picklist fields
+enum PicklistField {
+  LEAD_SOURCE
+  INDUSTRY
+  LEAD_STATUS
+  DEAL_STAGE
+  ACTIVITY_TYPE
+
+  @@map("picklist_field")
+}
+
+/// 标准下拉字段的组织配置（没有记录时使用内置默认）/ an organization's configuration of a standard picklist (built-in defaults when absent)
+model PicklistValue {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  field          PicklistField
+  /// 选项代码（内置值或自定义值，大写字母、数字、下划线）/ option code (built-in or custom: upper-case letters, digits, underscores)
+  value          String        @db.VarChar(30)
+  /// 显示名称（为空用内置的多语言名称）/ display label (null uses the built-in localized label)
+  label          String?       @db.VarChar(50)
+  position       Int
+  isActive       Boolean       @default(true) @map("is_active")
+  /// 赢单概率（%，仅进行中的商机阶段）/ win probability (%, open deal stages only)
+  probability    Int?
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, field, value])
+  @@index([organizationId, field, position])
+  @@map("picklist_values")
 }

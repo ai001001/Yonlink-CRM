@@ -12,7 +12,8 @@ import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { usePermissions } from '@/components/AuthProvider';
 import { MACRO_ACTION_TYPES, MACRO_UPDATE_FIELDS, useActionText, useMacros, type Macro, type MacroAction, type MacroEntity } from '@/components/Macros';
 import { useTags } from '@/components/Tags';
-import { t, tEnum, type MessageKey } from '@/i18n';
+import { t, type MessageKey } from '@/i18n';
+import { pickOptions } from '@/lib/picklists';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
 import { useOwners } from '@/lib/hooks';
@@ -232,7 +233,7 @@ export default function MacrosPage() {
                             <Select aria-label={`${t('workflows.field')} ${label}`} options={Object.keys(MACRO_UPDATE_FIELDS[formEntity]).map((f) => ({ value: f, label: t(`workflows.field.${f}` as MessageKey) }))} />
                           </Form.Item>
                           <Form.Item name={[row.name, 'value']} style={{ width: 160 }} rules={required('workflows.value')}>
-                            <Select aria-label={`${t('workflows.newValue')} ${label}`} options={(field?.values ?? []).map((v) => ({ value: v, label: tEnum(field!.enumPrefix, v) }))} />
+                            <Select aria-label={`${t('workflows.newValue')} ${label}`} options={field ? pickOptions(field.enumPrefix, field.values) : []} />
                           </Form.Item>
                         </>
                       )}

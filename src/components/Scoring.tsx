@@ -10,7 +10,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, App, Button, Form, InputNumber, Modal, Select, Space, Switch, Tag, Typography } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { t, tEnum, type MessageKey } from '@/i18n';
+import { t, type MessageKey } from '@/i18n';
+import { pickOptions } from '@/lib/picklists';
 import { api, ClientApiError } from '@/lib/api';
 
 /** 评分对象 / scored entity */
@@ -78,11 +79,11 @@ const SCHEMA: Record<ScoreEntity, Partial<Record<RuleKind, string[]>>> = {
 
 /** “字段等于”的取值选项 / value options of a FIELD_EQUALS rule */
 function valueOptions(field: string | null | undefined): { value: string; label: string }[] {
-  if (field === 'status') return STATUSES.map((v) => ({ value: v, label: tEnum('leadStatus', v) }));
-  if (field === 'industry') return INDUSTRIES.map((v) => ({ value: v, label: tEnum('industry', v) }));
-  if (field === 'stage') return STAGES.map((v) => ({ value: v, label: tEnum('dealStage', v) }));
+  if (field === 'status') return pickOptions('leadStatus', STATUSES);
+  if (field === 'industry') return pickOptions('industry', INDUSTRIES);
+  if (field === 'stage') return pickOptions('dealStage', STAGES);
   if (field === 'is_primary') return [{ value: 'true', label: t('common.yes') }];
-  return SOURCES.map((v) => ({ value: v, label: tEnum('leadSource', v) }));
+  return pickOptions('leadSource', SOURCES);
 }
 
 /** 字段名称 / field label */

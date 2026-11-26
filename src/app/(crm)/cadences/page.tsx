@@ -10,6 +10,7 @@ import { App, Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Segment
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { CADENCE_STATE_PREFIX, stepText, useCadences, type Cadence, type CadenceEntity, type CadenceStep } from '@/components/Cadences';
 import { t, tEnum, type MessageKey } from '@/i18n';
+import { pickOptions } from '@/lib/picklists';
 import { api, ClientApiError } from '@/lib/api';
 
 /** 各对象可作为退出条件的状态（与服务端一致）/ exit states per module (same as the server) */
@@ -191,7 +192,7 @@ export default function CadencesPage() {
                         <InputNumber aria-label={`${t('cadences.day')} ${label}`} min={0} max={365} precision={0} prefix={t('cadences.day')} style={{ width: 140 }} />
                       </Form.Item>
                       <Form.Item name={[row.name, 'type']} style={{ width: 120 }}>
-                        <Select aria-label={`${t('cadences.stepType')} ${label}`} options={STEP_TYPES.map((x) => ({ value: x, label: tEnum('activityType', x) }))} />
+                        <Select aria-label={`${t('cadences.stepType')} ${label}`} options={pickOptions('activityType', STEP_TYPES)} />
                       </Form.Item>
                       <Form.Item name={[row.name, 'subject']} style={{ width: 340 }} rules={[{ required: true, whitespace: true, message: t('common.required', { field: t('cadences.subject') }) }]}>
                         <Input aria-label={`${t('cadences.subject')} ${label}`} placeholder={t('cadences.subject')} maxLength={200} />

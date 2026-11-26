@@ -27,9 +27,9 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { notFound } from '../errors';
 import { requirePermission, visible } from '../permissions';
+import { assertKnownOptions } from './picklists';
+import { picklistCode } from './picklists';
 import { readableAccounts, readableDeals, territoryReadScope } from './territory-rules';
-import { INDUSTRIES } from './accounts';
-import { LEAD_SOURCES } from './leads';
 import { gradeOf, scoreThresholds } from './scoring-grades';
 
 /** 路径中的对象名 → 评分对象 / entity name in the URL → scoring entity */
@@ -59,13 +59,13 @@ const threshold = z
  */
 const RULES = {
   [ScoringEntity.LEAD]: z.union([
-    z.strictObject({ kind: z.literal(FIELD_EQUALS), field: z.literal('source'), value: z.enum(LEAD_SOURCES), ...base }),
+    z.strictObject({ kind: z.literal(FIELD_EQUALS), field: z.literal('source'), value: picklistCode, ...base }),
     z.strictObject({ kind: z.literal(FIELD_EQUALS), field: z.literal('status'), value: z.enum(LeadStatus), ...base }),
     z.strictObject({ kind: z.literal(FIELD_FILLED), field: z.enum(['company', 'title', 'email', 'phone', 'mobile', 'description', 'campaign', 'web_form']), ...base }),
     z.strictObject({ kind: z.literal(ACTIVITY_COUNT), maxCount, ...base }),
   ]),
   [ScoringEntity.ACCOUNT]: z.union([
-    z.strictObject({ kind: z.literal(FIELD_EQUALS), field: z.literal('industry'), value: z.enum(INDUSTRIES), ...base }),
+    z.strictObject({ kind: z.literal(FIELD_EQUALS), field: z.literal('industry'), value: picklistCode, ...base }),
     z.strictObject({ kind: z.literal(FIELD_FILLED), field: z.enum(['phone', 'website', 'address', 'description', 'price_book']), ...base }),
     z.strictObject({ kind: z.literal(ACTIVITY_COUNT), maxCount, ...base }),
     z.strictObject({ kind: z.literal(RELATED_COUNT), field: z.enum(['contacts', 'won_deals', 'open_deals']), maxCount, ...base }),
@@ -131,6 +131,8 @@ export async function getScoring(ctx: AuthContext, entity: ScoringEntity) {
  */
 export async function saveScoring(ctx: AuthContext, entity: ScoringEntity, input: { rules: RuleInput[]; hotScore: number; warmScore: number }) {
   requirePermission(ctx, 'scoring.manage');
+  // 引用的线索来源与行业须为本组织的选项 / referenced sources and industries must be the organization's options
+  await assertKnownOptions(ctx.organizationId, input.rules.flatMap((r, i) => (r.kind === 'FIELD_EQUALS' && r.field && r.value ? [{ field: r.field, value: r.value, key: `rules.${i}.value` }] : [])));
   const before = await getScoring(ctx, entity);
   const org = ctx.organizationId;
   // 重算全部记录可能超过默认的 5 秒事务时限（记录多或负载高时），放宽到 60 秒

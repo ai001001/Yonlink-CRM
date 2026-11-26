@@ -13,6 +13,7 @@ import { CopyOutlined, ExportOutlined, PlusOutlined } from '@ant-design/icons';
 import { usePermissions } from '@/components/AuthProvider';
 import { CampaignSelect } from '@/components/CampaignSelect';
 import { t, tEnum, type MessageKey } from '@/i18n';
+import { pickOptions, pickValues } from '@/lib/picklists';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
 import { useOpenFromUrl, useOwners, usePagedList, useSearch } from '@/lib/hooks';
@@ -94,7 +95,7 @@ export default function WebFormsPage() {
     form.resetFields();
     form.setFieldsValue(
       f === 'new'
-        ? { isActive: true, fields: ['company', 'email', 'phone', 'description'], requiredFields: ['email'], source: 'WEBSITE', ownerId: null, assignByRule: false, campaignId: null }
+        ? { isActive: true, fields: ['company', 'email', 'phone', 'description'], requiredFields: ['email'], source: pickValues('leadSource', SOURCES, 'active')[0] ?? 'WEBSITE', ownerId: null, assignByRule: false, campaignId: null }
         : { name: f.name, title: f.title, intro: f.intro, isActive: f.isActive, fields: f.fields, requiredFields: f.requiredFields, source: f.source, ownerId: f.ownerId, assignByRule: f.assignByRule, campaignId: f.campaignId, successMessage: f.successMessage },
     );
     setEditing(f);
@@ -316,7 +317,7 @@ export default function WebFormsPage() {
           </Form.Item>
           <div className="form-row">
             <Form.Item name="source" label={t('leads.source')}>
-              <Select options={SOURCES.map((s) => ({ value: s, label: tEnum('leadSource', s) }))} />
+              <Select options={pickOptions('leadSource', SOURCES, 'active', editing && editing !== 'new' ? editing.source : null)} />
             </Form.Item>
             <Form.Item name="ownerId" label={t('webForms.owner')} extra={t(byRule ? 'webForms.ownerRuleHint' : 'webForms.ownerHint')}>
               <Select

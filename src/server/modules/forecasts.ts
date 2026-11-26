@@ -12,16 +12,16 @@ import { z } from 'zod';
 import { Prisma } from '@/generated/prisma/client';
 import { audit, by } from '../audit';
 import type { AuthContext } from '../auth';
+import type { DealStage } from '@/generated/prisma/enums';
 import { prisma } from '../db';
 import { ApiError } from '../errors';
 import { can, requirePermission, visible } from '../permissions';
+import { DEFAULT_PROBABILITY, openStageProbabilities } from './picklists';
 import { amountSchema, CURRENCIES } from './deals';
 import { rate } from './reports';
 
-/** 阶段赢单概率（%）/ stage win probabilities (%) */
-export const STAGE_PROBABILITY = { QUALIFICATION: 10, NEEDS_ANALYSIS: 20, PROPOSAL: 40, NEGOTIATION: 70 } as const;
-type OpenStage = keyof typeof STAGE_PROBABILITY;
-const OPEN_STAGES = Object.keys(STAGE_PROBABILITY) as OpenStage[];
+/** 进行中的阶段（赢单概率按组织的下拉字段配置，见 picklists.ts）/ open stages (win probabilities follow the organization's picklist setup, see picklists.ts) */
+const OPEN_STAGES = Object.keys(DEFAULT_PROBABILITY) as DealStage[];
 
 const MONTH = /^(\d{4})-(0[1-9]|1[0-2])$/;
 const QUARTER = /^(\d{4})-Q([1-4])$/;
@@ -110,6 +110,7 @@ export async function getForecast(ctx: AuthContext, query: z.infer<typeof foreca
   const forced = visible(ctx).ownerId; // 销售代表只看自己 / sales reps see only themselves
   const ownerFilter = forced ? { ownerId: forced } : {};
   const closeDate = { gte: p.start, lt: p.endExclusive };
+  const probabilities = await openStageProbabilities(org);
   const [targets, won, open] = await Promise.all([
     prisma.salesTarget.groupBy({
       by: ['userId'],
@@ -153,7 +154,7 @@ export async function getForecast(ctx: AuthContext, query: z.infer<typeof foreca
       open: o.reduce((s, x) => s.plus(x._sum.amount ?? 0), zero()),
       openCount: o.reduce((s, x) => s + count(x), 0),
       weighted: o
-        .reduce((s, x) => s.plus((x._sum.amount ?? zero()).mul(STAGE_PROBABILITY[x.stage as OpenStage]).div(100)), zero())
+        .reduce((s, x) => s.plus((x._sum.amount ?? zero()).mul(probabilities[x.stage] ?? 0).div(100)), zero())
         .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
     };
   };
@@ -175,7 +176,7 @@ export async function getForecast(ctx: AuthContext, query: z.infer<typeof foreca
     kind: p.kind,
     months: p.months.map((m) => m.toISOString().slice(0, 7)),
     currency: query.currency,
-    probabilities: STAGE_PROBABILITY,
+    probabilities,
     canEdit: can(ctx, 'forecast.manage') && p.kind === 'month',
     rows: rows.map(present),
     totals: present(totals),

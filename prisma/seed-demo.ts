@@ -18,7 +18,8 @@ import { toBase } from '../src/server/modules/exchange-rates';
 import { approvalReasons, approvalSteps } from '../src/server/modules/approvals';
 import { matchTerritory } from '../src/server/modules/territory-rules';
 import { Prisma } from '../src/generated/prisma/client';
-import { buildDemoData, dealCreatedDaysAgo, demoStagePath, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_ACCOUNT_SCORING, DEMO_CONTACT_SCORING, DEMO_DEAL_SCORING, DEMO_ASSIGNMENT_RULES, DEMO_WEB_FORMS, DEMO_WORKFLOWS, DEMO_APPROVAL, DEMO_WEBHOOK, DEMO_VALIDATION_RULES, DEMO_CUSTOM_FIELDS, DEMO_TERRITORIES, DEMO_MODULES, DEMO_MACROS, DEMO_BLUEPRINT, DEMO_CADENCES, DEMO_CADENCE_ENROLL, DEMO_PORTAL, DEMO_TRANSFERS, DEMO_WAREHOUSES, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
+import { INDUSTRIES, LEAD_SOURCES } from '../src/server/modules/dictionaries';
+import { buildDemoData, dealCreatedDaysAgo, demoStagePath, demoAttachments, demoDuplicates, DEMO_CAMPAIGNS, demoCampaignFor, demoContactRoles, demoDealCompetitors, demoTickets, DEMO_TICKET_COMMENTS, DEMO_SLA_HOURS, DEMO_KB_ARTICLES, DEMO_PRICE_BOOKS, DEMO_PURCHASE_ORDERS, DEMO_SCORING, DEMO_ACCOUNT_SCORING, DEMO_CONTACT_SCORING, DEMO_DEAL_SCORING, DEMO_ASSIGNMENT_RULES, DEMO_WEB_FORMS, DEMO_WORKFLOWS, DEMO_APPROVAL, DEMO_WEBHOOK, DEMO_VALIDATION_RULES, DEMO_CUSTOM_FIELDS, DEMO_TERRITORIES, DEMO_MODULES, DEMO_PICKLISTS, DEMO_MACROS, DEMO_BLUEPRINT, DEMO_CADENCES, DEMO_CADENCE_ENROLL, DEMO_PORTAL, DEMO_TRANSFERS, DEMO_WAREHOUSES, DEMO_VENDORS, DEMO_RATES, demoRateOn, demoInvoices, demoNotifications, demoOrders, DEMO_ORG_NAME, DEMO_TAGS, DEMO_TARGET_MONTHS, DEMO_TARGETS, demoTagAssignments, demoTagId, demoTargetAmount, DEMO_USERS, LEGACY_DEMO_ORG_NAMES, type OwnerKey } from './demo-data';
 
 export { DEMO_ORG_NAME };
 
@@ -84,6 +85,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         // 自定义模块的记录引用模块（NO ACTION），先删记录再删模块（字段随模块删除）/ records reference modules, so they go first (fields cascade)
         await tx.customRecord.deleteMany({ where: { organizationId: o } });
         await tx.customModule.deleteMany({ where: { organizationId: o } });
+        await tx.picklistValue.deleteMany({ where: { organizationId: o } });
         // 发票引用订单，订单引用报价单与商机（RESTRICT），须先删除 / invoices → orders → quotes/deals (RESTRICT) go first
         await tx.invoice.deleteMany({ where: { organizationId: o } });
         // 采购单引用销售订单与供应商，须先删除；单据编号计数器一并重置 / purchase orders reference sales orders and vendors, so they go first; reset the counters too
@@ -905,6 +907,15 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
         }
       }
 
+      // 下拉选项：内置选项按默认顺序在前，演示的自定义选项在后 / pick lists: built-ins in default order, demo custom options after
+      for (const field of ['LEAD_SOURCE', 'INDUSTRY'] as const) {
+        const builtins = field === 'LEAD_SOURCE' ? LEAD_SOURCES : INDUSTRIES;
+        const custom = DEMO_PICKLISTS.filter((p) => p.field === field);
+        await tx.picklistValue.createMany({
+          data: [...builtins.map((value) => ({ value, label: null })), ...custom.map((p) => ({ value: p.value, label: p.label }))].map((v, position) => ({ organizationId: o, field, position, isActive: true, ...v })),
+        });
+      }
+
       // 宏（标签与用户按键替换为 ID）/ macros (tag and user keys replaced by ids)
       for (const m of DEMO_MACROS) {
         await tx.macro.create({
@@ -1038,7 +1049,7 @@ export async function seedDemo(options: { reset?: boolean } = {}): Promise<void>
 
   console.log(
     `演示数据已${options.reset ? '重建' : '创建'}：${data.accounts.length + 1} 客户（含 1 条重复）、${data.accounts.reduce((n, a) => n + a.contacts.length, 0) + 2} 联系人、` +
-      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单（${Object.values(DEMO_TICKET_COMMENTS).flat().length} 条处理记录）、${DEMO_KB_ARTICLES.length} 篇知识库文章、${DEMO_VENDORS.length} 个供应商、${DEMO_PURCHASE_ORDERS.length} 张采购单、${DEMO_PRICE_BOOKS.length} 张价格表、${DEMO_WEB_FORMS.length} 个网页表单、${DEMO_ASSIGNMENT_RULES.length} 条分配规则、${DEMO_WORKFLOWS.length} 条工作流规则、${DEMO_TERRITORIES.length} 个区域、${DEMO_MACROS.length} 个宏、1 个流程蓝图（停用）、${DEMO_CADENCES.length} 个销售节奏、客户门户（已启用）、${DEMO_WAREHOUSES.length} 个仓库、${DEMO_MODULES.length} 个自定义模块（${DEMO_MODULES.reduce((n, m) => n + m.records.length, 0)} 条记录）、${DEMO_SCORING.rules.length + DEMO_ACCOUNT_SCORING.rules.length + DEMO_CONTACT_SCORING.rules.length + DEMO_DEAL_SCORING.rules.length} 条评分规则、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
+      `${data.leads.length + 2} 线索（含 2 条重复）、${data.deals.length} 商机、${data.activities.length} 跟进、${data.notes.length} 备注、${data.products.length} 产品、${data.items.length} 产品明细、${data.quotes.length} 报价单、${demoOrders(data).length} 销售订单、${demoInvoices(data).length} 发票、${DEMO_RATES.length} 条汇率、${DEMO_CAMPAIGNS.length} 个市场活动、${demoDealCompetitors(data).length} 个竞争对手、${demoContactRoles(data).length} 个联系人角色、${demoTickets(data).length} 个服务工单（${Object.values(DEMO_TICKET_COMMENTS).flat().length} 条处理记录）、${DEMO_KB_ARTICLES.length} 篇知识库文章、${DEMO_VENDORS.length} 个供应商、${DEMO_PURCHASE_ORDERS.length} 张采购单、${DEMO_PRICE_BOOKS.length} 张价格表、${DEMO_WEB_FORMS.length} 个网页表单、${DEMO_ASSIGNMENT_RULES.length} 条分配规则、${DEMO_WORKFLOWS.length} 条工作流规则、${DEMO_TERRITORIES.length} 个区域、${DEMO_MACROS.length} 个宏、1 个流程蓝图（停用）、${DEMO_CADENCES.length} 个销售节奏、客户门户（已启用）、${DEMO_WAREHOUSES.length} 个仓库、${DEMO_PICKLISTS.length} 个自定义下拉选项、${DEMO_MODULES.length} 个自定义模块（${DEMO_MODULES.reduce((n, m) => n + m.records.length, 0)} 条记录）、${DEMO_SCORING.rules.length + DEMO_ACCOUNT_SCORING.rules.length + DEMO_CONTACT_SCORING.rules.length + DEMO_DEAL_SCORING.rules.length} 条评分规则、${DEMO_TAGS.length} 标签、${files.length} 附件、${DEMO_TARGETS.length * DEMO_TARGET_MONTHS.length} 条销售目标、${demoNotifications(data).length} 条通知 / demo data ready`,
   );
 }
 

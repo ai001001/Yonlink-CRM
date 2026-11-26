@@ -10,6 +10,7 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
+import { assertOption, lockCustomOption, picklistCode } from './picklists';
 import { detachSharedActivities } from './activities';
 import { assertCampaign } from './campaign-links';
 import { LEAD_SOURCES } from './dictionaries';
@@ -35,7 +36,8 @@ const fields = {
   phone: optionalText(50),
   mobile: optionalText(50),
   email: optionalEmail,
-  source: z.enum(LEAD_SOURCES).nullish().transform((v) => v ?? null),
+  // 来源可为自定义选项，写入时按组织配置检查 / sources may be custom options, checked against the organization's list on write
+  source: picklistCode.nullish().transform((v) => v ?? null),
   // “已转化”只能经转化流程设置 / CONVERTED can only be set by the conversion flow
   status: z.enum(LeadStatus).exclude([LeadStatus.CONVERTED]).default(LeadStatus.NEW),
   description: optionalText(5000),
@@ -53,7 +55,7 @@ export const leadUpdateSchema = z.strictObject({ ...fields, status: z.enum(LeadS
 /** 列表查询 / List query */
 export const leadListSchema = listQuery.extend({
   status: z.enum(LeadStatus).optional(),
-  source: z.enum(LEAD_SOURCES).optional(),
+  source: picklistCode.optional(),
   ownerId: z.uuid().optional(),
   tagId: z.uuid().optional(),
   campaignId: z.uuid().optional(),
@@ -122,10 +124,15 @@ export async function createLead(ctx: AuthContext, input: z.infer<typeof leadCre
   assertOwnerAssignable(ctx, ownerId);
   await assertCampaign(ctx.organizationId, data.campaignId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
+  // 选项须为启用的选项 / options must be active
+  await assertOption(ctx.organizationId, 'LEAD_SOURCE', data.source, null, 'source');
+  await assertOption(ctx.organizationId, 'LEAD_STATUS', data.status, null, 'status');
   // 字段验证规则（按写入后的值）/ validation rules on the values as written
   await assertValidRecord(ctx.organizationId, 'LEAD', { ...data, ownerId: owner });
   const cf = await resolveCustom(ctx.organizationId, 'LEAD', custom, null);
   return prisma.$transaction(async (tx) => {
+    // 自定义选项：与删除选项互斥并在事务内复核 / custom options: exclusive with removal, re-checked in the transaction
+    await lockCustomOption(tx, ctx.organizationId, 'LEAD_SOURCE', data.source, 'source');
     const lead = await tx.lead.create({ data: { ...data, custom: cf.values as Prisma.InputJsonValue, organizationId: ctx.organizationId, ownerId: owner }, include });
     const customChanges = customDiff(cf.defs, null, cf.values);
     await audit(tx, { ...by(ctx), action: 'lead.create', entityType: 'lead', entityId: lead.id, changes: { after: snapshot('lead', lead), ...(Object.keys(customChanges).length ? { custom: customChanges } : {}) } });
@@ -154,6 +161,9 @@ export async function updateLead(ctx: AuthContext, id: string, input: z.infer<ty
   // 启用流程蓝图时状态只能通过转换修改 / with a blueprint the status moves only via transitions
   if (data.status !== undefined && data.status !== current.status && !opts.expectedStatus) await assertNotControlled(ctx.organizationId, 'LEAD');
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
+  // 改为的选项须启用（流程蓝图转换按管理员配置执行，不检查）/ new options must be active (blueprint transitions follow the admin's setup)
+  await assertOption(ctx.organizationId, 'LEAD_SOURCE', data.source, current.source, 'source');
+  if (!opts.expectedStatus) await assertOption(ctx.organizationId, 'LEAD_STATUS', data.status, current.status, 'status');
   await assertValidRecord(ctx.organizationId, 'LEAD', { ...current, ...data, ownerId: owner });
   const cf = custom === undefined ? null : await resolveCustom(ctx.organizationId, 'LEAD', custom, current.custom);
   return prisma.$transaction(async (tx) => {
@@ -162,6 +172,8 @@ export async function updateLead(ctx: AuthContext, id: string, input: z.infer<ty
       const [row] = await tx.$queryRaw<{ status: LeadStatus }[]>`SELECT status FROM leads WHERE id = ${current.id}::uuid FOR UPDATE`;
       if (row?.status !== opts.expectedStatus) throw new ApiError(409, 'CONFLICT', 'The status changed meanwhile', { status: ['state_changed'] });
     }
+    // 自定义选项：与删除选项互斥并在事务内复核 / custom options: exclusive with removal, re-checked in the transaction
+    if (data.source !== current.source) await lockCustomOption(tx, ctx.organizationId, 'LEAD_SOURCE', data.source, 'source');
     const lead = await tx.lead.update({ where: { id: current.id }, data: { ...data, ownerId: owner, ...(cf ? { custom: cf.values as Prisma.InputJsonValue } : {}) }, include });
     await notifyAssigned(tx, ctx, { entity: 'lead', id: lead.id }, lead.name, lead.ownerId, current.ownerId);
     const fields = diff('lead', current, lead);
@@ -230,6 +242,8 @@ export async function convertLead(ctx: AuthContext, id: string, input: z.infer<t
   assertCanUpdate(ctx, lead);
   requirePermission(ctx, 'record.create');
   if (lead.convertedAt) throw new ApiError(409, 'CONFLICT', 'Lead already converted', { lead: ['Already converted'] });
+  // 同时创建的商机：阶段须为启用的选项 / the deal created alongside must use an active stage
+  if (input.deal) await assertOption(org, 'DEAL_STAGE', input.deal.stage, null, 'deal.stage');
   const ownerId = lead.ownerId ?? ctx.userId;
 
   return prisma.$transaction(async (tx) => {

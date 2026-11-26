@@ -19,7 +19,7 @@ import { evaluate, type Condition, type FieldDef } from './workflows';
 /** 规则可用的客户字段 / account fields usable in rules */
 export const TERRITORY_FIELDS: Record<string, FieldDef> = {
   name: { type: 'text' },
-  industry: { type: 'enum', values: INDUSTRIES },
+  industry: { type: 'enum', values: INDUSTRIES, extensible: true },
   address: { type: 'text' },
   phone: { type: 'text' },
   website: { type: 'text' },

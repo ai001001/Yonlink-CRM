@@ -24,13 +24,11 @@ import { notFound } from '../errors';
 import { visible } from '../permissions';
 import { readableDeals, territoryReadScope } from './territory-rules';
 import { dateOnly } from './deals';
-import { STAGE_PROBABILITY } from './forecasts';
+import { stageProbabilities } from './picklists';
 import { resolvePeriod } from './reports';
 
 /** 进行中阶段（按销售流程顺序）/ open stages in pipeline order */
 export const OPEN_STAGES = ['QUALIFICATION', 'NEEDS_ANALYSIS', 'PROPOSAL', 'NEGOTIATION'] as const;
-/** 各阶段可能性（%）/ probability per stage (%) */
-export const PROBABILITY: Record<string, number> = { ...STAGE_PROBABILITY, CLOSED_WON: 100, CLOSED_LOST: 0 };
 const CLOSED = new Set(['CLOSED_WON', 'CLOSED_LOST']);
 
 /**
@@ -45,6 +43,8 @@ export async function getStageHistory(ctx: AuthContext, dealId: string, now = ne
     select: { id: true, stage: true, amount: true, currency: true, expectedCloseDate: true, changedAt: true, changedBy: { select: { id: true, name: true } } },
     orderBy: [{ changedAt: 'asc' }, { id: 'asc' }],
   });
+  // 各阶段可能性按组织配置 / probability per stage follows the organization's setup
+  const PROBABILITY = await stageProbabilities(ctx.organizationId);
   const items = rows.map((r, i) => {
     const next = rows[i + 1];
     const end = next ? next.changedAt : CLOSED.has(r.stage) ? null : now;

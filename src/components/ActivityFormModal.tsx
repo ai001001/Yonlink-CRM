@@ -7,14 +7,19 @@
 import { useEffect, useState } from 'react';
 import { App, DatePicker, Form, Input, Modal, Select, Switch } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
-import { t, tEnum } from '@/i18n';
+import { t } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
+import { pickOptions, pickValues } from '@/lib/picklists';
 import { toFormErrors, useOwners } from '@/lib/hooks';
 import type { Activity, ActivityRelation } from '@/lib/types';
 import { usePermissions } from './AuthProvider';
 
 export const ACTIVITY_TYPES = ['CALL', 'MEETING', 'VISIT', 'TASK'] as const;
-export const activityTypeOptions = ACTIVITY_TYPES.map((v) => ({ value: v, label: tEnum('activityType', v) }));
+/**
+ * 跟进类型选项（按组织配置；筛选含已停用的，表单只含启用的并保留当前值）。
+ * Activity type options (organization setup; filters include inactive ones, forms list active ones and keep the current value).
+ */
+export const activityTypeOptions = (mode: 'all' | 'active' = 'all', keep?: string | null) => pickOptions('activityType', ACTIVITY_TYPES, mode, keep);
 
 interface Props {
   /** 是否打开 / open state */
@@ -87,10 +92,10 @@ export function ActivityFormModal({ open, editing, relation, extra, defaultDueAt
       forceRender
       zIndex={1100}
     >
-      <Form form={form} name="activity" layout="vertical" initialValues={{ type: 'CALL', completed: false }}>
+      <Form form={form} name="activity" layout="vertical" initialValues={{ type: pickValues('activityType', ACTIVITY_TYPES, 'active')[0] ?? 'CALL', completed: false }}>
         <div className="form-row">
           <Form.Item name="type" label={t('activities.type')} rules={[{ required: true }]}>
-            <Select options={activityTypeOptions} />
+            <Select options={activityTypeOptions('active', editing?.type)} />
           </Form.Item>
           <Form.Item name="dueAt" label={t('activities.dueAt')}>
             <DatePicker showTime={{ format: 'HH:mm' }} format="YYYY-MM-DD HH:mm" style={{ width: '100%' }} />

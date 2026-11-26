@@ -90,6 +90,7 @@
 | 按区域扩大记录可见范围（#60d） | ✅ | ✅ | ✅ | [territory-visibility.md](territory-visibility.md) |
 | 自定义模块（#61） | ✅ | ✅ | ✅ | [custom-modules.md](custom-modules.md) |
 | 移动端（#62） | ✅ | ✅ | ✅ | [mobile.md](mobile.md) |
+| 标准字段可配置（#65） | ✅ | ✅ | ✅ | [picklists.md](picklists.md) |
 
 ## 整体回归（全部模块完成后）
 命令：`scripts/regression.sh final-mvp` → **PASS**（lint、typecheck、11 文件 181/181、静态导出、生产构建、E2E 6/6）。原始输出：[results/final-mvp-r3-regression.txt](results/final-mvp-r3-regression.txt)

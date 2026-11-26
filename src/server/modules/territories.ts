@@ -28,6 +28,7 @@ import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
 import { can, requirePermission } from '../permissions';
 import { optionalText, requiredText } from '../validation';
+import { assertKnownOptions } from './picklists';
 import { BASE_CURRENCY, ratesOn, sumInBase } from './exchange-rates';
 import { matchTerritory, ruleTerritories, TERRITORY_FIELDS } from './territory-rules';
 import { checkCondition, conditionSchema, type Condition } from './workflows';
@@ -216,6 +217,8 @@ const auditView = (t: ReturnType<typeof shape>) => ({
 export async function createTerritory(ctx: AuthContext, input: z.infer<typeof territoryCreateSchema>) {
   requirePermission(ctx, 'territory.manage');
   const org = ctx.organizationId;
+  // 引用的行业须为本组织的选项 / referenced industries must be the organization's options
+  await assertKnownOptions(org, (input.conditions ?? []).map((c, i) => ({ field: c.field, value: c.value ?? '', key: `conditions.${i}.value` })));
   const { memberIds, ...data } = input;
   try {
     return await prisma.$transaction(async (tx) => {
@@ -242,6 +245,8 @@ export async function createTerritory(ctx: AuthContext, input: z.infer<typeof te
 export async function updateTerritory(ctx: AuthContext, id: string, input: z.infer<typeof territoryUpdateSchema>) {
   requirePermission(ctx, 'territory.manage');
   const org = ctx.organizationId;
+  // 引用的行业须为本组织的选项 / referenced industries must be the organization's options
+  await assertKnownOptions(org, (input.conditions ?? []).map((c, i) => ({ field: c.field, value: c.value ?? '', key: `conditions.${i}.value` })));
   const { memberIds, ...data } = input;
   try {
     return await prisma.$transaction(async (tx) => {

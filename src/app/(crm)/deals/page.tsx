@@ -28,6 +28,7 @@ import { ExportButton } from '@/components/ExportButton';
 import { RecordSelect } from '@/components/RecordSelect';
 import { RelatedActivities } from '@/components/RelatedActivities';
 import { t, tEnum } from '@/i18n';
+import { pickOptions, pickValues } from '@/lib/picklists';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
 import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch, useSelection, type PageResult } from '@/lib/hooks';
@@ -47,7 +48,6 @@ const STAGE_COLOR: Record<string, string> = {
   CLOSED_WON: 'green',
   CLOSED_LOST: 'red',
 };
-const stageOptions = DEAL_STAGES.map((v) => ({ value: v, label: tEnum('dealStage', v) }));
 const currencyOptions = ['CNY', 'USD', 'EUR', 'HKD', 'JPY'].map((v) => ({ value: v, label: v }));
 
 interface FormValues extends Omit<Partial<Deal>, 'expectedCloseDate'> {
@@ -199,7 +199,7 @@ export default function DealsPage() {
             <CampaignSelect aria-label={t('campaigns.filter')} placeholder={t('campaigns.filter')} style={{ width: 180 }} value={campaignId} onChange={(v) => setCampaignId(v ?? undefined)} />
           )}
           {view === 'list' && (
-            <Select allowClear aria-label={t('deals.stage')} placeholder={t('deals.stage')} style={{ width: 140 }} options={stageOptions} value={stage} onChange={setStage} />
+            <Select allowClear aria-label={t('deals.stage')} placeholder={t('deals.stage')} style={{ width: 140 }} options={pickOptions('dealStage', DEAL_STAGES)} value={stage} onChange={setStage} />
           )}
           {view === 'list' && <ScoreFilters grade={grade} onGrade={setGrade} sort={sort} onSort={setSort} />}
         </Space>
@@ -220,7 +220,7 @@ export default function DealsPage() {
           cadenceEntity="DEAL"
           selected={sel.selected}
           names={Object.fromEntries(data.items.map((r) => [r.id, r.name]))}
-          valueChange={{ action: 'stage', field: 'stage', options: stageOptions }}
+          valueChange={{ action: 'stage', field: 'stage', options: pickOptions('dealStage', DEAL_STAGES, 'active') }}
           onDone={() => {
             sel.clear();
             refresh();
@@ -290,7 +290,7 @@ export default function DealsPage() {
         forceRender
         zIndex={1100}
       >
-        <Form form={form} name="deal" layout="vertical" initialValues={{ stage: 'QUALIFICATION', currency: 'CNY' }}>
+        <Form form={form} name="deal" layout="vertical" initialValues={{ stage: pickValues('dealStage', DEAL_STAGES.slice(0, 4), 'active')[0] ?? 'QUALIFICATION', currency: 'CNY' }}>
           <Form.Item
             name="name"
             label={t('deals.name')}
@@ -316,7 +316,7 @@ export default function DealsPage() {
           {amountLocked && <Typography.Paragraph type="secondary">{t('items.amountLocked')}</Typography.Paragraph>}
           <div className="form-row">
             <Form.Item name="stage" label={t('deals.stage')} extra={blueprint && editing !== 'new' ? t('blueprints.lockedHint', { name: blueprint.name }) : undefined}>
-              <Select options={stageOptions} disabled={!!blueprint && editing !== 'new'} />
+              <Select options={pickOptions('dealStage', DEAL_STAGES, 'active', editing && editing !== 'new' ? editing.stage : null)} disabled={!!blueprint && editing !== 'new'} />
             </Form.Item>
             <Form.Item name="expectedCloseDate" label={t('deals.expectedCloseDate')}>
               <DatePicker style={{ width: '100%' }} />

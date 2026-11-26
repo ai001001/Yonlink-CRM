@@ -27,9 +27,9 @@ import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
 import { requirePermission, visible } from '../permissions';
 import { containsText, listQuery, optionalEmail, optionalText, requiredText, resolveOwner, type Page } from '../validation';
+import { assertOption, lockCustomOption, picklistCode } from './picklists';
 import { assignByRules } from './assignment-rules';
 import { assertCampaign } from './campaign-links';
-import { LEAD_SOURCES } from './leads';
 import { runWorkflows } from './workflows';
 
 /** 可选字段（顺序即表单显示顺序）/ optional fields, in display order */
@@ -51,7 +51,7 @@ const settings = {
   isActive: z.boolean().default(true),
   fields: fieldList.default(['company', 'email', 'phone', 'description']),
   requiredFields: fieldList.default([]),
-  source: z.enum(LEAD_SOURCES).default('WEBSITE'),
+  source: picklistCode.default('WEBSITE'),
   ownerId: z.uuid().nullish().transform((v) => v ?? null),
   /** 按分配规则分配负责人（与固定负责人互斥）/ assign by the assignment rules (exclusive with ownerId) */
   assignByRule: z.boolean().default(false),
@@ -68,7 +68,7 @@ export const webFormUpdateSchema = z
     isActive: z.boolean(),
     fields: fieldList,
     requiredFields: fieldList,
-    source: z.enum(LEAD_SOURCES),
+    source: picklistCode,
     ownerId: z.uuid().nullable(),
     assignByRule: z.boolean(),
     campaignId: z.uuid().nullable(),
@@ -156,8 +156,12 @@ export async function createWebForm(ctx: AuthContext, input: z.infer<typeof webF
   checkFields(input.fields, input.requiredFields);
   checkAssign(input.ownerId, input.assignByRule);
   await checkRefs(ctx, input.ownerId, input.campaignId);
+  // 线索来源须为启用的选项 / the lead source must be an active option
+  await assertOption(ctx.organizationId, 'LEAD_SOURCE', input.source, null, 'source');
   try {
     return await prisma.$transaction(async (tx) => {
+      // 自定义选项：与删除选项互斥并在事务内复核 / custom options: exclusive with removal, re-checked in the transaction
+      await lockCustomOption(tx, ctx.organizationId, 'LEAD_SOURCE', input.source, 'source');
       const form = await tx.webForm.create({ data: { ...input, organizationId: ctx.organizationId, publicKey: newKey(), createdById: ctx.userId }, include });
       await audit(tx, { ...by(ctx), action: 'webform.create', entityType: 'webform', entityId: form.id, changes: { after: snapshot('webform', form) } });
       return form;
@@ -187,8 +191,10 @@ export async function updateWebForm(ctx: AuthContext, id: string, input: z.infer
   checkFields(input.fields ?? current.fields, input.requiredFields ?? current.requiredFields);
   checkAssign(input.ownerId === undefined ? current.ownerId : input.ownerId, input.assignByRule ?? current.assignByRule);
   await checkRefs(ctx, input.ownerId, input.campaignId);
+  await assertOption(ctx.organizationId, 'LEAD_SOURCE', input.source, current.source, 'source');
   try {
     return await prisma.$transaction(async (tx) => {
+      if (input.source !== undefined && input.source !== current.source) await lockCustomOption(tx, ctx.organizationId, 'LEAD_SOURCE', input.source, 'source');
       const form = await tx.webForm.update({ where: { id }, data: input, include });
       const fields = diff('webform', current, form);
       if (Object.keys(fields).length) await audit(tx, { ...by(ctx), action: 'webform.update', entityType: 'webform', entityId: id, changes: { fields } });

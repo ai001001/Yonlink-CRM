@@ -25,7 +25,9 @@ import { prisma } from '../db';
 import { ApiError } from '../errors';
 import { assertCanUpdate, requirePermission } from '../permissions';
 import { requiredText } from '../validation';
-import { getLead, LEAD_SOURCES } from './leads';
+import { assertKnownOptions } from './picklists';
+import { picklistCode } from './picklists';
+import { getLead } from './leads';
 import { notifyAssigned } from './notifications';
 
 /** 文本字段 / text fields */
@@ -39,7 +41,7 @@ export const MAX_RULE_USERS = 20;
 
 /** 分配条件 / an assignment condition */
 export const conditionSchema = z.union([
-  z.strictObject({ field: z.literal('source'), op: z.literal('EQUALS'), value: z.enum(LEAD_SOURCES) }),
+  z.strictObject({ field: z.literal('source'), op: z.literal('EQUALS'), value: picklistCode }),
   z.strictObject({ field: z.enum(['campaign', 'webForm']), op: z.literal('EQUALS'), value: z.uuid() }),
   z.strictObject({ field: z.enum(TEXT_FIELDS), op: z.enum(TEXT_OPS), value: requiredText(200) }),
 ]);
@@ -191,6 +193,7 @@ function ruleText(rule: { name: string; isActive: boolean; conditions: Condition
 export async function saveAssignmentRules(ctx: AuthContext, input: z.infer<typeof assignmentSaveSchema>) {
   requirePermission(ctx, 'assignment.manage');
   const org = ctx.organizationId;
+  await assertKnownOptions(org, input.rules.flatMap((r, i) => r.conditions.flatMap((c, j) => (c.field === 'source' ? [{ field: c.field, value: c.value, key: `rules.${i}.conditions.${j}.value` }] : []))));
   const userIds = [...new Set(input.rules.flatMap((r) => r.userIds))];
   const users = await prisma.user.findMany({ where: { organizationId: org, id: { in: userIds }, isActive: true }, select: { id: true, name: true } });
   const userName = new Map(users.map((u) => [u.id, u.name]));

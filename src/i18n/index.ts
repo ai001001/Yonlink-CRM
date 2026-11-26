@@ -85,7 +85,27 @@ export function t(key: MessageKey, vars?: Record<string, string | number>): stri
  */
 export function tEnumIn(locale: Locale, prefix: string, value: string | null | undefined): string {
   if (!value) return '';
+  return enumOverrides[prefix]?.[value] ?? DICTS[locale][`${prefix}.${value}`] ?? DICTS[DEFAULT_LOCALE][`${prefix}.${value}`] ?? value;
+}
+
+/**
+ * 内置的枚举名称（当前语言，不含组织自定义名称；用于设置页显示默认名称）。
+ * The built-in enum label in the current locale, ignoring organization labels (shown as the default in setup).
+ */
+export function tEnumBuiltin(prefix: string, value: string): string {
+  const locale = getLocale();
   return DICTS[locale][`${prefix}.${value}`] ?? DICTS[DEFAULT_LOCALE][`${prefix}.${value}`] ?? value;
+}
+
+/** 组织自定义的选项名称（只在浏览器中设置；服务端按请求传入名称，不使用这里）/ organization-defined option labels (browser only; the server passes labels per request instead) */
+let enumOverrides: Record<string, Record<string, string>> = {};
+
+/**
+ * 设置组织自定义的选项名称（覆盖所有语言的内置名称）；传空对象清除。
+ * Set organization-defined option labels (overriding the built-in labels in every locale); an empty object clears them.
+ */
+export function setEnumOverrides(overrides: Record<string, Record<string, string>>): void {
+  enumOverrides = overrides;
 }
 
 /**

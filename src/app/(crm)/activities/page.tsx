@@ -142,7 +142,7 @@ export default function ActivitiesPage() {
                 { value: 'all', label: t('common.all') },
               ]}
             />
-            <Select allowClear aria-label={t('activities.type')} placeholder={t('activities.type')} style={{ width: 140 }} options={activityTypeOptions} value={type} onChange={setType} />
+            <Select allowClear aria-label={t('activities.type')} placeholder={t('activities.type')} style={{ width: 140 }} options={activityTypeOptions()} value={type} onChange={setType} />
             <SavedViews entity="activities" filters={{ q, type, completed: status === 'all' ? undefined : status }} onApply={applyView} />
             <Input.Search allowClear placeholder={t('activities.searchPlaceholder')} style={{ width: 240 }} {...search.inputProps} />
           </Space>

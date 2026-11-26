@@ -24,6 +24,7 @@ import { AuditTrail } from '@/components/AuditTrail';
 import { ContactsPanel } from '@/components/ContactsPanel';
 import { RelatedActivities } from '@/components/RelatedActivities';
 import { t, tEnum } from '@/i18n';
+import { pickOptions } from '@/lib/picklists';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
 import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch, useSelection } from '@/lib/hooks';
@@ -32,7 +33,6 @@ import { CustomFieldItems, CustomFieldValues, useCustomFields } from '@/componen
 import { TerritoryFilter, TerritoryFormItem, TerritoryLabel, territoryFormValue, territorySubmitValue, useTerritoryOptions } from '@/components/Territories';
 
 const INDUSTRIES = ['MANUFACTURING', 'IT', 'FINANCE', 'RETAIL', 'EDUCATION', 'HEALTHCARE', 'CONSTRUCTION', 'LOGISTICS', 'GOVERNMENT', 'OTHER'];
-const industryOptions = INDUSTRIES.map((v) => ({ value: v, label: tEnum('industry', v) }));
 
 export default function AccountsPage() {
   const { message } = App.useApp();
@@ -146,7 +146,7 @@ export default function AccountsPage() {
         <SavedViews entity="accounts" filters={{ q, industry, tagId }} onApply={applyView} />
         <Input.Search allowClear placeholder={t('accounts.searchPlaceholder')} style={{ width: 320 }} {...search.inputProps} />
         <TagFilter value={tagId} onChange={setTagId} onManaged={() => void reload()} />
-        <Select allowClear aria-label={t('accounts.industry')} placeholder={t('accounts.industry')} style={{ width: 140 }} options={industryOptions} value={industry} onChange={setIndustry} />
+        <Select allowClear aria-label={t('accounts.industry')} placeholder={t('accounts.industry')} style={{ width: 140 }} options={pickOptions('industry', INDUSTRIES)} value={industry} onChange={setIndustry} />
         <TerritoryFilter items={territoryItems} value={territoryId} onChange={setTerritoryId} />
         <ScoreFilters grade={grade} onGrade={setGrade} sort={sort} onSort={setSort} />
       </Space>
@@ -229,7 +229,7 @@ export default function AccountsPage() {
               <Input maxLength={200} />
             </Form.Item>
             <Form.Item name="industry" label={t('accounts.industry')}>
-              <Select allowClear options={industryOptions} />
+              <Select allowClear options={pickOptions('industry', INDUSTRIES, 'active', editing && editing !== 'new' ? editing.industry : null)} />
             </Form.Item>
           </div>
           <div className="form-row">

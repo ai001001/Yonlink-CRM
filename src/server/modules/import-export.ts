@@ -16,10 +16,12 @@ import { allTranslations, DEFAULT_LOCALE, enumCodes, isLocale, LOCALES, tEnumIn,
 import { audit, by, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
 import { parseCsv, toCsv, uncsvCell } from '../csv';
+import type { PicklistField } from '@/generated/prisma/enums';
 import { prisma } from '../db';
 import { ApiError } from '../errors';
 import { can, requirePermission } from '../permissions';
 import { toXlsx, type Cell, type NumberFormat } from '../xlsx';
+import { getPicklist, lockCustomOption, withOptionLabels, type PicklistOption } from './picklists';
 import { accountCreateSchema, accountListSchema, accountWhere, contactCreateSchema, contactListSchema, contactWhere } from './accounts';
 import { activityListSchema, activityWhere } from './activities';
 import { fieldsOf, normalize } from './custom-fields';
@@ -157,7 +159,8 @@ async function exportList(ctx: AuthContext, entity: ExportEntity, input: Record<
   const { lang, ...params } = input;
   const locale = parseLang(lang);
   const t = (key: MessageKey) => translate(locale, key);
-  const tEnum = (prefix: string, value: string | null | undefined) => tEnumIn(locale, prefix, value);
+  // 组织自定义的下拉选项名称优先 / the organization's custom option labels take precedence
+  const tEnum = await withOptionLabels(ctx.organizationId, (prefix, value) => tEnumIn(locale, prefix, value));
   const TIME_HEADER = (label: string) => translate(locale, 'export.timeHeader', { label });
   const take = EXPORT_MAX + 1;
   const orderBy = [{ createdAt: 'desc' as const }, { id: 'asc' as const }];
@@ -361,7 +364,7 @@ async function exportList(ctx: AuthContext, entity: ExportEntity, input: Record<
 export type ImportEntity = 'leads' | 'accounts';
 
 /** 行错误原因（前端用 i18n 显示）/ Row error reasons (displayed via i18n) */
-export type ImportReason = 'required' | 'too_long' | 'invalid_email' | 'invalid_value' | 'owner_not_found' | 'owner_forbidden' | 'invalid';
+export type ImportReason = 'required' | 'too_long' | 'invalid_email' | 'invalid_value' | 'owner_not_found' | 'owner_forbidden' | 'inactive_option' | 'invalid';
 
 /** 导入请求 / Import request */
 export const importSchema = z.strictObject({
@@ -522,6 +525,16 @@ export async function importCsv(ctx: AuthContext, entity: ImportEntity, input: z
       : (await prisma.account.findMany({ where: { organizationId: ctx.organizationId }, select: { name: true } })).map((a) => a.name.trim().toLowerCase()),
   );
 
+  // 下拉字段按组织配置识别：先匹配自定义名称，再匹配内置的中英文名称或代码；停用的选项不能导入
+  // picklists follow the organization's setup: custom labels first, then built-in labels or codes; inactive options are refused
+  const optionFields: Record<string, PicklistField> = entity === 'leads' ? { source: 'LEAD_SOURCE', status: 'LEAD_STATUS' } : { industry: 'INDUSTRY' };
+  const options: Record<string, PicklistOption[]> = {};
+  for (const [f, pf] of Object.entries(optionFields)) options[f] = await getPicklist(ctx.organizationId, pf);
+  const optionValue = (field: string, prefix: string, v: string) => {
+    const hit = options[field]?.find((o) => o.label && o.label.toLowerCase() === v.trim().toLowerCase());
+    return hit ? hit.value : enumValue(prefix, v);
+  };
+
   const report: ImportReport = { dryRun: input.dryRun, total: table.length - 1, valid: 0, created: 0, assignedByRule: 0, duplicates: [], errors: [], unknownColumns };
   const toCreate: { data: Record<string, unknown>; contact?: Record<string, unknown> }[] = [];
 
@@ -533,7 +546,7 @@ export async function importCsv(ctx: AuthContext, entity: ImportEntity, input: z
       if (idx === undefined) continue;
       // 还原导出时为防公式注入加的单引号，使“导出→导入”数据一致 / undo export escaping so export → import round-trips
       const v = uncsvCell(cells[idx] ?? '');
-      raw[d.field] = d.enumPrefix ? (enumValue(d.enumPrefix, v) ?? '') : v;
+      raw[d.field] = d.enumPrefix ? (optionValue(d.field, d.enumPrefix, v) ?? '') : v;
     }
     const errors: ImportReport['errors'] = [];
 
@@ -553,6 +566,17 @@ export async function importCsv(ctx: AuthContext, entity: ImportEntity, input: z
     const requiredFields = new Set(defs.filter((d) => d.required).map((d) => d.field));
     const cleaned: Record<string, unknown> = Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, v === '' && !requiredFields.has(k) ? null : v]));
     if (entity === 'leads' && cleaned.status === null) delete cleaned.status;
+    // 下拉字段：不存在的选项报“值不正确”，停用的选项报“已停用”（不再交给格式校验重复报错）
+    // picklists: unknown options report invalid_value and inactive ones inactive_option (not reported again by the schema)
+    for (const field of Object.keys(optionFields)) {
+      const value = cleaned[field];
+      if (typeof value !== 'string') continue;
+      const option = options[field]!.find((o) => o.value === value);
+      if (!option || !option.isActive) {
+        errors.push({ row: rowNo, field, reason: option ? 'inactive_option' : 'invalid_value' });
+        delete cleaned[field];
+      }
+    }
     const parsed = (entity === 'leads' ? leadCreateSchema : accountCreateSchema).safeParse({ ...cleaned, ownerId: ownerId ?? undefined });
     if (!parsed.success) for (const issue of parsed.error.issues) errors.push({ row: rowNo, field: String(issue.path[0] ?? ''), reason: reasonOf(issue) });
 
@@ -601,6 +625,11 @@ export async function importCsv(ctx: AuthContext, entity: ImportEntity, input: z
   await prisma.$transaction(
     async (tx) => {
       const territoryOf = entity === 'accounts' ? await territoryMatcher(ctx.organizationId, tx) : null;
+      // 导入用到的自定义选项：与删除选项互斥并在事务内复核 / custom options used by the import: exclusive with removal, re-checked
+      const optionField = entity === 'leads' ? 'source' : 'industry';
+      for (const value of new Set(toCreate.map((item) => item.data[optionField]).filter((v): v is string => typeof v === 'string'))) {
+        await lockCustomOption(tx, ctx.organizationId, entity === 'leads' ? 'LEAD_SOURCE' : 'INDUSTRY', value, optionField);
+      }
       for (const item of toCreate) {
         const { ownerId, ...data } = item.data as { ownerId?: string | null } & Record<string, unknown>;
         // 文件中指定的负责人优先；否则按规则（选择时）；最后归导入人 / the file's owner first, then the rules (when chosen), then the importer

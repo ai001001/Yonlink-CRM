@@ -9,6 +9,7 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, can, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
+import { assertOption, lockCustomOption, picklistCode } from './picklists';
 import { customDiff, customInput, resolveCustom } from './custom-fields';
 import { INDUSTRIES } from './dictionaries';
 import { runWorkflows } from './workflows';
@@ -26,7 +27,8 @@ export { INDUSTRIES };
 
 const accountFields = {
   name: requiredText(200),
-  industry: z.enum(INDUSTRIES).nullish().transform((v) => v ?? null),
+  // 行业可为自定义选项，写入时按组织配置检查 / industries may be custom options, checked on write
+  industry: picklistCode.nullish().transform((v) => v ?? null),
   phone: optionalText(50),
   website: optionalText(254),
   address: optionalText(500),
@@ -44,7 +46,7 @@ export const accountCreateSchema = z.strictObject(accountFields);
 export const accountUpdateSchema = accountCreateSchema.partial();
 /** 客户列表查询 / Account list query */
 export const accountListSchema = listQuery.extend({
-  industry: z.enum(INDUSTRIES).optional(),
+  industry: picklistCode.optional(),
   ownerId: z.uuid().optional(),
   tagId: z.uuid().optional(),
   /** 区域（含下级）、NONE 或 MINE / territory (with descendants), NONE or MINE */
@@ -154,11 +156,14 @@ export async function getAccount(ctx: AuthContext, id: string) {
 export async function createAccount(ctx: AuthContext, input: z.infer<typeof accountCreateSchema>) {
   const { ownerId, custom, territoryId, ...data } = input;
   requirePermission(ctx, 'record.create');
+  await assertOption(ctx.organizationId, 'INDUSTRY', data.industry, null, 'industry');
   assertOwnerAssignable(ctx, ownerId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
   const cf = await resolveCustom(ctx.organizationId, 'ACCOUNT', custom, null);
   const territory = await resolveTerritory(ctx, territoryId, { ...data, ownerId: owner }, null);
   const created = await prisma.$transaction(async (tx) => {
+    // 自定义选项：与删除选项互斥并在事务内复核 / custom options: exclusive with removal, re-checked in the transaction
+    await lockCustomOption(tx, ctx.organizationId, 'INDUSTRY', data.industry, 'industry');
     const account = await tx.account.create({ data: { ...data, ...territory, custom: cf.values as Prisma.InputJsonValue, organizationId: ctx.organizationId, ownerId: owner } });
     const customChanges = customDiff(cf.defs, null, cf.values);
     await audit(tx, { ...by(ctx), action: 'account.create', entityType: 'account', entityId: account.id, changes: { after: snapshot('account', account), ...(Object.keys(customChanges).length ? { custom: customChanges } : {}) } });
@@ -178,10 +183,13 @@ export async function updateAccount(ctx: AuthContext, id: string, input: z.infer
   assertCanUpdate(ctx, current);
   const { ownerId, custom, territoryId, ...data } = input;
   assertOwnerAssignable(ctx, ownerId);
+  await assertOption(ctx.organizationId, 'INDUSTRY', data.industry, current.industry, 'industry');
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
   const cf = custom === undefined ? null : await resolveCustom(ctx.organizationId, 'ACCOUNT', custom, current.custom);
   const territory = await resolveTerritory(ctx, territoryId, { ...current, ...data, ownerId: owner }, current);
   await prisma.$transaction(async (tx) => {
+    // 自定义选项：与删除选项互斥并在事务内复核 / custom options: exclusive with removal, re-checked in the transaction
+    if (data.industry !== current.industry) await lockCustomOption(tx, ctx.organizationId, 'INDUSTRY', data.industry, 'industry');
     const updated = await tx.account.update({ where: { id: current.id }, data: { ...data, ...territory, ownerId: owner, ...(cf ? { custom: cf.values as Prisma.InputJsonValue } : {}) } });
     await notifyAssigned(tx, ctx, { entity: 'account', id }, updated.name, updated.ownerId, current.ownerId);
     const fields = diff('account', current, updated);

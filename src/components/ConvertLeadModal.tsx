@@ -7,7 +7,8 @@
 import { useEffect, useState } from 'react';
 import { Alert, App, Checkbox, DatePicker, Form, Input, InputNumber, Modal, Radio, Select, Typography } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { t, tEnum } from '@/i18n';
+import { t } from '@/i18n';
+import { pickOptions, pickValues } from '@/lib/picklists';
 import { api, ClientApiError } from '@/lib/api';
 import type { Ref } from '@/lib/types';
 import { RecordSelect } from './RecordSelect';
@@ -100,7 +101,7 @@ export function ConvertLeadModal({ lead, onClose, onConverted }: Props) {
       zIndex={1100}
     >
       {lead && <Alert type="info" showIcon style={{ marginBottom: 16 }} title={t('convert.intro', { name: lead.name })} />}
-      <Form form={form} name="convert" layout="vertical" initialValues={{ accountMode: 'new', createDeal: false, currency: 'CNY', stage: 'QUALIFICATION' }}>
+      <Form form={form} name="convert" layout="vertical" initialValues={{ accountMode: 'new', createDeal: false, currency: 'CNY', stage: pickValues('dealStage', STAGES.slice(0, 4), 'active')[0] ?? 'QUALIFICATION' }}>
         <Form.Item name="accountMode" label={t('convert.account')}>
           <Radio.Group
             options={[
@@ -147,7 +148,7 @@ export function ConvertLeadModal({ lead, onClose, onConverted }: Props) {
             </div>
             <div className="form-row">
               <Form.Item name="stage" label={t('deals.stage')}>
-                <Select options={STAGES.map((v) => ({ value: v, label: tEnum('dealStage', v) }))} />
+                <Select options={pickOptions('dealStage', STAGES, 'active')} />
               </Form.Item>
               <Form.Item name="expectedCloseDate" label={t('deals.expectedCloseDate')}>
                 <DatePicker style={{ width: '100%' }} />

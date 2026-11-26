@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, App, Button, Card, Form, Input, Modal, Select, Space, Switch, Typography } from 'antd';
 import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { t, tEnum } from '@/i18n';
+import { pickOptions } from '@/lib/picklists';
 import { api } from '@/lib/api';
 import { useOwners } from '@/lib/hooks';
 import { CampaignSelect } from './CampaignSelect';
@@ -228,7 +229,7 @@ export function AssignmentRulesModal({ open, onClose, canManage }: { open: boole
                                 </Form.Item>
                                 <Form.Item name={[cond.name, 'value']} style={{ width: 240 }} rules={[{ required: true, whitespace: true, message: t('common.required', { field: t('assignment.value') }) }]}>
                                   {field === 'source' ? (
-                                    <Select aria-label={`${t('assignment.value')} ${label}`} options={SOURCES.map((s) => ({ value: s, label: tEnum('leadSource', s) }))} />
+                                    <Select aria-label={`${t('assignment.value')} ${label}`} options={pickOptions('leadSource', SOURCES)} />
                                   ) : field === 'campaign' ? (
                                     <CampaignSelect aria-label={`${t('assignment.value')} ${label}`} />
                                   ) : field === 'webForm' ? (

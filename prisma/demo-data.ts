@@ -1724,3 +1724,14 @@ export const DEMO_MODULES: {
     ],
   },
 ];
+
+/**
+ * 演示下拉选项（演示数据）：各新增一个自定义线索来源与行业（名称带【演示】），其余为内置选项；不改名、不改概率，
+ * 使其他演示数据与报表口径不变。代码固定，便于种子数据引用。
+ * Demo pick lists (demo data): one custom lead source and one custom industry (labelled 【演示】) on top of the
+ * built-ins; no renames or probability changes so other demo data and reports stay the same. Codes are fixed for seeding.
+ */
+export const DEMO_PICKLISTS: { field: 'LEAD_SOURCE' | 'INDUSTRY'; value: string; label: string }[] = [
+  { field: 'LEAD_SOURCE', value: 'C_DEMO_VIDEO', label: '【演示】短视频平台' },
+  { field: 'INDUSTRY', value: 'C_DEMO_EV', label: '【演示】新能源汽车' },
+];

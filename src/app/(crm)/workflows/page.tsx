@@ -15,6 +15,7 @@ import { RecordSelect } from '@/components/RecordSelect';
 import { territoryOptions, useTerritoryOptions } from '@/components/Territories';
 import { useTags } from '@/components/Tags';
 import { t, tEnum, type MessageKey } from '@/i18n';
+import { pickOptions, pickValues } from '@/lib/picklists';
 import { api, ClientApiError } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
 import { useOwners, usePagedList } from '@/lib/hooks';
@@ -446,7 +447,7 @@ export default function WorkflowsPage() {
                       {def && !NO_VALUE.has(c!.op) && (
                         <Form.Item name={[row.name, 'value']} style={{ width: 240 }} rules={required('workflows.value')}>
                           {def.type === 'enum' ? (
-                            <Select aria-label={`${t('workflows.value')} ${label}`} options={def.values!.map((v) => ({ value: v, label: def.enumPrefix ? tEnum(def.enumPrefix, v) : v }))} />
+                            <Select aria-label={`${t('workflows.value')} ${label}`} options={(def.enumPrefix ? pickValues(def.enumPrefix, def.values!) : def.values!).map((v) => ({ value: v, label: def.enumPrefix ? tEnum(def.enumPrefix, v) : v }))} />
                           ) : def.type === 'number' ? (
                             <Input aria-label={`${t('workflows.value')} ${label}`} inputMode="decimal" maxLength={19} />
                           ) : c!.field === 'ownerId' ? (
@@ -506,7 +507,7 @@ export default function WorkflowsPage() {
                           <Form.Item name={[row.name, 'value']} style={{ width: 160 }} rules={required('workflows.value')}>
                             <Select
                               aria-label={`${t('workflows.newValue')} ${label}`}
-                              options={(UPDATE_FIELDS[formEntity][a.field ?? '']?.values ?? []).map((v) => ({ value: v, label: tEnum(UPDATE_FIELDS[formEntity][a.field ?? '']!.enumPrefix, v) }))}
+                              options={UPDATE_FIELDS[formEntity][a.field ?? ''] ? pickOptions(UPDATE_FIELDS[formEntity][a.field ?? '']!.enumPrefix, UPDATE_FIELDS[formEntity][a.field ?? '']!.values) : []}
                             />
                           </Form.Item>
                         </>

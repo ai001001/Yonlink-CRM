@@ -37,6 +37,7 @@ const PATHS: Record<string, string> = {
   验证规则: '/validation-rules',
   自定义字段: '/custom-fields',
   模块管理: '/custom-modules',
+  下拉选项: '/picklists',
   '【演示】合同': '/modules',
   '【演示】设备档案': '/modules',
   区域管理: '/territories',
@@ -64,7 +65,7 @@ const withModules = (items: string[]) => items.flatMap((x) => (x === '知识库'
 /** 各角色应看到的菜单（按顺序）/ entries each role should see, in order */
 // 系统管理员属于 E2E 测试组织（没有自定义模块）；其余为演示组织的账号 / the admin is in the E2E org (no custom modules); the rest are demo accounts
 const ROLES: { name: string; login: (page: Page) => Promise<void>; groups: string[]; items: string[] }[] = [
-  { name: '系统管理员', login: signIn, groups: GROUPS, items: [...WITH_PURCHASE, '用户管理', '工作流规则', '验证规则', '自定义字段', '模块管理', '区域管理', '流程蓝图', '销售节奏', '客户门户', '宏', '集成', '汇率', '查重合并', '回收站', '审计日志'] },
+  { name: '系统管理员', login: signIn, groups: GROUPS, items: [...WITH_PURCHASE, '用户管理', '工作流规则', '验证规则', '自定义字段', '模块管理', '下拉选项', '区域管理', '流程蓝图', '销售节奏', '客户门户', '宏', '集成', '汇率', '查重合并', '回收站', '审计日志'] },
   { name: '销售经理', login: (p) => demo(p, '郑经理'), groups: DEMO_GROUPS, items: [...withModules(WITH_PURCHASE), '工作流规则', '验证规则', '区域管理', '流程蓝图', '销售节奏', '客户门户', '宏', '汇率', '查重合并', '回收站'] },
   { name: '销售代表', login: (p) => demo(p, '王芳'), groups: DEMO_GROUPS, items: [...withModules(BUSINESS), '宏', '汇率', '查重合并'] },
   { name: '只读用户', login: (p) => demo(p, '周会计'), groups: DEMO_GROUPS, items: [...withModules(WITH_PURCHASE), '汇率', '查重合并'] },

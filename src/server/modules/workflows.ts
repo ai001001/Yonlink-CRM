@@ -41,6 +41,7 @@ import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
 import { requirePermission } from '../permissions';
 import { requiredText, type Page } from '../validation';
+import { assertKnownOptions, PICKLIST_CODE, type OptionRef } from './picklists';
 import { CURRENCIES, INDUSTRIES, LEAD_SOURCES } from './dictionaries';
 import { enqueueDelivery } from './webhooks';
 import { activeBlueprint, BLUEPRINT_FIELD } from './blueprint-rules';
@@ -54,13 +55,15 @@ export type FieldType = 'enum' | 'text' | 'number' | 'id' | 'date';
 export interface FieldDef {
   type: FieldType;
   values?: readonly string[];
+  /** 可扩展的下拉字段（线索来源、行业）：另接受管理员新增的选项代码 / extensible picklists (lead source, industry) also accept admin-added option codes */
+  extensible?: boolean;
 }
 
 /** 可作为条件的字段 / condition fields per entity */
 export const CONDITION_FIELDS: Record<WorkflowEntity, Record<string, FieldDef>> = {
   LEAD: {
     status: { type: 'enum', values: Object.values(LeadStatus) },
-    source: { type: 'enum', values: LEAD_SOURCES },
+    source: { type: 'enum', values: LEAD_SOURCES, extensible: true },
     name: { type: 'text' },
     company: { type: 'text' },
     title: { type: 'text' },
@@ -82,7 +85,7 @@ export const CONDITION_FIELDS: Record<WorkflowEntity, Record<string, FieldDef>> 
     campaignId: { type: 'id' },
   },
   ACCOUNT: {
-    industry: { type: 'enum', values: INDUSTRIES },
+    industry: { type: 'enum', values: INDUSTRIES, extensible: true },
     name: { type: 'text' },
     phone: { type: 'text' },
     website: { type: 'text' },
@@ -131,6 +134,31 @@ export const UPDATE_FIELDS: Record<WorkflowEntity, Record<string, readonly strin
   // 已解决、已关闭需要处理结果，不能由工作流设置 / resolved and closed need a resolution, so workflows cannot set them
   TICKET: { status: [TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.WAITING_CUSTOMER], priority: Object.values(TicketPriority) },
 };
+
+/** 可设为自定义选项的更新字段 / update fields that accept custom options */
+const EXTENSIBLE_UPDATES = new Set(['source', 'industry']);
+
+/**
+ * 动作可否把字段更新为该值：内置值，或线索来源与行业的自定义选项代码（是否存在另由 assertKnownOptions 检查）。
+ * Whether an action may set the field to the value: a built-in value, or a custom option code for lead source and
+ * industry (existence is checked separately by assertKnownOptions).
+ */
+export function allowedUpdateValue(entity: WorkflowEntity, field: string, value: string): boolean {
+  const values = UPDATE_FIELDS[entity][field];
+  if (!values) return false;
+  return values.includes(value) || (EXTENSIBLE_UPDATES.has(field) && PICKLIST_CODE.test(value));
+}
+
+/**
+ * 规则引用的线索来源与行业（条件与更新动作），用于检查是否为本组织的选项。
+ * Lead sources and industries a rule references (conditions and update actions), to check against the organization.
+ */
+export function optionRefs(conditions: { field: string; value?: string | null }[] | undefined, actions: { type: string; field?: string; value?: string }[] | undefined, prefix = 'conditions'): OptionRef[] {
+  return [
+    ...(conditions ?? []).flatMap((c, i) => (c.value ? [{ field: c.field, value: c.value, key: `${prefix}.${i}.value` }] : [])),
+    ...(actions ?? []).flatMap((a, i) => (a.type === 'UPDATE_FIELD' && a.field && a.value ? [{ field: a.field, value: a.value, key: `actions.${i}.value` }] : [])),
+  ];
+}
 
 /** 动作关联的记录（通知与审计）/ the record an action points at (notifications and audits) */
 const TARGET: Record<WorkflowEntity, (r: Record<string, unknown> & { id: string }) => Record<string, string>> = {
@@ -209,7 +237,7 @@ export function checkCondition(fields: Record<string, FieldDef>, c: Condition, r
   }
   const value = c.value ?? '';
   if (!value) return report('value', 'required');
-  if (def.type === 'enum' && !def.values!.includes(value)) report('value', 'invalid_value');
+  if (def.type === 'enum' && !def.values!.includes(value) && !(def.extensible && PICKLIST_CODE.test(value))) report('value', 'invalid_value');
   if (def.type === 'number' && !/^-?\d{1,16}(\.\d{1,2})?$/.test(value)) report('value', 'invalid_number');
   if (def.type === 'id' && !z.uuid().safeParse(value).success) report('value', 'invalid_id');
   if (def.type === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(value)) report('value', 'invalid_date');
@@ -237,9 +265,8 @@ function checkRule(v: { entity: WorkflowEntity; trigger: WorkflowTrigger; trigge
   v.conditions.forEach((c, i) => checkCondition(CONDITION_FIELDS[v.entity], c, (field, message) => issue(['conditions', i, field], message)));
   v.actions.forEach((a, i) => {
     if (a.type === 'UPDATE_FIELD') {
-      const values = UPDATE_FIELDS[v.entity][a.field];
-      if (!values) issue(['actions', i, 'field'], 'invalid_field');
-      else if (!values.includes(a.value)) issue(['actions', i, 'value'], 'invalid_value');
+      if (!UPDATE_FIELDS[v.entity][a.field]) issue(['actions', i, 'field'], 'invalid_field');
+      else if (!allowedUpdateValue(v.entity, a.field, a.value)) issue(['actions', i, 'value'], 'invalid_value');
     }
     if (a.type === 'ADD_TAG' && v.entity === WorkflowEntity.TICKET) issue(['actions', i, 'type'], 'not_allowed');
   });
@@ -357,6 +384,7 @@ export async function listWorkflows(ctx: AuthContext, query: z.infer<typeof work
 export async function createWorkflow(ctx: AuthContext, input: z.infer<typeof workflowCreateSchema>) {
   requirePermission(ctx, 'workflow.manage');
   await checkRefs(ctx, input.actions);
+  await assertKnownOptions(ctx.organizationId, optionRefs(input.conditions, input.actions));
   try {
     return await prisma.$transaction(async (tx) => {
       // 每组织上限：同一组织的新建串行判断 / per-organization cap, checked under a lock
@@ -383,6 +411,7 @@ export async function updateWorkflow(ctx: AuthContext, id: string, input: z.infe
   if (!current) throw notFound();
   if (input.entity && input.entity !== current.entity) throw new ApiError(400, 'VALIDATION_ERROR', 'Entity cannot change', { entity: ['immutable'] });
   if (input.actions) await checkRefs(ctx, input.actions);
+  await assertKnownOptions(ctx.organizationId, optionRefs(input.conditions, input.actions));
   const { entity: _entity, ...data } = input;
   void _entity;
   try {

@@ -7,6 +7,7 @@
 
 import { Button, Form, Input, Select, Space, Typography, type FormInstance } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { pickValues } from '@/lib/picklists';
 import { t, tEnum, type MessageKey } from '@/i18n';
 import { CampaignSelect } from './CampaignSelect';
 
@@ -115,7 +116,7 @@ export function ConditionRows({
                     rules={[...required('workflows.value'), ...(def.type === 'date' ? [{ pattern: /^\d{4}-\d{2}-\d{2}$/, message: t('validationRules.dateFormat') }] : [])]}
                   >
                     {def.type === 'enum' ? (
-                      <Select aria-label={`${t('workflows.value')} ${label}`} options={def.values!.map((v) => ({ value: v, label: def.enumPrefix ? tEnum(def.enumPrefix, v) : v }))} />
+                      <Select aria-label={`${t('workflows.value')} ${label}`} options={(def.enumPrefix ? pickValues(def.enumPrefix, def.values!) : def.values!).map((v) => ({ value: v, label: def.enumPrefix ? tEnum(def.enumPrefix, v) : v }))} />
                     ) : c!.field === 'ownerId' ? (
                       <Select aria-label={`${t('workflows.value')} ${label}`} options={users} />
                     ) : c!.field === 'campaignId' ? (

@@ -5,7 +5,7 @@
  */
 'use client';
 
-import { Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
+import { Fragment, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Avatar, Button, Drawer, Dropdown, Grid, Layout, Menu, Spin, Tag, Tooltip, Typography, type MenuProps } from 'antd';
@@ -48,11 +48,13 @@ import {
   ApartmentOutlined,
   ProfileOutlined,
   MenuOutlined,
+  UnorderedListOutlined,
   EllipsisOutlined,
 } from '@ant-design/icons';
 import { t, tEnum } from '@/i18n';
 import { api } from '@/lib/api';
 import { MODULES_CHANGED, type CustomModule } from '@/lib/modules';
+import { PICKLISTS_CHANGED, setPicklists, type PicklistField, type PicklistOption } from '@/lib/picklists';
 import { useAuth } from './AuthProvider';
 import { ContactInfo } from './ContactInfo';
 import { GlobalSearch } from './GlobalSearch';
@@ -143,6 +145,7 @@ const NAV_GROUPS: { key: string; label: string | null; icon?: React.ReactNode; i
       { key: '/validation-rules', icon: <SafetyOutlined />, label: t('nav.validationRules'), permission: 'validation.manage' },
       { key: '/custom-fields', icon: <FormOutlined />, label: t('nav.customFields'), permission: 'customfield.manage' },
       { key: '/custom-modules', icon: <ProfileOutlined />, label: t('nav.customModules'), permission: 'customfield.manage' },
+      { key: '/picklists', icon: <UnorderedListOutlined />, label: t('nav.picklists'), permission: 'customfield.manage' },
       { key: '/territories', icon: <GlobalOutlined />, label: t('nav.territories'), permission: 'territory.manage' },
       { key: '/blueprints', icon: <ApartmentOutlined />, label: t('nav.blueprints'), permission: 'blueprint.manage' },
       { key: '/cadences', icon: <ScheduleOutlined />, label: t('nav.cadences'), permission: 'cadence.manage' },
@@ -242,6 +245,21 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(MODULES_CHANGED, loadModules);
   }, [me, loadModules]);
 
+  // 标准下拉字段的组织配置：首次读取完成前不渲染页面（避免先显示内置名称）；配置修改后重新挂载页面使名称与选项生效
+  // picklist configuration: pages wait for the first load (no flash of built-in labels); after a change pages remount
+  const [picklistVersion, setPicklistVersion] = useState(0);
+  const loadPicklists = useCallback(() => {
+    api<{ fields: Record<PicklistField, PicklistOption[]> }>('/api/picklists')
+      .then((r) => setPicklists(r.fields))
+      .catch(() => setPicklists({}))
+      .finally(() => setPicklistVersion((v) => v + 1));
+  }, []);
+  useEffect(() => {
+    if (me) loadPicklists();
+    window.addEventListener(PICKLISTS_CHANGED, loadPicklists);
+    return () => window.removeEventListener(PICKLISTS_CHANGED, loadPicklists);
+  }, [me, loadPicklists]);
+
   // 手机（宽度 < 768px）：侧栏改为抽屉菜单，底部显示常用入口 / phones (< 768px): the sider becomes a drawer, with a bottom tab bar
   const mobile = screens.md === false;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -298,7 +316,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const collapseAll = () => changeOpen([groupOf(current)].filter((k): k is string => !!k));
   const expandAll = () => changeOpen(GROUP_KEYS);
 
-  if (loading || !me) {
+  if (loading || !me || picklistVersion === 0) {
     return (
       <div style={{ display: 'grid', placeItems: 'center', height: '100vh' }}>
         <Spin />
@@ -384,7 +402,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <ModuleParam onChange={setModuleParam} />
         </Suspense>
         {/* 底部留出常用入口栏的高度（含全面屏底部安全区）/ leave room for the tab bar (and the home-indicator safe area) */}
-        <Layout.Content style={{ padding: 12, paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}>{children}</Layout.Content>
+        <Layout.Content style={{ padding: 12, paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}>
+          <Fragment key={picklistVersion}>{children}</Fragment>
+        </Layout.Content>
         <nav className="mobile-tabbar" data-testid="mobile-tabbar" aria-label={t('nav.tabbar')}>
           {tabs.map((tab) => (
             <Link key={tab.key} href={tab.key} className={current === tab.key ? 'active' : undefined} aria-current={current === tab.key ? 'page' : undefined}>
@@ -480,7 +500,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Tag>
           {userMenu}
         </Layout.Header>
-        <Layout.Content style={{ padding: 24 }}>{children}</Layout.Content>
+        <Layout.Content style={{ padding: 24 }}>
+          <Fragment key={picklistVersion}>{children}</Fragment>
+        </Layout.Content>
       </Layout>
     </Layout>
   );

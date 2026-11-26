@@ -21,7 +21,8 @@ import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
 import { requirePermission } from '../permissions';
 import { requiredText } from '../validation';
-import { checkCondition, CONDITION_FIELDS, conditionSchema, evaluate, type Condition, type FieldDef } from './workflows';
+import { checkCondition, CONDITION_FIELDS, conditionSchema, evaluate, optionRefs, type Condition, type FieldDef } from './workflows';
+import { assertKnownOptions } from './picklists';
 import { RECORD_ENTITIES, type RecordEntity } from './dictionaries';
 
 /** 每组织最多规则数 / max rules per organization */
@@ -125,6 +126,8 @@ export async function listValidationRules(ctx: AuthContext, query: z.infer<typeo
  */
 export async function createValidationRule(ctx: AuthContext, input: z.infer<typeof validationCreateSchema>) {
   requirePermission(ctx, 'validation.manage');
+  // 引用的线索来源须为本组织的选项 / referenced lead sources must be the organization's options
+  await assertKnownOptions(ctx.organizationId, [...optionRefs(input.when, [], 'when'), ...optionRefs(input.require, [], 'require')]);
   try {
     return await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT 1 AS ok FROM pg_advisory_xact_lock(hashtextextended(${`validation:${ctx.organizationId}`}, 0))`;
@@ -148,6 +151,7 @@ export async function updateValidationRule(ctx: AuthContext, id: string, input: 
   requirePermission(ctx, 'validation.manage');
   const current = await prisma.validationRule.findFirst({ where: { id, organizationId: ctx.organizationId }, select });
   if (!current) throw notFound();
+  await assertKnownOptions(ctx.organizationId, [...optionRefs(input.when, [], 'when'), ...optionRefs(input.require, [], 'require')]);
   if (input.entity && input.entity !== current.entity) throw new ApiError(400, 'VALIDATION_ERROR', 'Entity cannot change', { entity: ['immutable'] });
   const { entity: _entity, ...data } = input;
   void _entity;

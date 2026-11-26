@@ -10,6 +10,7 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
 import { ApiError, notFound } from '../errors';
+import { assertOption, firstActiveOpenStage } from './picklists';
 import { detachSharedActivities } from './activities';
 import { assertCampaign } from './campaign-links';
 import { removeStaleRoles } from './deal-contact-roles';
@@ -49,7 +50,8 @@ const fields = {
   accountId: z.uuid(),
   amount: amountSchema.default('0'),
   currency: z.enum(CURRENCIES).default('CNY'),
-  stage: z.enum(DealStage).default(DealStage.QUALIFICATION),
+  /** 不填时为第一个启用的进行中阶段 / defaults to the first active open stage */
+  stage: z.enum(DealStage).optional(),
   expectedCloseDate: dateOnly
     .nullish()
     .transform((v) => (v ? new Date(`${v}T00:00:00Z`) : null)),
@@ -166,6 +168,9 @@ export async function createDeal(ctx: AuthContext, input: z.infer<typeof dealCre
   await assertCampaign(ctx.organizationId, data.campaignId);
   await assertAccount(ctx, data.accountId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
+  // 阶段须为启用的选项；不填时用第一个启用的进行中阶段 / the stage must be active; defaults to the first active open stage
+  if (data.stage) await assertOption(ctx.organizationId, 'DEAL_STAGE', data.stage, null, 'stage');
+  else data.stage = (await firstActiveOpenStage(ctx.organizationId)) as DealStage;
   // 字段验证规则（按写入后的值）/ validation rules on the values as written
   await assertValidRecord(ctx.organizationId, 'DEAL', { ...data, ownerId: owner });
   const cf = await resolveCustom(ctx.organizationId, 'DEAL', custom, null);
@@ -195,6 +200,8 @@ export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<ty
   const { ownerId, custom, ...data } = input;
   assertOwnerAssignable(ctx, ownerId);
   await assertCampaign(ctx.organizationId, data.campaignId);
+  // 改为的阶段须启用（流程蓝图转换按管理员配置执行，不检查）/ a new stage must be active (blueprint transitions follow the admin's setup)
+  if (!opts.expectedStage) await assertOption(ctx.organizationId, 'DEAL_STAGE', data.stage, current.stage, 'stage');
   // 有产品明细时金额由明细计算，币种需与明细一致 / with line items the amount is computed and the currency is locked
   if (data.amount !== undefined || (data.currency !== undefined && data.currency !== current.currency)) {
     const items = await prisma.dealLineItem.count({ where: { organizationId: ctx.organizationId, dealId: id } });

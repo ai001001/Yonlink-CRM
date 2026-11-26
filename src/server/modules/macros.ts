@@ -33,7 +33,8 @@ import { runBulk, type BulkResult } from './bulk';
 import { dealUpdateSchema, getDeal, updateDeal } from './deals';
 import { getLead, leadUpdateSchema, updateLead } from './leads';
 import { changeRecordTags } from './tags';
-import { UPDATE_FIELDS } from './workflows';
+import { allowedUpdateValue, optionRefs, UPDATE_FIELDS } from './workflows';
+import { assertKnownOptions } from './picklists';
 import { asRecordEntity, RECORD_ENTITIES, type RecordEntity } from './dictionaries';
 
 /** 每组织最多宏数 / max macros per organization */
@@ -61,9 +62,9 @@ function checkActions(entity: RecordEntity, actions: MacroAction[], ctx: z.Refin
   let owners = 0;
   actions.forEach((a, i) => {
     if (a.type === 'UPDATE_FIELD') {
-      const values = UPDATE_FIELDS[entity][a.field];
-      if (!values) issue(['actions', i, 'field'], 'invalid_field');
-      else if (!values.includes(a.value)) issue(['actions', i, 'value'], 'invalid_value');
+      if (!UPDATE_FIELDS[entity][a.field]) issue(['actions', i, 'field'], 'invalid_field');
+      // 线索来源可为自定义选项（是否存在在保存时检查）/ lead sources may be custom options (existence checked on save)
+      else if (!allowedUpdateValue(entity, a.field, a.value)) issue(['actions', i, 'value'], 'invalid_value');
       if (fields.has(a.field)) issue(['actions', i, 'field'], 'duplicate');
       fields.add(a.field);
     }
@@ -182,6 +183,7 @@ export async function createMacro(ctx: AuthContext, input: z.infer<typeof macroC
   requirePermission(ctx, 'record.update.own');
   if (input.scope === MacroScope.SHARED) requirePermission(ctx, 'macro.manage');
   await checkRefs(ctx, input.actions);
+  await assertKnownOptions(ctx.organizationId, optionRefs([], input.actions));
   const org = ctx.organizationId;
   try {
     return await prisma.$transaction(async (tx) => {
@@ -219,6 +221,7 @@ export async function updateMacro(ctx: AuthContext, id: string, input: z.infer<t
     throw new ApiError(400, 'VALIDATION_ERROR', 'Only the creator can make it personal', { scope: ['not_creator'] });
   }
   if (input.actions) await checkRefs(ctx, input.actions);
+  if (input.actions) await assertKnownOptions(ctx.organizationId, optionRefs([], input.actions));
   // 对象只用于校验动作，不写入 / the entity only validates actions and is not written
   const data = { name: input.name, description: input.description, scope: input.scope, actions: input.actions };
   try {
