@@ -255,7 +255,17 @@ export default function AccountsPage() {
       </Modal>
 
       <Drawer
-        title={detail ? `${t('accounts.detail')} · ${detail.name}` : t('accounts.detail')}
+        title={
+          // 整页入口放在标题中，避免遮挡关闭按钮 / the full-page link sits in the title so nothing covers the close button
+          <Space size={12}>
+            {detail ? `${t('accounts.detail')} · ${detail.name}` : t('accounts.detail')}
+            {detail && (
+              <Link href={`/accounts/view?id=${detail.id}`} data-testid="open-full-page" style={{ fontSize: 14, fontWeight: 400 }}>
+                {t('record.fullPage')}
+              </Link>
+            )}
+          </Space>
+        }
         size={760}
         open={detail !== null}
         onClose={() => setDetail(null)}

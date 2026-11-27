@@ -331,7 +331,17 @@ export default function LeadsPage() {
       </Modal>
 
       <Drawer
-        title={t('leads.detail')}
+        title={
+          // 整页入口放在标题中，避免右侧按钮过多时遮挡关闭按钮 / the full-page link sits in the title so the action buttons never cover the close button
+          <Space size={12}>
+            {t('leads.detail')}
+            {detail && (
+              <Link href={`/leads/view?id=${detail.id}`} data-testid="open-full-page" style={{ fontSize: 14, fontWeight: 400 }}>
+                {t('record.fullPage')}
+              </Link>
+            )}
+          </Space>
+        }
         size={640}
         open={detail !== null}
         onClose={() => setDetail(null)}

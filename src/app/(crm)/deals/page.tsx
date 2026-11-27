@@ -336,18 +336,31 @@ export default function DealsPage() {
       </Modal>
 
       <Drawer
-        title={detail ? `${t('deals.detail')} · ${detail.name}` : t('deals.detail')}
+        title={
+          // 整页入口放在标题中，避免遮挡关闭按钮 / the full-page link sits in the title so nothing covers the close button
+          <Space size={12}>
+            {detail ? `${t('deals.detail')} · ${detail.name}` : t('deals.detail')}
+            {detail && (
+              <Link href={`/deals/view?id=${detail.id}`} data-testid="open-full-page" style={{ fontSize: 14, fontWeight: 400 }}>
+                {t('record.fullPage')}
+              </Link>
+            )}
+          </Space>
+        }
         // 9 个页签需一行放下：页签折叠到“…”菜单后点击不稳定 / 9 tabs must fit on one line: tab clicks are unreliable once tabs collapse into the “…” menu
         size={900}
         open={detail !== null}
         onClose={() => setDetail(null)}
         extra={
-          detail &&
-          perm.canEdit(detail) && (
+          detail && (
             <Space>
-              <CadenceEnroller entity="DEAL" ids={[detail.id]} names={{ [detail.id]: detail.name }} onDone={() => void refreshDetail(detail.id)} />
-              <MacroRunner entity="DEAL" ids={[detail.id]} names={{ [detail.id]: detail.name }} onDone={() => void refreshDetail(detail.id)} />
-              <Button onClick={() => openForm(detail)}>{t('common.edit')}</Button>
+              {perm.canEdit(detail) && (
+                <>
+                  <CadenceEnroller entity="DEAL" ids={[detail.id]} names={{ [detail.id]: detail.name }} onDone={() => void refreshDetail(detail.id)} />
+                  <MacroRunner entity="DEAL" ids={[detail.id]} names={{ [detail.id]: detail.name }} onDone={() => void refreshDetail(detail.id)} />
+                  <Button onClick={() => openForm(detail)}>{t('common.edit')}</Button>
+                </>
+              )}
             </Space>
           )
         }

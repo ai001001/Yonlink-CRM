@@ -24,7 +24,11 @@ test('管理员：API 密钥与 Webhook / admin: API keys and webhooks', async (
   const secretBox = page.getByRole('dialog', { name: 'API 密钥已创建' });
   const key = (await secretBox.getByTestId('secret-value').innerText()).trim();
   expect(key).toMatch(/^ylk_[A-Za-z0-9_-]{43}$/);
-  await secretBox.getByRole('button', { name: '我已保存' }).click();
+  // 按结果确认弹窗已关闭（弹出动画期间的点击可能落空）/ confirm by outcome that the dialog closed (clicks during its animation can miss)
+  await expect(async () => {
+    if (await secretBox.isVisible()) await secretBox.getByRole('button', { name: '我已保存' }).click({ timeout: 2000 });
+    await expect(secretBox).toBeHidden({ timeout: 2000 });
+  }).toPass({ timeout: 15000 });
   const row = keys.locator('tr.ant-table-row').filter({ hasText: 'E2E 集成' });
   await expect(row).toContainText('有效');
   await expect(row).toContainText(key.slice(0, 12));
