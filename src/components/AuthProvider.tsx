@@ -13,6 +13,8 @@ export interface Me {
   name: string;
   email: string;
   role: 'ADMIN' | 'MANAGER' | 'SALES' | 'READONLY';
+  /** 自定义角色（有则显示其名称）/ custom role (its name is shown when set) */
+  customRole?: { id: string; name: string } | null;
   isDemo: boolean;
   /** 服务端返回的权限点（仅用于界面显示，服务端仍逐请求校验）/ permissions from the server (UI only) */
   permissions: string[];

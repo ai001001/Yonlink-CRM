@@ -48,6 +48,7 @@ import {
   ApartmentOutlined,
   ProfileOutlined,
   MenuOutlined,
+  SafetyCertificateOutlined,
   PieChartOutlined,
   UnorderedListOutlined,
   EllipsisOutlined,
@@ -142,6 +143,7 @@ const NAV_GROUPS: { key: string; label: string | null; icon?: React.ReactNode; i
     icon: <SettingOutlined />,
     items: [
       { key: '/users', icon: <TeamOutlined />, label: t('nav.users'), permission: 'user.manage' },
+      { key: '/roles', icon: <SafetyCertificateOutlined />, label: t('nav.roles'), permission: 'user.manage' },
       { key: '/workflows', icon: <ThunderboltOutlined />, label: t('nav.workflows'), permission: 'workflow.manage' },
       { key: '/validation-rules', icon: <SafetyOutlined />, label: t('nav.validationRules'), permission: 'validation.manage' },
       { key: '/custom-fields', icon: <FormOutlined />, label: t('nav.customFields'), permission: 'customfield.manage' },
@@ -389,7 +391,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div style={{ marginTop: 8, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
               {me.isDemo && <Tag color="orange">{t('demo.badge')}</Tag>}
               <Tag color="blue" data-testid="current-role">
-                {tEnum('role', me.role)}
+                {me.customRole?.name ?? tEnum('role', me.role)}
               </Tag>
               <LanguageSwitch />
             </div>
@@ -497,7 +499,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Typography.Text type="secondary">{me.organization.name}</Typography.Text>
           {me.isDemo && <Tag color="orange">{t('demo.badge')}</Tag>}
           <Tag color="blue" data-testid="current-role">
-            {tEnum('role', me.role)}
+            {me.customRole?.name ?? tEnum('role', me.role)}
           </Tag>
           {userMenu}
         </Layout.Header>

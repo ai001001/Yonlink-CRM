@@ -151,6 +151,7 @@ const fieldLabel = (field: string, entityType: string): string => {
   if (entityType === 'user' && field === 'name') return t('users.name');
   if (entityType === 'user' && field === 'email') return t('users.email');
   if (entityType === 'user' && field === 'role') return t('users.role');
+  if (entityType === 'user' && field === 'customRoleId') return t('roles.custom');
   if (entityType === 'user' && field === 'isActive') return t('users.status');
   if (entityType === 'account' && field === 'phone') return t('accounts.phone');
   if (entityType === 'product' && field === 'name') return t('products.name');
@@ -425,6 +426,15 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     }
     if (entry.action === 'customreport.export') lines.push(t('export.done', { n: Number(c.rows ?? 0) }));
   }
+  if (entry.entityType === 'role') {
+    // 自定义角色：名称与基础角色；修改列出增减的权限 / custom role: name and base role; updates list added and removed permissions
+    const snapR = (c.after ?? c.before) as { name?: string; baseRole?: string; permissions?: string[] } | undefined;
+    lines.push(t('roles.audit', { name: String(snapR?.name ?? c.name ?? '') }));
+    if (snapR?.baseRole) lines.push(`${t('roles.baseRole')}${t('common.colon')}${tEnum('role', snapR.baseRole)} · ${t('roles.permissionCount', { n: snapR.permissions?.length ?? 0 })}`);
+    const list = (v: unknown) => (Array.isArray(v) ? v.map((p) => t(`perm.${p}` as MessageKey)).join(t('common.listSep')) : '');
+    if (Array.isArray(c.added) && c.added.length) lines.push(t('roles.auditAdded', { list: list(c.added) }));
+    if (Array.isArray(c.removed) && c.removed.length) lines.push(t('roles.auditRemoved', { list: list(c.removed) }));
+  }
   if (entry.entityType === 'picklist' && typeof c.field === 'string') {
     // 下拉选项：字段与变化的选项（名称、启用、概率、新增、删除）/ pick list: the field and the changed options
     type O = { value: string; label: string | null; isActive: boolean; probability: number | null };
@@ -482,16 +492,16 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
       const show = (f: string, v: unknown) => (Array.isArray(v) ? t('workflows.auditCount', { n: v.length }) : f === 'trigger' ? tEnum('workflows.trigger', String(v)) : value(f, v, users));
       for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${LABEL[f] ? t(LABEL[f]) : f}${t('common.colon')}${show(f, b)} → ${show(f, a)}`);
     }
-  } else if (fields && !customReport && entry.entityType !== 'module' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'portal' && entry.entityType !== 'warehouse') {
+  } else if (fields && !customReport && entry.entityType !== 'role' && entry.entityType !== 'module' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'portal' && entry.entityType !== 'warehouse') {
     for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, b, users, entry.entityType)} → ${value(f, a, users, entry.entityType)}`);
-  } else if (snap && !customReport && entry.entityType !== 'customfield' && entry.entityType !== 'module' && entry.entityType !== 'picklist' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'warehouse') {
+  } else if (snap && !customReport && entry.entityType !== 'role' && entry.entityType !== 'customfield' && entry.entityType !== 'module' && entry.entityType !== 'picklist' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'warehouse') {
     for (const [f, v] of Object.entries(snap)) if (v !== null) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, v, users, entry.entityType)}`);
   } else if (typeof c.reason === 'string') {
     lines.push(tEnum('auditReason', c.reason));
   } else if (typeof c.name === 'string' && /\.(restore|purge|expire)$/.test(entry.action)) {
     // 回收站操作 / recycle-bin actions
     lines.push(`${t('recycle.record')}${t('common.colon')}${c.name}`);
-  } else if (Array.isArray(c.added) || Array.isArray(c.removed)) {
+  } else if (entry.entityType !== 'role' && (Array.isArray(c.added) || Array.isArray(c.removed))) {
     // 标签变化 / tag changes
     const added = (c.added as string[] | undefined) ?? [];
     const removed = (c.removed as string[] | undefined) ?? [];

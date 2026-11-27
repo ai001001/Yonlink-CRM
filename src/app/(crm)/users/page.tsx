@@ -18,13 +18,22 @@ interface UserRow {
   name: string;
   email: string;
   role: 'ADMIN' | 'MANAGER' | 'SALES' | 'READONLY';
+  customRoleId: string | null;
+  customRole: { id: string; name: string } | null;
   isActive: boolean;
   isDemo: boolean;
   createdAt: string;
 }
 
 const ROLES = ['ADMIN', 'MANAGER', 'SALES', 'READONLY'] as const;
-const roleOptions = ROLES.map((v) => ({ value: v, label: tEnum('role', v) }));
+/** 自定义角色（含基础角色）/ a custom role with its base role */
+interface RoleOption {
+  id: string;
+  name: string;
+  baseRole: 'MANAGER' | 'SALES' | 'READONLY';
+}
+/** 表单中角色的取值：系统角色，或 custom:自定义角色 ID / the form's role value: a system role, or custom:<id> */
+const CUSTOM = 'custom:';
 const ROLE_COLOR: Record<string, string> = { ADMIN: 'red', MANAGER: 'purple', SALES: 'blue', READONLY: 'default' };
 
 /**
@@ -50,10 +59,23 @@ export default function UsersPage() {
   const [resetting, setResetting] = useState<UserRow | null>(null);
   const [form] = Form.useForm();
   const [pwForm] = Form.useForm();
+  const [customRoles, setCustomRoles] = useState<RoleOption[]>([]);
+  // 角色选项：系统角色与自定义角色两组 / role options: system and custom groups
+  const roleOptions = [
+    { label: t('roles.systemGroup'), options: ROLES.map((v) => ({ value: v, label: tEnum('role', v) })) },
+    ...(customRoles.length ? [{ label: t('roles.customGroup'), options: customRoles.map((r) => ({ value: `${CUSTOM}${r.id}`, label: `${r.name}${t('common.parens', { text: t('roles.basedOn', { role: tEnum('role', r.baseRole) }) })}` })) }] : []),
+  ];
+  /** 表单取值转为请求字段 / the form value as request fields */
+  const roleFields = (value: string) => {
+    const custom = value.startsWith(CUSTOM) ? customRoles.find((r) => r.id === value.slice(CUSTOM.length)) : undefined;
+    return custom ? { role: custom.baseRole, customRoleId: custom.id } : { role: value, customRoleId: null };
+  };
 
   const load = useCallback(async () => {
     try {
-      setItems((await api<{ items: UserRow[] }>('/api/admin/users')).items);
+      const [list, roles] = await Promise.all([api<{ items: UserRow[] }>('/api/admin/users'), api<{ custom: RoleOption[] }>('/api/roles')]);
+      setItems(list.items);
+      setCustomRoles(roles.custom);
     } catch (err) {
       message.error((err as Error).message);
     } finally {
@@ -83,8 +105,8 @@ export default function UsersPage() {
   const save = async () => {
     const values = await form.validateFields();
     try {
-      if (editing === 'new') await api('/api/admin/users', { method: 'POST', body: values });
-      else await api(`/api/admin/users/${(editing as UserRow).id}`, { method: 'PATCH', body: { name: values.name, role: values.role } });
+      if (editing === 'new') await api('/api/admin/users', { method: 'POST', body: { ...values, ...roleFields(values.role) } });
+      else await api(`/api/admin/users/${(editing as UserRow).id}`, { method: 'PATCH', body: { name: values.name, ...roleFields(values.role) } });
       message.success(t('common.saved'));
       setEditing(null);
       void load();
@@ -131,7 +153,16 @@ export default function UsersPage() {
             ),
           },
           { title: t('users.email'), dataIndex: 'email' },
-          { title: t('users.role'), dataIndex: 'role', render: (v: string) => <Tag color={ROLE_COLOR[v]}>{tEnum('role', v)}</Tag> },
+          {
+            title: t('users.role'),
+            dataIndex: 'role',
+            render: (v: string, r: UserRow) => (
+              <Space size={4}>
+                <Tag color={ROLE_COLOR[v]}>{tEnum('role', v)}</Tag>
+                {r.customRole && <Tag color="geekblue">{r.customRole.name}</Tag>}
+              </Space>
+            ),
+          },
           {
             title: t('users.status'),
             dataIndex: 'isActive',
@@ -147,7 +178,7 @@ export default function UsersPage() {
                   size="small"
                   onClick={() => {
                     form.resetFields();
-                    form.setFieldsValue(r);
+                    form.setFieldsValue({ ...r, role: r.customRoleId ? `${CUSTOM}${r.customRoleId}` : r.role });
                     setEditing(r);
                   }}
                 >

@@ -16,7 +16,7 @@ export interface RequestMeta {
 }
 
 /** 审计对象类型 / Audited entity types */
-export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'order' | 'invoice' | 'report' | 'rate' | 'campaign' | 'ticket' | 'sla' | 'scoring' | 'assignment' | 'workflow' | 'approval' | 'apikey' | 'webhook' | 'validation' | 'customfield' | 'territory' | 'macro' | 'blueprint' | 'cadence' | 'portal' | 'warehouse' | 'module' | 'customrecord' | 'picklist' | 'article' | 'vendor' | 'purchase' | 'pricebook' | 'webform' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
+export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'order' | 'invoice' | 'report' | 'rate' | 'campaign' | 'ticket' | 'sla' | 'scoring' | 'assignment' | 'workflow' | 'approval' | 'apikey' | 'webhook' | 'validation' | 'customfield' | 'territory' | 'macro' | 'blueprint' | 'cadence' | 'portal' | 'warehouse' | 'module' | 'customrecord' | 'picklist' | 'role' | 'article' | 'vendor' | 'purchase' | 'pricebook' | 'webform' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
 
 /** 字段策略 / Field policy */
 type Policy = 'plain' | 'mask' | 'redact';
@@ -36,7 +36,7 @@ export const AUDIT_FIELDS: Record<Exclude<AuditEntity, 'auth'>, Record<string, P
     name: 'plain', accountId: 'plain', amount: 'plain', currency: 'plain', stage: 'plain',
     expectedCloseDate: 'plain', description: 'redact', ownerId: 'plain', campaignId: 'plain',
   },
-  user: { name: 'plain', email: 'mask', role: 'plain', isActive: 'plain' },
+  user: { name: 'plain', email: 'mask', role: 'plain', customRoleId: 'plain', isActive: 'plain' },
   note: { content: 'redact', leadId: 'plain', accountId: 'plain', dealId: 'plain' },
   product: { sku: 'plain', name: 'plain', category: 'plain', unit: 'plain', unitPrice: 'plain', currency: 'plain', isActive: 'plain', reorderLevel: 'plain', description: 'redact' },
   tag: { name: 'plain', color: 'plain' },
@@ -103,6 +103,8 @@ export const AUDIT_FIELDS: Record<Exclude<AuditEntity, 'auth'>, Record<string, P
   customrecord: { name: 'plain', ownerId: 'plain', accountId: 'plain' },
   // 下拉字段配置的审计直接记录前后选项 / picklist audits record the options before and after directly
   picklist: {},
+  // 自定义角色的审计直接记录名称、基础角色与权限 / custom role audits record name, base role and permissions directly
+  role: {},
   // 汇率审计直接记录币种、日期与汇率 / rate audits record currency, date and rate directly
   rate: {},
   invoice: {

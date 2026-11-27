@@ -54,8 +54,23 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
  * 是否拥有权限。
  * Whether the context has a permission.
  */
+/** 只属于系统管理员、不能授予自定义角色的权限（否则持有者可提升自己为管理员）/ admin-only permissions never granted to custom roles (holders could promote themselves) */
+export const ADMIN_ONLY: readonly Permission[] = ['user.manage', 'integration.manage'];
+/** 可授予自定义角色的权限（系统管理员拥有的全部，去掉只属于管理员的）/ permissions grantable to custom roles */
+export const GRANTABLE: readonly Permission[] = ROLE_PERMISSIONS.ADMIN.filter((p) => !ADMIN_ONLY.includes(p));
+
+/**
+ * 有效权限：有自定义角色时用其权限（只保留可授予的），否则用系统角色的权限；系统管理员始终是全部权限。
+ * Effective permissions: a custom role's (grantable ones only) when set, else the system role's; admins always get all.
+ */
+export function effectivePermissions(role: UserRole, custom?: readonly string[] | null): readonly Permission[] {
+  if (role === 'ADMIN' || !custom) return ROLE_PERMISSIONS[role];
+  return GRANTABLE.filter((p) => custom.includes(p));
+}
+
 export function can(ctx: AuthContext, permission: Permission): boolean {
-  return ROLE_PERMISSIONS[ctx.role].includes(permission);
+  // 认证时已从数据库读取有效权限；没有时（系统内部构造的身份）按系统角色 / effective permissions are loaded at authentication; internal contexts fall back to the role
+  return (ctx.permissions ?? ROLE_PERMISSIONS[ctx.role]).includes(permission);
 }
 
 /**

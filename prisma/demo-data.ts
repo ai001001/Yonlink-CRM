@@ -1781,3 +1781,11 @@ export const DEMO_REPORTS: { owner: 'manager' | 'sales1'; name: string; descript
     sort: { field: 'amount', dir: 'desc' },
   },
 ];
+
+/**
+ * 演示自定义角色（演示数据）：基于销售代表、另可导出数据；不分配给演示账号，演示账号的权限保持不变。
+ * Demo custom role (demo data): sales rep plus data export; not assigned to demo accounts, whose permissions stay as is.
+ */
+export const DEMO_ROLES: { name: string; description: string; baseRole: 'SALES' | 'MANAGER' | 'READONLY'; permissions: string[] }[] = [
+  { name: '【演示】可导出的销售代表', description: '销售代表的权限，另可导出线索、客户与商机（演示数据）', baseRole: 'SALES', permissions: ['record.create', 'record.update.own', 'data.export'] },
+];

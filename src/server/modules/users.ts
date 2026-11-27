@@ -21,16 +21,18 @@ export const userCreateSchema = z.strictObject({
   name: requiredText(100),
   email: z.email().max(254).transform((v) => v.toLowerCase()),
   role: z.enum(UserRole),
+  /** 自定义角色（基础角色须与 role 一致）/ custom role (its base role must match role) */
+  customRoleId: z.uuid().nullish(),
   password,
 });
 
 /** 更新用户（不含密码）/ Update user (no password) */
-export const userUpdateSchema = z.strictObject({ name: requiredText(100), role: z.enum(UserRole), isActive: z.boolean() }).partial();
+export const userUpdateSchema = z.strictObject({ name: requiredText(100), role: z.enum(UserRole), customRoleId: z.uuid().nullable(), isActive: z.boolean() }).partial();
 
 /** 重置密码 / Reset password */
 export const passwordResetSchema = z.strictObject({ password });
 
-const select = { id: true, name: true, email: true, role: true, isActive: true, isDemo: true, createdAt: true } satisfies Prisma.UserSelect;
+const select = { id: true, name: true, email: true, role: true, customRoleId: true, customRole: { select: { id: true, name: true } }, isActive: true, isDemo: true, createdAt: true } satisfies Prisma.UserSelect;
 
 /**
  * 本组织全部用户（含停用）。
@@ -47,15 +49,30 @@ export async function listUsers(ctx: AuthContext) {
  */
 export async function createUser(ctx: AuthContext, input: z.infer<typeof userCreateSchema>) {
   requirePermission(ctx, 'user.manage');
+  const customRoleId = await resolveCustomRole(ctx, input.role, input.customRoleId ?? null);
   const passwordHash = await hashPassword(input.password);
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
-      data: { organizationId: ctx.organizationId, name: input.name, email: input.email, role: input.role, passwordHash },
+      data: { organizationId: ctx.organizationId, name: input.name, email: input.email, role: input.role, customRoleId, passwordHash },
       select,
     });
     await audit(tx, { ...by(ctx), action: 'user.create', entityType: 'user', entityId: user.id, changes: { after: snapshot('user', user) } });
     return user;
   });
+}
+
+/**
+ * 解析要套用的自定义角色：须属于本组织、基础角色与用户角色一致；系统管理员不能套用。
+ * Resolve the custom role to apply: it must belong to the organization and match the user's role; never for admins.
+ * @param lenient 为 true 时不一致就清除（只改角色时）；否则报错 / when true a mismatch clears it (role-only changes); otherwise it is an error
+ */
+async function resolveCustomRole(ctx: AuthContext, role: UserRole, customRoleId: string | null, lenient = false): Promise<string | null> {
+  if (!customRoleId) return null;
+  const custom = await prisma.customRole.findFirst({ where: { id: customRoleId, organizationId: ctx.organizationId }, select: { baseRole: true } });
+  if (!custom) throw new ApiError(400, 'VALIDATION_ERROR', 'Unknown custom role', { customRoleId: ['not_found'] });
+  if (custom.baseRole === role) return customRoleId;
+  if (lenient) return null;
+  throw new ApiError(400, 'VALIDATION_ERROR', 'The custom role does not match the role', { customRoleId: ['role_mismatch'] });
 }
 
 /**
@@ -76,14 +93,20 @@ async function requireUser(ctx: AuthContext, id: string) {
 export async function updateUser(ctx: AuthContext, id: string, input: z.infer<typeof userUpdateSchema>) {
   requirePermission(ctx, 'user.manage');
   const current = await requireUser(ctx, id);
-  if (id === ctx.userId && ((input.role !== undefined && input.role !== current.role) || input.isActive === false)) {
+  const roleChange = (input.role !== undefined && input.role !== current.role) || (input.customRoleId !== undefined && input.customRoleId !== current.customRoleId);
+  if (id === ctx.userId && (roleChange || input.isActive === false)) {
     throw new ApiError(409, 'CONFLICT', 'Cannot change own role or deactivate yourself', { user: ['self'] });
   }
+  // 角色变化时：指定自定义角色须与角色一致；只改角色时保留基础角色相同的自定义角色，否则清除
+  // on a role change: a given custom role must match the role; changing the role alone keeps a matching custom role, else clears it
+  const role = input.role ?? current.role;
+  const wanted = input.customRoleId !== undefined ? input.customRoleId : current.customRoleId;
+  const data = { ...input, customRoleId: await resolveCustomRole(ctx, role, wanted, input.customRoleId === undefined) };
   return prisma.$transaction(async (tx) => {
     // 锁定本组织启用中的管理员行，防止两名管理员并发互相降级后无人管理
     // lock active admin rows so two admins demoting each other concurrently cannot leave none
     await tx.$queryRaw`SELECT id FROM users WHERE organization_id = ${ctx.organizationId}::uuid AND role = 'ADMIN' AND is_active FOR UPDATE`;
-    const user = await tx.user.update({ where: { id }, data: input, select });
+    const user = await tx.user.update({ where: { id }, data, select });
     const losesAdmin = current.role === 'ADMIN' && current.isActive && (user.role !== 'ADMIN' || !user.isActive);
     if (losesAdmin) {
       const admins = await tx.user.count({ where: { organizationId: ctx.organizationId, role: 'ADMIN', isActive: true } });
