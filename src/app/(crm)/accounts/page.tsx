@@ -30,9 +30,13 @@ import { fmtDateTime } from '@/lib/format';
 import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch, useSelection } from '@/lib/hooks';
 import type { Account } from '@/lib/types';
 import { CustomFieldItems, CustomFieldValues, useCustomFields } from '@/components/CustomFields';
+import { FieldGuard, visibleIn } from '@/components/FieldGuard';
 import { TerritoryFilter, TerritoryFormItem, TerritoryLabel, territoryFormValue, territorySubmitValue, useTerritoryOptions } from '@/components/Territories';
 
 const INDUSTRIES = ['MANUFACTURING', 'IT', 'FINANCE', 'RETAIL', 'EDUCATION', 'HEALTHCARE', 'CONSTRUCTION', 'LOGISTICS', 'GOVERNMENT', 'OTHER'];
+
+/** 字段权限：字段是否显示 / field permissions: whether a field is shown */
+const show = visibleIn('ACCOUNT');
 
 export default function AccountsPage() {
   const { message } = App.useApp();
@@ -178,7 +182,7 @@ export default function AccountsPage() {
             ),
           },
           { title: t('accounts.industry'), dataIndex: 'industry', render: (v: string | null) => tEnum('industry', v) },
-          { title: t('accounts.phone'), render: (_, r) => <PhoneLink value={r.phone} /> },
+          { title: t('accounts.phone'), render: (_, r) => <PhoneLink value={r.phone} />, hidden: !show('phone') },
           { title: t('territories.territory'), render: (_, r) => r.territory?.name ?? '—' },
           { title: t('accounts.contactCount'), render: (_, r) => r._count.contacts },
           { title: t('accounts.dealCount'), render: (_, r) => r._count.deals },
@@ -233,24 +237,32 @@ export default function AccountsPage() {
             </Form.Item>
           </div>
           <div className="form-row">
-            <Form.Item name="phone" label={t('accounts.phone')}>
-              <Input maxLength={50} />
-            </Form.Item>
-            <Form.Item name="website" label={t('accounts.website')}>
-              <Input maxLength={254} />
-            </Form.Item>
+            <FieldGuard entity="ACCOUNT" field="phone">
+              <Form.Item name="phone" label={t('accounts.phone')}>
+                <Input maxLength={50} />
+              </Form.Item>
+            </FieldGuard>
+            <FieldGuard entity="ACCOUNT" field="website">
+              <Form.Item name="website" label={t('accounts.website')}>
+                <Input maxLength={254} />
+              </Form.Item>
+            </FieldGuard>
             <Form.Item name="ownerId" label={t('common.owner')} extra={perm.canAssign ? undefined : t('common.ownerLocked')}>
               <Select allowClear={perm.canAssign} disabled={!perm.canAssign} options={owners.map((u) => ({ value: u.id, label: u.name }))} />
             </Form.Item>
           </div>
-          <Form.Item name="address" label={t('accounts.address')}>
-            <Input maxLength={500} />
-          </Form.Item>
+          <FieldGuard entity="ACCOUNT" field="address">
+            <Form.Item name="address" label={t('accounts.address')}>
+              <Input maxLength={500} />
+            </Form.Item>
+          </FieldGuard>
           {canTerritory && <TerritoryFormItem items={territoryItems} />}
           <CustomFieldItems defs={customDefs} />
-          <Form.Item name="description" label={t('common.description')}>
-            <Input.TextArea rows={3} maxLength={5000} />
-          </Form.Item>
+          <FieldGuard entity="ACCOUNT" field="description">
+            <Form.Item name="description" label={t('common.description')}>
+              <Input.TextArea rows={3} maxLength={5000} />
+            </Form.Item>
+          </FieldGuard>
         </Form>
       </Modal>
 
@@ -282,13 +294,17 @@ export default function AccountsPage() {
                     <Descriptions column={2} bordered size="small">
                       <Descriptions.Item label={t('accounts.name')}>{detail.name}</Descriptions.Item>
                       <Descriptions.Item label={t('accounts.industry')}>{tEnum('industry', detail.industry)}</Descriptions.Item>
-                      <Descriptions.Item label={t('accounts.phone')}>
-                        <PhoneLink value={detail.phone} />
-                      </Descriptions.Item>
-                      <Descriptions.Item label={t('accounts.website')}>{detail.website}</Descriptions.Item>
-                      <Descriptions.Item label={t('accounts.address')} span={2}>
-                        {detail.address}
-                      </Descriptions.Item>
+                      {show('phone') && (
+                        <Descriptions.Item label={t('accounts.phone')}>
+                          <PhoneLink value={detail.phone} />
+                        </Descriptions.Item>
+                      )}
+                      {show('website') && <Descriptions.Item label={t('accounts.website')}>{detail.website}</Descriptions.Item>}
+                      {show('address') && (
+                        <Descriptions.Item label={t('accounts.address')} span={2}>
+                          {detail.address}
+                        </Descriptions.Item>
+                      )}
                       <Descriptions.Item label={t('contacts.isPrimary')}>
                         {primary(detail) && (
                           <Tag icon={<StarFilled />} color="gold">
@@ -320,9 +336,11 @@ export default function AccountsPage() {
                       <Descriptions.Item label={t('tags.title')} span={2}>
                         <TagEditor key={`tags-${detail.id}`} path="/api/accounts" record={detail} onChanged={() => void reload()} />
                       </Descriptions.Item>
-                      <Descriptions.Item label={t('common.description')} span={2}>
-                        {detail.description}
-                      </Descriptions.Item>
+                      {show('description') && (
+                        <Descriptions.Item label={t('common.description')} span={2}>
+                          {detail.description}
+                        </Descriptions.Item>
+                      )}
                     </Descriptions>
                     <CustomFieldValues defs={customDefs} values={detail.custom} />
                   </>

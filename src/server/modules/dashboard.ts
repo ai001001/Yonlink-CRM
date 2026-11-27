@@ -11,6 +11,7 @@ import { activityInclude } from './activities';
 import { getLayout, type DashboardWidget } from './dashboard-layout';
 import { sweepEscalations } from './ticket-sla';
 import { OPEN_STATUSES } from './tickets';
+import { searchable } from '../field-security';
 
 const CLOSED = ['CLOSED_WON', 'CLOSED_LOST'] as const;
 
@@ -124,15 +125,16 @@ export async function globalSearch(ctx: AuthContext, q: string) {
   // 统计与搜索遵循可见范围（销售代表只统计自己负责的）/ figures and search follow visibility
   const scope = visible(ctx);
   const c = containsText(q);
+  // 隐藏的字段不参与搜索 / hidden fields are not searched
   const [leads, accounts, deals] = await prisma.$transaction([
     prisma.lead.findMany({
-      where: { ...scope, OR: [{ name: c }, { company: c }, { email: c }, { phone: c }, { mobile: c }] },
+      where: { ...scope, OR: [{ name: c }, { company: c }, ...searchable(ctx, 'LEAD', ['email', 'phone', 'mobile'] as const).map((f) => ({ [f]: c }))] },
       select: { id: true, name: true, company: true, status: true },
       orderBy: { createdAt: 'desc' },
       take: 10,
     }),
     prisma.account.findMany({
-      where: { ...scope, OR: [{ name: c }, { phone: c }, { contacts: { some: { name: c } } }] },
+      where: { ...scope, OR: [{ name: c }, ...searchable(ctx, 'ACCOUNT', ['phone'] as const).map((f) => ({ [f]: c })), { contacts: { some: { name: c } } }] },
       select: { id: true, name: true, industry: true },
       orderBy: { createdAt: 'desc' },
       take: 10,

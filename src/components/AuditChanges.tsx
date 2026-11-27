@@ -6,6 +6,7 @@
 
 import { Space, Typography } from 'antd';
 import { t, tEnum, type MessageKey } from '@/i18n';
+import { STANDARD_FIELD_LABEL, type FieldEntity } from '@/lib/field-access';
 import { reasonText } from './QuoteApproval';
 
 /** 审计日志条目 / Audit log entry */
@@ -435,6 +436,19 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
     if (Array.isArray(c.added) && c.added.length) lines.push(t('roles.auditAdded', { list: list(c.added) }));
     if (Array.isArray(c.removed) && c.removed.length) lines.push(t('roles.auditRemoved', { list: list(c.removed) }));
   }
+  if (entry.entityType === 'fieldpermission' && typeof c.entity === 'string') {
+    // 字段权限：对象、角色与各字段访问级别的变化 / field permissions: module, role and each field's access change
+    const entity = c.entity as FieldEntity;
+    const who = typeof c.role === 'string' ? tEnum('role', c.role) : String(c.customRole ?? '');
+    lines.push(t('fieldPerms.audit', { entity: t(`customFields.entity.${entity}` as MessageKey), role: who }));
+    const access = (v: unknown) => t(`fieldPerms.${String(v)}` as MessageKey);
+    for (const [f, v] of Object.entries((c.fields ?? {}) as Record<string, [unknown, unknown]>)) {
+      // 自定义字段按记录时的名称显示 / custom fields show their label at the time of the change
+      const labels = (c.labels ?? {}) as Record<string, string>;
+      const name = STANDARD_FIELD_LABEL[entity]?.[f] ? t(STANDARD_FIELD_LABEL[entity][f]) : (labels[f] ?? t('fieldPerms.deletedField'));
+      lines.push(t('fieldPerms.auditChange', { field: name, from: access(v[0]), to: access(v[1]) }));
+    }
+  }
   if (entry.entityType === 'picklist' && typeof c.field === 'string') {
     // 下拉选项：字段与变化的选项（名称、启用、概率、新增、删除）/ pick list: the field and the changed options
     type O = { value: string; label: string | null; isActive: boolean; probability: number | null };
@@ -492,7 +506,7 @@ export function AuditChanges({ entry, users }: { entry: AuditLogEntry; users: Ma
       const show = (f: string, v: unknown) => (Array.isArray(v) ? t('workflows.auditCount', { n: v.length }) : f === 'trigger' ? tEnum('workflows.trigger', String(v)) : value(f, v, users));
       for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${LABEL[f] ? t(LABEL[f]) : f}${t('common.colon')}${show(f, b)} → ${show(f, a)}`);
     }
-  } else if (fields && !customReport && entry.entityType !== 'role' && entry.entityType !== 'module' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'portal' && entry.entityType !== 'warehouse') {
+  } else if (fields && !customReport && entry.entityType !== 'role' && entry.entityType !== 'fieldpermission' && entry.entityType !== 'module' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'portal' && entry.entityType !== 'warehouse') {
     for (const [f, [b, a]] of Object.entries(fields)) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, b, users, entry.entityType)} → ${value(f, a, users, entry.entityType)}`);
   } else if (snap && !customReport && entry.entityType !== 'role' && entry.entityType !== 'customfield' && entry.entityType !== 'module' && entry.entityType !== 'picklist' && entry.entityType !== 'territory' && entry.entityType !== 'macro' && entry.entityType !== 'blueprint' && entry.entityType !== 'cadence' && entry.entityType !== 'warehouse') {
     for (const [f, v] of Object.entries(snap)) if (v !== null) lines.push(`${fieldLabel(f, entry.entityType)}${t('common.colon')}${value(f, v, users, entry.entityType)}`);

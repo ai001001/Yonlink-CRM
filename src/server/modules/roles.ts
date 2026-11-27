@@ -135,6 +135,10 @@ export async function deleteRole(ctx: AuthContext, id: string): Promise<void> {
   if (current._count.users) throw new ApiError(409, 'CONFLICT', 'The role is assigned to users', { role: ['in_use'] });
   try {
     await prisma.$transaction(async (tx) => {
+      // 先锁角色行，再在事务内复查使用人数（与分配角色的共享锁排队，避免死锁）
+      // lock the role row first, then re-check its users inside the transaction (queues with assignments' share locks; no deadlock)
+      await tx.$queryRaw`SELECT id FROM custom_roles WHERE id = ${id}::uuid FOR UPDATE`;
+      if (await tx.user.count({ where: { organizationId: ctx.organizationId, customRoleId: id } })) throw new ApiError(409, 'CONFLICT', 'The role is assigned to users', { role: ['in_use'] });
       await tx.customRole.delete({ where: { id } });
       await audit(tx, { ...by(ctx), action: 'role.delete', entityType: 'role', entityId: id, changes: { before: snap(current) } });
     });

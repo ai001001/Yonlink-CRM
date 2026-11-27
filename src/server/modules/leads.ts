@@ -22,6 +22,7 @@ import { tagFilter, tagsInclude } from './tags';
 import { assertValidRecord } from './validation-rules';
 import { customDiff, customInput, resolveCustom } from './custom-fields';
 import { territoryMatcher } from './territory-rules';
+import { assertFieldWrites, searchable } from '../field-security';
 import { assertNotControlled } from './blueprint-rules';
 import { runWorkflows } from './workflows';
 import { containsText, listQuery, optionalEmail, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
@@ -80,7 +81,8 @@ export function leadWhere(ctx: AuthContext, query: Omit<z.infer<typeof leadListS
   const where: Prisma.LeadWhereInput = { AND: [visible(ctx), { status: query.status, source: query.source, ownerId: query.ownerId, campaignId: query.campaignId, score }, tagFilter(query.tagId)] };
   if (query.q) {
     const contains = containsText(query.q);
-    where.OR = [{ name: contains }, { company: contains }, { email: contains }, { phone: contains }, { mobile: contains }];
+    // 隐藏的字段不参与搜索 / hidden fields are not searched
+    where.OR = [{ name: contains }, { company: contains }, ...searchable(ctx, 'LEAD', ['email', 'phone', 'mobile'] as const).map((f) => ({ [f]: contains }))];
   }
   return where;
 }
@@ -121,6 +123,7 @@ export async function getLead(ctx: AuthContext, id: string) {
 export async function createLead(ctx: AuthContext, input: z.infer<typeof leadCreateSchema>) {
   const { ownerId, custom, ...data } = input;
   requirePermission(ctx, 'record.create');
+  assertFieldWrites(ctx, 'LEAD', data, null);
   assertOwnerAssignable(ctx, ownerId);
   await assertCampaign(ctx.organizationId, data.campaignId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
@@ -129,7 +132,7 @@ export async function createLead(ctx: AuthContext, input: z.infer<typeof leadCre
   await assertOption(ctx.organizationId, 'LEAD_STATUS', data.status, null, 'status');
   // 字段验证规则（按写入后的值）/ validation rules on the values as written
   await assertValidRecord(ctx.organizationId, 'LEAD', { ...data, ownerId: owner });
-  const cf = await resolveCustom(ctx.organizationId, 'LEAD', custom, null);
+  const cf = await resolveCustom(ctx.organizationId, 'LEAD', custom, null, ctx);
   return prisma.$transaction(async (tx) => {
     // 自定义选项：与删除选项互斥并在事务内复核 / custom options: exclusive with removal, re-checked in the transaction
     await lockCustomOption(tx, ctx.organizationId, 'LEAD_SOURCE', data.source, 'source');
@@ -153,6 +156,7 @@ export async function updateLead(ctx: AuthContext, id: string, input: z.infer<ty
   const current = await getLead(ctx, id);
   assertCanUpdate(ctx, current);
   const { ownerId, custom, ...data } = input;
+  assertFieldWrites(ctx, 'LEAD', data, current);
   assertOwnerAssignable(ctx, ownerId);
   await assertCampaign(ctx.organizationId, data.campaignId);
   if (current.convertedAt && data.status !== undefined) {
@@ -165,7 +169,7 @@ export async function updateLead(ctx: AuthContext, id: string, input: z.infer<ty
   await assertOption(ctx.organizationId, 'LEAD_SOURCE', data.source, current.source, 'source');
   if (!opts.expectedStatus) await assertOption(ctx.organizationId, 'LEAD_STATUS', data.status, current.status, 'status');
   await assertValidRecord(ctx.organizationId, 'LEAD', { ...current, ...data, ownerId: owner });
-  const cf = custom === undefined ? null : await resolveCustom(ctx.organizationId, 'LEAD', custom, current.custom);
+  const cf = custom === undefined ? null : await resolveCustom(ctx.organizationId, 'LEAD', custom, current.custom, ctx);
   return prisma.$transaction(async (tx) => {
     if (opts.expectedStatus) {
       // 转换：锁定记录并确认状态未被并发修改 / transition: lock the row and make sure the status has not changed meanwhile

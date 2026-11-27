@@ -49,6 +49,7 @@ import {
   ProfileOutlined,
   MenuOutlined,
   SafetyCertificateOutlined,
+  EyeInvisibleOutlined,
   PieChartOutlined,
   UnorderedListOutlined,
   EllipsisOutlined,
@@ -144,6 +145,7 @@ const NAV_GROUPS: { key: string; label: string | null; icon?: React.ReactNode; i
     items: [
       { key: '/users', icon: <TeamOutlined />, label: t('nav.users'), permission: 'user.manage' },
       { key: '/roles', icon: <SafetyCertificateOutlined />, label: t('nav.roles'), permission: 'user.manage' },
+      { key: '/field-permissions', icon: <EyeInvisibleOutlined />, label: t('nav.fieldPermissions'), permission: 'user.manage' },
       { key: '/workflows', icon: <ThunderboltOutlined />, label: t('nav.workflows'), permission: 'workflow.manage' },
       { key: '/validation-rules', icon: <SafetyOutlined />, label: t('nav.validationRules'), permission: 'validation.manage' },
       { key: '/custom-fields', icon: <FormOutlined />, label: t('nav.customFields'), permission: 'customfield.manage' },

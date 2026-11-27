@@ -1,6 +1,8 @@
 /**
  * GET /api/auth/me — 当前用户、组织、角色与权限（前端据此显示/隐藏操作，服务端仍逐请求校验）。
+ * 字段权限（隐藏、只读的字段）一并返回。
  * Current user, organization, role (and custom role) and effective permissions (the UI uses them; the server still checks every request).
+ * Field-level rules (hidden and read-only fields) are included.
  */
 import { prisma } from '@/server/db';
 import { authedRoute, preflight } from '@/server/http';
@@ -13,6 +15,6 @@ export const GET = authedRoute(async (_req, ctx) => {
   });
   const { customRole, ...rest } = user;
   // 自定义角色的权限优先（只保留可授予的）/ a custom role's permissions take precedence (grantable ones only)
-  return Response.json({ ...rest, customRole: customRole ? { id: customRole.id, name: customRole.name } : null, permissions: effectivePermissions(user.role, customRole?.permissions) });
+  return Response.json({ ...rest, customRole: customRole ? { id: customRole.id, name: customRole.name } : null, permissions: effectivePermissions(user.role, customRole?.permissions), fieldAccess: ctx.fieldRules ?? {} });
 });
 export const OPTIONS = preflight;

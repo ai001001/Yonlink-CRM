@@ -11,6 +11,7 @@ import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, can, requirePe
 import { ApiError, notFound } from '../errors';
 import { assertOption, lockCustomOption, picklistCode } from './picklists';
 import { customDiff, customInput, resolveCustom } from './custom-fields';
+import { assertFieldWrites, searchable } from '../field-security';
 import { INDUSTRIES } from './dictionaries';
 import { runWorkflows } from './workflows';
 import { readableAccounts, readableDeals, resolveTerritory, territoryIdsFor, territoryReadScope } from './territory-rules';
@@ -110,7 +111,8 @@ export function accountWhere(
   const where: Prisma.AccountWhereInput = { AND: [readableAccounts(ctx, scope), { industry: query.industry, ownerId: query.ownerId, score, ...territory }, tagFilter(query.tagId)] };
   if (query.q) {
     const c = containsText(query.q);
-    where.OR = [{ name: c }, { phone: c }, { website: c }, { address: c }, { contacts: { some: { name: c } } }];
+    // 隐藏的字段不参与搜索 / hidden fields are not searched
+    where.OR = [{ name: c }, ...searchable(ctx, 'ACCOUNT', ['phone', 'website', 'address'] as const).map((f) => ({ [f]: c })), { contacts: { some: { name: c } } }];
   }
   return where;
 }
@@ -156,10 +158,11 @@ export async function getAccount(ctx: AuthContext, id: string) {
 export async function createAccount(ctx: AuthContext, input: z.infer<typeof accountCreateSchema>) {
   const { ownerId, custom, territoryId, ...data } = input;
   requirePermission(ctx, 'record.create');
+  assertFieldWrites(ctx, 'ACCOUNT', data, null);
   await assertOption(ctx.organizationId, 'INDUSTRY', data.industry, null, 'industry');
   assertOwnerAssignable(ctx, ownerId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, ctx.userId);
-  const cf = await resolveCustom(ctx.organizationId, 'ACCOUNT', custom, null);
+  const cf = await resolveCustom(ctx.organizationId, 'ACCOUNT', custom, null, ctx);
   const territory = await resolveTerritory(ctx, territoryId, { ...data, ownerId: owner }, null);
   const created = await prisma.$transaction(async (tx) => {
     // 自定义选项：与删除选项互斥并在事务内复核 / custom options: exclusive with removal, re-checked in the transaction
@@ -182,10 +185,11 @@ export async function updateAccount(ctx: AuthContext, id: string, input: z.infer
   const current = await getAccount(ctx, id);
   assertCanUpdate(ctx, current);
   const { ownerId, custom, territoryId, ...data } = input;
+  assertFieldWrites(ctx, 'ACCOUNT', data, current);
   assertOwnerAssignable(ctx, ownerId);
   await assertOption(ctx.organizationId, 'INDUSTRY', data.industry, current.industry, 'industry');
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
-  const cf = custom === undefined ? null : await resolveCustom(ctx.organizationId, 'ACCOUNT', custom, current.custom);
+  const cf = custom === undefined ? null : await resolveCustom(ctx.organizationId, 'ACCOUNT', custom, current.custom, ctx);
   const territory = await resolveTerritory(ctx, territoryId, { ...current, ...data, ownerId: owner }, current);
   await prisma.$transaction(async (tx) => {
     // 自定义选项：与删除选项互斥并在事务内复核 / custom options: exclusive with removal, re-checked in the transaction
@@ -281,7 +285,8 @@ export function contactWhere(
   };
   if (query.q) {
     const c = containsText(query.q);
-    where.OR = [{ name: c }, { title: c }, { phone: c }, { email: c }, { account: { name: c } }];
+    // 隐藏的字段不参与搜索 / hidden fields are not searched
+    where.OR = [{ name: c }, ...searchable(ctx, 'CONTACT', ['title', 'phone', 'email'] as const).map((f) => ({ [f]: c })), { account: { name: c } }];
   }
   return where;
 }
@@ -326,7 +331,8 @@ export async function createContact(ctx: AuthContext, accountId: string, input: 
   // 联系人属于客户资料，按客户编辑权限判断 / contacts are part of the account: account edit rights apply
   assertCanUpdate(ctx, await requireAccount(ctx, accountId));
   const { custom, ...data } = input;
-  const cf = await resolveCustom(ctx.organizationId, 'CONTACT', custom, null);
+  assertFieldWrites(ctx, 'CONTACT', data, null);
+  const cf = await resolveCustom(ctx.organizationId, 'CONTACT', custom, null, ctx);
   return prisma.$transaction(async (tx) => {
     if (data.isPrimary) {
       await tx.contact.updateMany({ where: { organizationId: ctx.organizationId, accountId }, data: { isPrimary: false } });
@@ -346,7 +352,8 @@ export async function updateContact(ctx: AuthContext, id: string, input: z.infer
   const { account, ...contact } = await requireContact(ctx, id);
   assertCanUpdate(ctx, account);
   const { custom, ...data } = input;
-  const cf = custom === undefined ? null : await resolveCustom(ctx.organizationId, 'CONTACT', custom, contact.custom);
+  assertFieldWrites(ctx, 'CONTACT', data, contact);
+  const cf = custom === undefined ? null : await resolveCustom(ctx.organizationId, 'CONTACT', custom, contact.custom, ctx);
   return prisma.$transaction(async (tx) => {
     if (data.isPrimary) {
       await tx.contact.updateMany({

@@ -12,6 +12,7 @@ import type { UserRole } from '@/generated/prisma/enums';
 import { prisma } from './db';
 import { audit, requestMeta, type RequestMeta } from './audit';
 import { ApiError } from './errors';
+import { loadFieldRules, type FieldRules } from './field-security';
 import { effectivePermissions, type Permission } from './permissions';
 
 /** 会话有效期 12 小时 / Session lifetime: 12 hours */
@@ -25,6 +26,8 @@ export interface AuthContext {
   role: UserRole;
   /** 有效权限（含自定义角色，每个请求从数据库读取）/ effective permissions (custom role included, read on every request) */
   permissions?: readonly Permission[];
+  /** 字段级权限规则（每个请求从数据库读取；系统管理员与内部任务没有）/ field-level rules (read per request; none for admins and internal jobs) */
+  fieldRules?: FieldRules;
   /** 请求来源（用于审计）/ request origin (for auditing) */
   meta?: RequestMeta;
   /** 当前会话 ID（修改密码、退出其他设备时保留当前会话）/ current session id (kept when changing the password or signing out elsewhere) */
@@ -149,12 +152,12 @@ export async function authenticate(req: Request): Promise<AuthContext> {
   if (token.startsWith(API_KEY_PREFIX)) return authenticateApiKey(req, token);
   const session = await prisma.session.findUnique({
     where: { tokenHash: hashToken(token) },
-    include: { user: { select: { id: true, organizationId: true, isActive: true, role: true, customRole: { select: { permissions: true } } } } },
+    include: { user: { select: { id: true, organizationId: true, isActive: true, role: true, customRoleId: true, customRole: { select: { permissions: true } } } } },
   });
   if (!session || session.expiresAt.getTime() <= Date.now() || !session.user.isActive) {
     throw new ApiError(401, 'UNAUTHORIZED', 'Session expired');
   }
-  return { userId: session.user.id, organizationId: session.user.organizationId, role: session.user.role, permissions: effectivePermissions(session.user.role, session.user.customRole?.permissions), meta: requestMeta(req), sessionId: session.id };
+  return { userId: session.user.id, organizationId: session.user.organizationId, role: session.user.role, permissions: effectivePermissions(session.user.role, session.user.customRole?.permissions), fieldRules: await loadFieldRules(session.user.organizationId, session.user.role, session.user.customRoleId), meta: requestMeta(req), sessionId: session.id };
 }
 
 /**
@@ -165,7 +168,7 @@ export async function authenticate(req: Request): Promise<AuthContext> {
 async function authenticateApiKey(req: Request, token: string): Promise<AuthContext> {
   const key = await prisma.apiKey.findUnique({
     where: { keyHash: hashToken(token) },
-    include: { user: { select: { id: true, organizationId: true, isActive: true, role: true, customRole: { select: { permissions: true } } } } },
+    include: { user: { select: { id: true, organizationId: true, isActive: true, role: true, customRoleId: true, customRole: { select: { permissions: true } } } } },
   });
   const now = Date.now();
   if (!key || key.revokedAt || (key.expiresAt && key.expiresAt.getTime() <= now) || !key.user.isActive) {
@@ -174,7 +177,7 @@ async function authenticateApiKey(req: Request, token: string): Promise<AuthCont
   if (!key.lastUsedAt || now - key.lastUsedAt.getTime() > 60_000) {
     await prisma.apiKey.updateMany({ where: { id: key.id }, data: { lastUsedAt: new Date(now) } });
   }
-  return { userId: key.user.id, organizationId: key.user.organizationId, role: key.user.role, permissions: effectivePermissions(key.user.role, key.user.customRole?.permissions), meta: requestMeta(req), apiKeyId: key.id };
+  return { userId: key.user.id, organizationId: key.user.organizationId, role: key.user.role, permissions: effectivePermissions(key.user.role, key.user.customRole?.permissions), fieldRules: await loadFieldRules(key.user.organizationId, key.user.role, key.user.customRoleId), meta: requestMeta(req), apiKeyId: key.id };
 }
 
 /**

@@ -1,0 +1,22 @@
+
+ RUN  v5.1.0 /home/ai/Desktop/CRM/Yonlink-CRM
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "yonlink_mvp_test", schema "public" at "127.0.0.1:54330"
+
+69 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+ ✓ tests/field-permissions/field-permissions.r1-functional.test.ts > field permissions R1 settings > 字段与角色、权限、校验、整体替换、审计、约束 / fields and roles, permission, validation, replace, audit, checks 963ms
+ ✓ tests/field-permissions/field-permissions.r1-functional.test.ts > field permissions R1 reading > 隐藏字段不返回、管理员不受限、/me、搜索 / hidden fields are not returned, admins unrestricted, /me, search 530ms
+ ✓ tests/field-permissions/field-permissions.r1-functional.test.ts > field permissions R1 writing > 隐藏与只读字段的写入规则 / write rules for hidden and read-only fields 541ms
+ ✓ tests/field-permissions/field-permissions.r1-functional.test.ts > field permissions R1 writing > 自定义角色只按自身设置、修改立即生效 / custom roles follow their own settings; changes apply immediately 426ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  13:36:55
+   Duration  5.15s (tests 81%, import 14%, transform 4%)
+

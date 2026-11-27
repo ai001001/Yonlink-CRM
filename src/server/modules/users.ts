@@ -103,9 +103,18 @@ export async function updateUser(ctx: AuthContext, id: string, input: z.infer<ty
   const wanted = input.customRoleId !== undefined ? input.customRoleId : current.customRoleId;
   const data = { ...input, customRoleId: await resolveCustomRole(ctx, role, wanted, input.customRoleId === undefined) };
   return prisma.$transaction(async (tx) => {
-    // 锁定本组织启用中的管理员行，防止两名管理员并发互相降级后无人管理
-    // lock active admin rows so two admins demoting each other concurrently cannot leave none
-    await tx.$queryRaw`SELECT id FROM users WHERE organization_id = ${ctx.organizationId}::uuid AND role = 'ADMIN' AND is_active FOR UPDATE`;
+    // 锁定本组织启用中的管理员行，防止两名管理员并发互相降级后无人管理；用 NO KEY UPDATE（修改之间仍串行），
+    // 不阻塞引用管理员的外键检查（如审计记录的操作人），避免与删除角色等写审计的事务形成死锁
+    // lock active admin rows so two admins demoting each other concurrently cannot leave none; NO KEY UPDATE still
+    // serialises updates but does not block foreign-key checks referencing admins (e.g. audit actors), so transactions
+    // that write audit entries (such as role deletion) cannot deadlock with it
+    await tx.$queryRaw`SELECT id FROM users WHERE organization_id = ${ctx.organizationId}::uuid AND role = 'ADMIN' AND is_active FOR NO KEY UPDATE`;
+    // 套用的自定义角色加共享锁，与删除角色排队（删除先锁角色行），避免并发时互相等待成死锁；已被删除则拒绝
+    // share-lock the custom role so this queues with role deletion (which locks the role row first) instead of deadlocking; refuse if it was deleted
+    if (data.customRoleId) {
+      const held = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM custom_roles WHERE id = ${data.customRoleId}::uuid AND organization_id = ${ctx.organizationId}::uuid FOR SHARE`;
+      if (!held.length) throw new ApiError(400, 'VALIDATION_ERROR', 'Unknown custom role', { customRoleId: ['not_found'] });
+    }
     const user = await tx.user.update({ where: { id }, data, select });
     const losesAdmin = current.role === 'ADMIN' && current.isActive && (user.role !== 'ADMIN' || !user.isActive);
     if (losesAdmin) {

@@ -20,6 +20,7 @@ import { InvoiceStatus, PaymentMethod, SalesOrderStatus } from '@/generated/pris
 import { audit, by, diff, REDACTED, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
+import { maskRecord } from '../field-security';
 import { ApiError, notFound } from '../errors';
 import { assertCanUpdate, visible } from '../permissions';
 import { containsText, listQuery, optionalText, requiredText, type Page } from '../validation';
@@ -140,7 +141,8 @@ export async function listInvoices(ctx: AuthContext, query: z.infer<typeof invoi
 export async function getInvoice(ctx: AuthContext, id: string) {
   const invoice = await prisma.invoice.findFirst({ where: { id, organizationId: ctx.organizationId, deal: visible(ctx) }, include: detailInclude });
   if (!invoice) throw notFound();
-  return invoice;
+  // 客户的隐藏字段（电话、地址）按字段权限去掉 / the account's hidden fields (phone, address) are removed per field-level security
+  return { ...invoice, deal: { ...invoice.deal, account: maskRecord(ctx, 'ACCOUNT', invoice.deal.account) } };
 }
 
 /**

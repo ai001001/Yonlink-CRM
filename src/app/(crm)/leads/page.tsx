@@ -33,6 +33,7 @@ import { ConvertLeadModal } from '@/components/ConvertLeadModal';
 import { RelatedActivities } from '@/components/RelatedActivities';
 import type { RecordTags, Ref } from '@/lib/types';
 import { CustomFieldItems, CustomFieldValues, useCustomFields } from '@/components/CustomFields';
+import { FieldGuard, visibleIn } from '@/components/FieldGuard';
 
 /** 线索 / Lead */
 interface Lead {
@@ -73,6 +74,8 @@ const STATUS_COLOR: Record<string, string> = { NEW: 'blue', CONTACTED: 'cyan', Q
 // 选项按组织配置（筛选含已停用的，表单只含启用的并保留当前值）/ options follow the organization's setup (filters include inactive ones; forms list active ones and keep the current value)
 // “已转化”只能通过转化操作设置 / CONVERTED is only set by the conversion action
 const EDITABLE_STATUSES = STATUSES.filter((s) => s !== 'CONVERTED');
+/** 字段权限：字段是否显示 / field permissions: whether a field is shown */
+const show = visibleIn('LEAD');
 const req = (key: MessageKey) => [{ required: true, whitespace: true, message: t('common.required', { field: t(key) }) }];
 
 export default function LeadsPage() {
@@ -290,20 +293,28 @@ export default function LeadsPage() {
             </Form.Item>
           </div>
           <div className="form-row">
-            <Form.Item name="title" label={t('leads.jobTitle')}>
-              <Input maxLength={100} />
-            </Form.Item>
-            <Form.Item name="email" label={t('leads.email')} rules={[{ type: 'email', message: t('common.invalidEmail') }]}>
-              <Input maxLength={254} />
-            </Form.Item>
+            <FieldGuard entity="LEAD" field="title">
+              <Form.Item name="title" label={t('leads.jobTitle')}>
+                <Input maxLength={100} />
+              </Form.Item>
+            </FieldGuard>
+            <FieldGuard entity="LEAD" field="email">
+              <Form.Item name="email" label={t('leads.email')} rules={[{ type: 'email', message: t('common.invalidEmail') }]}>
+                <Input maxLength={254} />
+              </Form.Item>
+            </FieldGuard>
           </div>
           <div className="form-row">
-            <Form.Item name="phone" label={t('leads.phone')}>
-              <Input maxLength={50} />
-            </Form.Item>
-            <Form.Item name="mobile" label={t('leads.mobile')}>
-              <Input maxLength={50} />
-            </Form.Item>
+            <FieldGuard entity="LEAD" field="phone">
+              <Form.Item name="phone" label={t('leads.phone')}>
+                <Input maxLength={50} />
+              </Form.Item>
+            </FieldGuard>
+            <FieldGuard entity="LEAD" field="mobile">
+              <Form.Item name="mobile" label={t('leads.mobile')}>
+                <Input maxLength={50} />
+              </Form.Item>
+            </FieldGuard>
           </div>
           <div className="form-row">
             <Form.Item name="source" label={t('leads.source')}>
@@ -324,9 +335,11 @@ export default function LeadsPage() {
             <CampaignSelect key={editing && editing !== 'new' ? editing.id : 'new'} />
           </Form.Item>
           <CustomFieldItems defs={customDefs} />
-          <Form.Item name="description" label={t('common.description')}>
-            <Input.TextArea rows={3} maxLength={5000} />
-          </Form.Item>
+          <FieldGuard entity="LEAD" field="description">
+            <Form.Item name="description" label={t('common.description')}>
+              <Input.TextArea rows={3} maxLength={5000} />
+            </Form.Item>
+          </FieldGuard>
         </Form>
       </Modal>
 
@@ -367,16 +380,22 @@ export default function LeadsPage() {
             <Descriptions column={2} bordered size="small">
               <Descriptions.Item label={t('leads.name')}>{detail.name}</Descriptions.Item>
               <Descriptions.Item label={t('leads.company')}>{detail.company}</Descriptions.Item>
-              <Descriptions.Item label={t('leads.jobTitle')}>{detail.title}</Descriptions.Item>
-              <Descriptions.Item label={t('leads.email')}>
-                <EmailLink value={detail.email} />
-              </Descriptions.Item>
-              <Descriptions.Item label={t('leads.phone')}>
-                <PhoneLink value={detail.phone} />
-              </Descriptions.Item>
-              <Descriptions.Item label={t('leads.mobile')}>
-                <PhoneLink value={detail.mobile} />
-              </Descriptions.Item>
+              {show('title') && <Descriptions.Item label={t('leads.jobTitle')}>{detail.title}</Descriptions.Item>}
+              {show('email') && (
+                <Descriptions.Item label={t('leads.email')}>
+                  <EmailLink value={detail.email} />
+                </Descriptions.Item>
+              )}
+              {show('phone') && (
+                <Descriptions.Item label={t('leads.phone')}>
+                  <PhoneLink value={detail.phone} />
+                </Descriptions.Item>
+              )}
+              {show('mobile') && (
+                <Descriptions.Item label={t('leads.mobile')}>
+                  <PhoneLink value={detail.mobile} />
+                </Descriptions.Item>
+              )}
               <Descriptions.Item label={t('leads.source')}>{tEnum('leadSource', detail.source)}</Descriptions.Item>
               <Descriptions.Item label={t('campaigns.source')}>
                 {detail.campaign ? <Link href={`/campaigns?id=${detail.campaign.id}`}>{detail.campaign.name}</Link> : null}
@@ -400,9 +419,11 @@ export default function LeadsPage() {
               <Descriptions.Item label={t('tags.title')} span={2}>
                 <TagEditor key={`tags-${detail.id}`} path="/api/leads" record={detail} onChanged={() => void reload()} />
               </Descriptions.Item>
-              <Descriptions.Item label={t('common.description')} span={2}>
-                {detail.description}
-              </Descriptions.Item>
+              {show('description') && (
+                <Descriptions.Item label={t('common.description')} span={2}>
+                  {detail.description}
+                </Descriptions.Item>
+              )}
             </Descriptions>
             <CustomFieldValues defs={customDefs} values={detail.custom} />
             {detail.convertedAt && (

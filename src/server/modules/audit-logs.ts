@@ -6,10 +6,11 @@ import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
+import { maskAuditEntries } from '../field-security';
 import { requirePermission } from '../permissions';
 import { listQuery, type Page } from '../validation';
 
-const ENTITY_TYPES = ['lead', 'account', 'contact', 'deal', 'activity', 'note', 'product', 'quote', 'order', 'invoice', 'report', 'rate', 'campaign', 'ticket', 'sla', 'article', 'vendor', 'purchase', 'pricebook', 'webform', 'scoring', 'assignment', 'workflow', 'approval', 'apikey', 'webhook', 'validation', 'customfield', 'territory', 'macro', 'blueprint', 'cadence', 'portal', 'warehouse', 'module', 'customrecord', 'picklist', 'role', 'tag', 'view', 'attachment', 'target', 'user', 'auth'] as const;
+const ENTITY_TYPES = ['lead', 'account', 'contact', 'deal', 'activity', 'note', 'product', 'quote', 'order', 'invoice', 'report', 'rate', 'campaign', 'ticket', 'sla', 'article', 'vendor', 'purchase', 'pricebook', 'webform', 'scoring', 'assignment', 'workflow', 'approval', 'apikey', 'webhook', 'validation', 'customfield', 'territory', 'macro', 'blueprint', 'cadence', 'portal', 'warehouse', 'module', 'customrecord', 'picklist', 'role', 'fieldpermission', 'tag', 'view', 'attachment', 'target', 'user', 'auth'] as const;
 
 /**
  * 查询参数（严格模式：未知参数报错，避免把拼错的筛选条件静默忽略后返回全部日志）。
@@ -48,5 +49,6 @@ export async function listAuditLogs(ctx: AuthContext, query: z.infer<typeof audi
     }),
     prisma.auditLog.count({ where }),
   ]);
-  return { items, total, page: query.page, pageSize: query.pageSize };
+  // 变更中的隐藏字段按字段权限去掉 / hidden fields are removed from the changes per field-level security
+  return { items: await maskAuditEntries(ctx, items), total, page: query.page, pageSize: query.pageSize };
 }

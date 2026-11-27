@@ -1789,3 +1789,15 @@ export const DEMO_REPORTS: { owner: 'manager' | 'sales1'; name: string; descript
 export const DEMO_ROLES: { name: string; description: string; baseRole: 'SALES' | 'MANAGER' | 'READONLY'; permissions: string[] }[] = [
   { name: '【演示】可导出的销售代表', description: '销售代表的权限，另可导出线索、客户与商机（演示数据）', baseRole: 'SALES', permissions: ['record.create', 'record.update.own', 'data.export'] },
 ];
+
+/**
+ * 【演示】字段权限：只读用户（周会计）看不到线索的手机与电话、联系人的电话；销售代表的客户地址只读（演示数据）。
+ * [Demo] field permissions: the read-only user cannot see lead mobiles, lead phones or contact phones; sales reps see
+ * account addresses read-only (demo data).
+ */
+export const DEMO_FIELD_PERMISSIONS: { entity: 'LEAD' | 'ACCOUNT' | 'CONTACT' | 'DEAL'; field: string; role: 'MANAGER' | 'SALES' | 'READONLY'; access: 'HIDDEN' | 'READ_ONLY' }[] = [
+  { entity: 'LEAD', field: 'mobile', role: 'READONLY', access: 'HIDDEN' },
+  { entity: 'LEAD', field: 'phone', role: 'READONLY', access: 'HIDDEN' },
+  { entity: 'CONTACT', field: 'phone', role: 'READONLY', access: 'HIDDEN' },
+  { entity: 'ACCOUNT', field: 'address', role: 'SALES', access: 'READ_ONLY' },
+];

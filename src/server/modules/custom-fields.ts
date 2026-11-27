@@ -25,6 +25,7 @@ import { audit, by, REDACTED } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
+import { assertCustomWrites, CUSTOM_PREFIX, lockedCustomKeys } from '../field-security';
 import { requirePermission } from '../permissions';
 import { requiredText } from '../validation';
 
@@ -127,8 +128,8 @@ export async function updateCustomField(ctx: AuthContext, id: string, input: z.i
 }
 
 /**
- * 删除字段：同时清除各记录中该字段的值。
- * Delete a field and remove its values from every record.
+ * 删除字段：同时清除各记录中该字段的值与字段权限设置。
+ * Delete a field and remove its values from every record and its field permission settings.
  */
 export async function deleteCustomField(ctx: AuthContext, id: string): Promise<{ cleared: number }> {
   requirePermission(ctx, 'customfield.manage');
@@ -138,6 +139,8 @@ export async function deleteCustomField(ctx: AuthContext, id: string): Promise<{
     await tx.customField.delete({ where: { id } });
     const org = ctx.organizationId;
     const key = current.key;
+    // 字段权限设置随字段删除 / the field's permission settings go with it
+    await tx.fieldPermission.deleteMany({ where: { organizationId: org, entity: current.entity, field: CUSTOM_PREFIX + key } });
     // 表名固定，不拼接用户输入；键格式已由约束限定 / fixed table names; the key format is constrained
     const cleared =
       current.entity === CustomEntity.LEAD
@@ -207,13 +210,31 @@ export function normalize(field: Pick<Field, 'type' | 'options'>, raw: unknown):
 }
 
 /**
- * 合并并校验记录的自定义值：只接受启用字段；必填在新建时、或编辑提交了 custom 时检查。
+ * 合并并校验记录的自定义值：只接受启用字段；必填在新建时、或编辑提交了 custom 时检查。传入身份时按字段权限检查写入
+ * （隐藏字段不能提交、只读字段只能保持原值），且不可编辑的字段不要求必填。
  * Merge and validate a record's custom values: active fields only; required fields are checked on create or when an
- * edit sends custom.
+ * edit sends custom. With an identity, field-level security applies (hidden fields cannot be sent, read-only ones keep
+ * their value) and fields the user cannot edit are not required.
  * @returns 合并后的值与定义（用于审计）/ the merged values and definitions (for auditing)
  */
-export async function resolveCustom(organizationId: string, entity: CustomEntity, input: Record<string, unknown> | undefined, current: Prisma.JsonValue | null) {
-  return mergeCustom(await fieldsOf(organizationId, entity), input, current);
+export async function resolveCustom(organizationId: string, entity: CustomEntity, input: Record<string, unknown> | undefined, current: Prisma.JsonValue | null, ctx?: AuthContext) {
+  const defs = await fieldsOf(organizationId, entity);
+  if (ctx?.fieldRules?.[entity] && input) {
+    const normalized = new Map<string, unknown>();
+    for (const [key, raw] of Object.entries(input)) {
+      const def = defs.find((d) => d.key === key && d.isActive);
+      if (!def) continue;
+      try {
+        normalized.set(key, normalize(def, raw));
+      } catch {
+        // 不合法的值视为修改（只读字段因此拒绝）/ an invalid value counts as a change (refused on read-only fields)
+        normalized.set(key, { invalid: true });
+      }
+    }
+    const cur = current && typeof current === 'object' && !Array.isArray(current) ? (current as Record<string, unknown>) : {};
+    assertCustomWrites(ctx, entity, normalized, cur);
+  }
+  return mergeCustom(defs, input, current, ctx ? lockedCustomKeys(ctx, entity) : undefined);
 }
 
 /**
@@ -221,8 +242,9 @@ export async function resolveCustom(organizationId: string, entity: CustomEntity
  * Merge and validate custom values against the given definitions (shared with custom module records); error keys are
  * custom.<key>.
  * @param current 现有值；null 表示新建 / existing values; null on create
+ * @param exempt 不检查必填的字段键（当前用户不可编辑）/ keys exempt from the required check (not editable by the user)
  */
-export function mergeCustom<D extends Pick<Field, 'key' | 'type' | 'options' | 'required' | 'isActive'>>(defs: D[], input: Record<string, unknown> | undefined, current: Prisma.JsonValue | null) {
+export function mergeCustom<D extends Pick<Field, 'key' | 'type' | 'options' | 'required' | 'isActive'>>(defs: D[], input: Record<string, unknown> | undefined, current: Prisma.JsonValue | null, exempt?: Set<string>) {
   const merged: Record<string, unknown> = current && typeof current === 'object' && !Array.isArray(current) ? { ...(current as Record<string, unknown>) } : {};
   const errors: Record<string, string[]> = {};
   for (const [key, raw] of Object.entries(input ?? {})) {
@@ -240,7 +262,7 @@ export function mergeCustom<D extends Pick<Field, 'key' | 'type' | 'options' | '
     }
   }
   if (current === null || input !== undefined) {
-    for (const d of defs) if (d.isActive && d.required && (merged[d.key] === undefined || merged[d.key] === null)) errors[`custom.${d.key}`] ??= ['required'];
+    for (const d of defs) if (d.isActive && d.required && !exempt?.has(d.key) && (merged[d.key] === undefined || merged[d.key] === null)) errors[`custom.${d.key}`] ??= ['required'];
   }
   if (Object.keys(errors).length) throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid custom fields', errors);
   return { values: merged, defs };

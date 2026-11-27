@@ -18,6 +18,7 @@ import type { AuthContext } from '../auth';
 import { parseCsv, toCsv, uncsvCell } from '../csv';
 import type { PicklistField } from '@/generated/prisma/enums';
 import { prisma } from '../db';
+import { hiddenCustomKeys, hiddenFields, lockedCustomKeys, lockedFields, type FieldEntity } from '../field-security';
 import { ApiError } from '../errors';
 import { can, requirePermission } from '../permissions';
 import { toXlsx, type Cell, type NumberFormat } from '../xlsx';
@@ -107,6 +108,7 @@ export async function exportXlsx(ctx: AuthContext, entity: ExportEntity, input: 
  * Render the file in the requested format and audit it. CSV output is unchanged; Excel writes amounts and counts as
  * numbers according to the column formats.
  * @param formats 列序号 → 数字格式 / column index → number format
+ * @param hide 按字段权限隐藏的列序号（自定义字段另按权限过滤）/ column indexes hidden by field-level security (custom fields are filtered too)
  */
 async function finish(
   ctx: AuthContext,
@@ -120,10 +122,19 @@ async function finish(
   truncated: boolean,
   formats: Record<number, NumberFormat> = {},
   custom?: { entity: CustomEntity; values: Prisma.JsonValue[] },
+  hide: number[] = [],
 ): Promise<ExportResult | ListXlsxResult> {
-  // 自定义字段（启用的）追加在最后几列 / active custom fields are appended as the last columns
+  // 去掉隐藏的列，数字格式随列序号前移 / drop hidden columns; number formats follow the shifted indexes
+  if (hide.length) {
+    const keep = (_: unknown, i: number) => !hide.includes(i);
+    header = header.filter(keep);
+    rows = rows.map((r) => r.filter(keep));
+    formats = Object.fromEntries(Object.entries(formats).filter(([i]) => !hide.includes(Number(i))).map(([i, f]) => [Number(i) - hide.filter((h) => h < Number(i)).length, f]));
+  }
+  // 自定义字段（启用且未隐藏的）追加在最后几列 / active, visible custom fields are appended as the last columns
   if (custom) {
-    const defs = (await fieldsOf(ctx.organizationId, custom.entity)).filter((d) => d.isActive);
+    const hiddenKeys = hiddenCustomKeys(ctx, custom.entity);
+    const defs = (await fieldsOf(ctx.organizationId, custom.entity)).filter((d) => d.isActive && !hiddenKeys.has(d.key));
     header = [...header, ...defs.map((d) => d.label)];
     rows = rows.map((r, i) => {
       const v = (custom.values[i] ?? {}) as Record<string, unknown>;
@@ -164,6 +175,11 @@ async function exportList(ctx: AuthContext, entity: ExportEntity, input: Record<
   const TIME_HEADER = (label: string) => translate(locale, 'export.timeHeader', { label });
   const take = EXPORT_MAX + 1;
   const orderBy = [{ createdAt: 'desc' as const }, { id: 'asc' as const }];
+  // 按字段权限隐藏的列（列序号 → 字段）/ columns hidden by field-level security (index → field)
+  const hideCols = (e: FieldEntity, cols: Record<number, string>) => {
+    const hidden = hiddenFields(ctx, e);
+    return Object.entries(cols).filter(([, f]) => hidden.includes(f)).map(([i]) => Number(i));
+  };
 
   if (entity === 'leads') {
     const query = leadListSchema.parse(params);
@@ -182,6 +198,7 @@ async function exportList(ctx: AuthContext, entity: ExportEntity, input: Record<
       truncated,
       {},
       { entity: 'LEAD', values: data.map((r) => r.custom) },
+      hideCols('LEAD', { 2: 'title', 3: 'phone', 4: 'mobile', 5: 'email', 11: 'description' }),
     );
   }
 
@@ -251,6 +268,8 @@ async function exportList(ctx: AuthContext, entity: ExportEntity, input: Record<
       ]),
       truncated,
       { 15: 'int' },
+      undefined,
+      hideCols('CONTACT', { 4: 'phone', 5: 'email' }),
     );
   }
 
@@ -271,6 +290,7 @@ async function exportList(ctx: AuthContext, entity: ExportEntity, input: Record<
       truncated,
       {},
       { entity: 'CONTACT', values: data.map((r) => r.custom) },
+      hideCols('CONTACT', { 1: 'title', 2: 'phone', 3: 'email' }),
     );
   }
 
@@ -296,6 +316,7 @@ async function exportList(ctx: AuthContext, entity: ExportEntity, input: Record<
       truncated,
       { 8: 'int' },
       { entity: 'ACCOUNT', values: data.map((r) => r.custom) },
+      hideCols('ACCOUNT', { 2: 'phone', 3: 'website', 4: 'address', 10: 'description' }),
     );
   }
 
@@ -321,6 +342,7 @@ async function exportList(ctx: AuthContext, entity: ExportEntity, input: Record<
       truncated,
       { 2: 'money' },
       { entity: 'DEAL', values: data.map((r) => r.custom) },
+      hideCols('DEAL', { 9: 'description' }),
     );
   }
 
@@ -364,7 +386,7 @@ async function exportList(ctx: AuthContext, entity: ExportEntity, input: Record<
 export type ImportEntity = 'leads' | 'accounts';
 
 /** 行错误原因（前端用 i18n 显示）/ Row error reasons (displayed via i18n) */
-export type ImportReason = 'required' | 'too_long' | 'invalid_email' | 'invalid_value' | 'owner_not_found' | 'owner_forbidden' | 'inactive_option' | 'invalid';
+export type ImportReason = 'required' | 'too_long' | 'invalid_email' | 'invalid_value' | 'owner_not_found' | 'owner_forbidden' | 'inactive_option' | 'not_editable' | 'invalid';
 
 /** 导入请求 / Import request */
 export const importSchema = z.strictObject({
@@ -500,7 +522,9 @@ export async function importCsv(ctx: AuthContext, entity: ImportEntity, input: z
   const indexOf: Record<string, number> = {};
   const unknownColumns: string[] = [];
   // 表头与启用的自定义字段名称相同的列作为自定义字段导入 / columns named like active custom fields import into them
-  const customDefs = (await fieldsOf(ctx.organizationId, entity === 'leads' ? 'LEAD' : 'ACCOUNT')).filter((d) => d.isActive);
+  const fieldEntity: FieldEntity = entity === 'leads' ? 'LEAD' : 'ACCOUNT';
+  const customDefs = (await fieldsOf(ctx.organizationId, fieldEntity)).filter((d) => d.isActive);
+  const lockedKeys = lockedCustomKeys(ctx, fieldEntity);
   const customCols: { def: (typeof customDefs)[number]; index: number }[] = [];
   header.forEach((h, i) => {
     const def = defs.find((d) => [...allTranslations(d.label), d.field].some((x) => x.toLowerCase() === h.toLowerCase()));
@@ -580,11 +604,18 @@ export async function importCsv(ctx: AuthContext, entity: ImportEntity, input: z
     const parsed = (entity === 'leads' ? leadCreateSchema : accountCreateSchema).safeParse({ ...cleaned, ownerId: ownerId ?? undefined });
     if (!parsed.success) for (const issue of parsed.error.issues) errors.push({ row: rowNo, field: String(issue.path[0] ?? ''), reason: reasonOf(issue) });
 
+    // 字段权限：隐藏或只读的字段新建时只能留空 / field-level security: hidden or read-only fields must stay empty on create
+    if (parsed.success) {
+      for (const f of lockedFields(ctx, fieldEntity)) if ((parsed.data as Record<string, unknown>)[f] != null) errors.push({ row: rowNo, field: f, reason: 'not_editable' });
+    }
+
     let contact: Record<string, unknown> | undefined;
     if (entity === 'accounts' && (contactName || contactTitle || contactPhone || contactEmail)) {
       const c = contactCreateSchema.safeParse({ name: contactName ?? '', title: contactTitle || null, phone: contactPhone || null, email: contactEmail || null, isPrimary: true });
-      if (c.success) contact = c.data;
-      else for (const issue of c.error.issues) errors.push({ row: rowNo, field: `contact.${String(issue.path[0] ?? '')}`, reason: reasonOf(issue) });
+      if (c.success) {
+        contact = c.data;
+        for (const f of lockedFields(ctx, 'CONTACT')) if ((c.data as Record<string, unknown>)[f] != null) errors.push({ row: rowNo, field: `contact.${f}`, reason: 'not_editable' });
+      } else for (const issue of c.error.issues) errors.push({ row: rowNo, field: `contact.${String(issue.path[0] ?? '')}`, reason: reasonOf(issue) });
     }
 
     // 自定义字段：按类型校验；勾选接受是/否、yes/no、true/false、1/0；必填字段必须有值
@@ -598,12 +629,14 @@ export async function importCsv(ctx: AuthContext, entity: ImportEntity, input: z
       }
       try {
         const v = normalize(def, raw);
-        if (v !== undefined) custom[def.key] = v;
+        if (v !== undefined && lockedKeys.has(def.key)) errors.push({ row: rowNo, field: def.label, reason: 'not_editable' });
+        else if (v !== undefined) custom[def.key] = v;
       } catch {
         errors.push({ row: rowNo, field: def.label, reason: 'invalid_value' });
       }
     }
-    for (const d of customDefs) if (d.required && custom[d.key] === undefined && !errors.some((e) => e.field === d.label)) errors.push({ row: rowNo, field: d.label, reason: 'required' });
+    // 不可编辑的必填字段不要求有值 / required fields the importer cannot edit are not required
+    for (const d of customDefs) if (d.required && !lockedKeys.has(d.key) && custom[d.key] === undefined && !errors.some((e) => e.field === d.label)) errors.push({ row: rowNo, field: d.label, reason: 'required' });
 
     if (errors.length || !parsed.success) {
       report.errors.push(...errors);

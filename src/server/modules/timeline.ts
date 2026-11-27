@@ -13,6 +13,7 @@
 import { z } from 'zod';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
+import { maskAuditEntries } from '../field-security';
 import { notFound } from '../errors';
 import { can, visible } from '../permissions';
 import { readableAccounts, readableDeals, territoryReadScope } from './territory-rules';
@@ -88,7 +89,8 @@ export async function getTimeline(ctx: AuthContext, query: z.infer<typeof timeli
   const all: TimelineItem[] = [
     ...activities.map((a) => ({ kind: 'activity' as const, id: a.id, at: a.createdAt, activity: a })),
     ...notes.map((n) => ({ kind: 'note' as const, id: n.id, at: n.createdAt, note: n })),
-    ...audits.map((e) => ({ kind: 'audit' as const, id: e.id, at: e.createdAt, entry: { ...e, ip: showIp ? e.ip : null } })),
+    // 变更中的隐藏字段按字段权限去掉 / hidden fields are removed from the changes per field-level security
+    ...(await maskAuditEntries(ctx, audits)).map((e) => ({ kind: 'audit' as const, id: e.id, at: e.createdAt, entry: { ...e, ip: showIp ? e.ip : null } })),
   ].sort((x, y) => y.at.getTime() - x.at.getTime() || x.id.localeCompare(y.id));
   return { items: all.slice(0, TIMELINE_PAGE), hasMore: all.length > TIMELINE_PAGE };
 }

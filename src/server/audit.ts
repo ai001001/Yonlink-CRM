@@ -16,7 +16,7 @@ export interface RequestMeta {
 }
 
 /** 审计对象类型 / Audited entity types */
-export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'order' | 'invoice' | 'report' | 'rate' | 'campaign' | 'ticket' | 'sla' | 'scoring' | 'assignment' | 'workflow' | 'approval' | 'apikey' | 'webhook' | 'validation' | 'customfield' | 'territory' | 'macro' | 'blueprint' | 'cadence' | 'portal' | 'warehouse' | 'module' | 'customrecord' | 'picklist' | 'role' | 'article' | 'vendor' | 'purchase' | 'pricebook' | 'webform' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
+export type AuditEntity = 'lead' | 'account' | 'contact' | 'deal' | 'activity' | 'note' | 'product' | 'quote' | 'order' | 'invoice' | 'report' | 'rate' | 'campaign' | 'ticket' | 'sla' | 'scoring' | 'assignment' | 'workflow' | 'approval' | 'apikey' | 'webhook' | 'validation' | 'customfield' | 'territory' | 'macro' | 'blueprint' | 'cadence' | 'portal' | 'warehouse' | 'module' | 'customrecord' | 'picklist' | 'role' | 'fieldpermission' | 'article' | 'vendor' | 'purchase' | 'pricebook' | 'webform' | 'tag' | 'view' | 'attachment' | 'target' | 'user' | 'auth';
 
 /** 字段策略 / Field policy */
 type Policy = 'plain' | 'mask' | 'redact';
@@ -53,6 +53,8 @@ export const AUDIT_FIELDS: Record<Exclude<AuditEntity, 'auth'>, Record<string, P
   },
   // 报表导出没有记录字段，只记筛选与行数 / report exports have no record fields, only filters and row counts
   report: {},
+  // 字段权限的变更按字段记录访问级别 / field permission changes record access levels per field
+  fieldpermission: {},
   campaign: {
     name: 'plain', type: 'plain', status: 'plain', startDate: 'plain', endDate: 'plain', currency: 'plain', budget: 'plain', actualCost: 'plain',
     description: 'redact', ownerId: 'plain',

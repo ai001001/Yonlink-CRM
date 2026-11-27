@@ -18,6 +18,7 @@ import { ApprovalStatus, QuoteStatus } from '@/generated/prisma/enums';
 import { audit, by, diff, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
+import { maskRecord } from '../field-security';
 import { ApiError, notFound } from '../errors';
 import { assertCanUpdate, visible } from '../permissions';
 import { containsText, listQuery, optionalText, requiredText, type Page } from '../validation';
@@ -184,7 +185,8 @@ export async function listQuotes(ctx: AuthContext, query: z.infer<typeof quoteLi
 export async function getQuote(ctx: AuthContext, id: string) {
   const quote = await prisma.quote.findFirst({ where: { id, organizationId: ctx.organizationId, deal: visible(ctx) }, include: detailInclude });
   if (!quote) throw notFound();
-  return quote;
+  // 客户的隐藏字段（电话、地址）按字段权限去掉 / the account's hidden fields (phone, address) are removed per field-level security
+  return { ...quote, deal: { ...quote.deal, account: maskRecord(ctx, 'ACCOUNT', quote.deal.account) } };
 }
 
 /**

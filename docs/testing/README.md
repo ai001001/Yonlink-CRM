@@ -94,6 +94,7 @@
 | 自定义报表（#66） | ✅ | ✅ | ✅ | [custom-reports.md](custom-reports.md) |
 | 整页详情（#67） | ✅ | ✅ | ⚠️ 端到端偶发超时（见记录） | [record-page.md](record-page.md) |
 | 自定义角色与权限集（#68） | ✅ | ✅ | ✅ | [custom-roles.md](custom-roles.md) |
+| 字段级权限（#69） | ✅ | ✅ | ✅ | [field-permissions.md](field-permissions.md) |
 
 ## 整体回归（全部模块完成后）
 命令：`scripts/regression.sh final-mvp` → **PASS**（lint、typecheck、11 文件 181/181、静态导出、生产构建、E2E 6/6）。原始输出：[results/final-mvp-r3-regression.txt](results/final-mvp-r3-regression.txt)

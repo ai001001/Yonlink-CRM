@@ -5,5 +5,5 @@
 import { authedRoute, preflight } from '@/server/http';
 import { reportCatalog } from '@/server/modules/custom-reports';
 
-export const GET = authedRoute(async () => Response.json(reportCatalog()));
+export const GET = authedRoute(async (_req, ctx) => Response.json(reportCatalog(ctx)));
 export const OPTIONS = preflight;

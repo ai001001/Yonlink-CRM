@@ -17,6 +17,7 @@ import { usePermissions } from '@/components/AuthProvider';
 import { useCustomFields, type CustomEntity, type CustomFieldDef } from '@/components/CustomFields';
 import { t, tEnum, type MessageKey } from '@/i18n';
 import { api, qs } from '@/lib/api';
+import { fieldHidden, fieldReadOnly } from '@/lib/field-access';
 import { fmtDate, fmtDateTime } from '@/lib/format';
 import { useOwners } from '@/lib/hooks';
 
@@ -279,7 +280,8 @@ export function RecordPage<R extends BaseRecord>({
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={9}>
           <Card title={t('record.overview')} size="small">
-            {fields.map((f) => (
+            {/* 字段权限：隐藏的字段不显示，只读的字段不可就地编辑 / field permissions: hidden fields are not shown, read-only ones cannot be edited */}
+            {fields.filter((f) => !fieldHidden(customEntity, f.key)).map((f) => (
               <InlineField
                 key={`${f.key}-${tag}`}
                 label={t(f.label)}
@@ -288,7 +290,7 @@ export function RecordPage<R extends BaseRecord>({
                 initial={f.value ? f.value(record) : null}
                 options={f.options?.(record)}
                 required={f.required}
-                canEdit={canEdit && (f.editable ? f.editable(record) : true)}
+                canEdit={canEdit && !fieldReadOnly(customEntity, f.key) && (f.editable ? f.editable(record) : true)}
                 onSave={(v) => save({ [f.key]: v })}
               />
             ))}
@@ -305,7 +307,7 @@ export function RecordPage<R extends BaseRecord>({
                   initial={raw === undefined || raw === null ? null : String(raw)}
                   options={options}
                   required={d.required}
-                  canEdit={canEdit}
+                  canEdit={canEdit && !d.readOnly}
                   onSave={(v) => save({ custom: { [d.key]: d.type === 'CHECKBOX' ? v === 'true' : d.type === 'NUMBER' && v !== null ? v.trim() : v } })}
                 />
               );

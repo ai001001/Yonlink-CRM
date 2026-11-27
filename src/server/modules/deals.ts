@@ -21,6 +21,7 @@ import { gradeRange, scoreListFields, scoreOrder } from './scoring-grades';
 import { tagFilter, tagsInclude } from './tags';
 import { assertValidRecord } from './validation-rules';
 import { customDiff, customInput, resolveCustom } from './custom-fields';
+import { assertFieldWrites } from '../field-security';
 import { readableDeals, territoryIdsFor, territoryReadScope } from './territory-rules';
 import { assertNotControlled } from './blueprint-rules';
 import { territoryFilter } from './territory-input';
@@ -164,6 +165,7 @@ export async function getDeal(ctx: AuthContext, id: string) {
 export async function createDeal(ctx: AuthContext, input: z.infer<typeof dealCreateSchema>) {
   const { ownerId, custom, ...data } = input;
   requirePermission(ctx, 'record.create');
+  assertFieldWrites(ctx, 'DEAL', data, null);
   assertOwnerAssignable(ctx, ownerId);
   await assertCampaign(ctx.organizationId, data.campaignId);
   await assertAccount(ctx, data.accountId);
@@ -173,7 +175,7 @@ export async function createDeal(ctx: AuthContext, input: z.infer<typeof dealCre
   else data.stage = (await firstActiveOpenStage(ctx.organizationId)) as DealStage;
   // 字段验证规则（按写入后的值）/ validation rules on the values as written
   await assertValidRecord(ctx.organizationId, 'DEAL', { ...data, ownerId: owner });
-  const cf = await resolveCustom(ctx.organizationId, 'DEAL', custom, null);
+  const cf = await resolveCustom(ctx.organizationId, 'DEAL', custom, null, ctx);
   return prisma.$transaction(async (tx) => {
     await setActor(tx, ctx);
     const deal = await tx.deal.create({ data: { ...data, custom: cf.values as Prisma.InputJsonValue, organizationId: ctx.organizationId, ownerId: owner }, include });
@@ -198,6 +200,7 @@ export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<ty
   // 启用流程蓝图时阶段只能通过转换修改（转换会传入期望的当前阶段）/ with a blueprint the stage moves only via transitions
   if (input.stage !== undefined && input.stage !== current.stage && !opts.expectedStage) await assertNotControlled(ctx.organizationId, 'DEAL');
   const { ownerId, custom, ...data } = input;
+  assertFieldWrites(ctx, 'DEAL', data, current);
   assertOwnerAssignable(ctx, ownerId);
   await assertCampaign(ctx.organizationId, data.campaignId);
   // 改为的阶段须启用（流程蓝图转换按管理员配置执行，不检查）/ a new stage must be active (blueprint transitions follow the admin's setup)
@@ -216,7 +219,7 @@ export async function updateDeal(ctx: AuthContext, id: string, input: z.infer<ty
   if (data.accountId) await assertAccount(ctx, data.accountId);
   const owner = await resolveOwner(ctx.organizationId, ownerId, current.ownerId);
   await assertValidRecord(ctx.organizationId, 'DEAL', { ...current, ...data, ownerId: owner });
-  const cf = custom === undefined ? null : await resolveCustom(ctx.organizationId, 'DEAL', custom, current.custom);
+  const cf = custom === undefined ? null : await resolveCustom(ctx.organizationId, 'DEAL', custom, current.custom, ctx);
   return prisma.$transaction(async (tx) => {
     await setActor(tx, ctx);
     if (opts.expectedStage) {

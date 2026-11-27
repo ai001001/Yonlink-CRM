@@ -13,6 +13,7 @@ import { DealContactRoleType, Prisma } from '@/generated/prisma/client';
 import { audit, by } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
+import { maskRecord, maskRecords } from '../field-security';
 import { ApiError, notFound } from '../errors';
 import { assertCanUpdate, visible } from '../permissions';
 import { readableDeals, territoryReadScope } from './territory-rules';
@@ -34,6 +35,9 @@ export const contactRoleUpdateSchema = z
 
 /** 联系人展示字段 / Contact fields shown with a role */
 const contactSelect = { id: true, name: true, title: true, phone: true, email: true } as const;
+
+/** 去掉联系人的隐藏字段 / remove the contact's hidden fields */
+const withContact = <T extends { contact: unknown }>(ctx: AuthContext, role: T): T => ({ ...role, contact: maskRecord(ctx, 'CONTACT', role.contact) });
 
 /**
  * 读取可见商机（负责人与客户）。
@@ -88,7 +92,8 @@ export async function listContactRoles(ctx: AuthContext, dealId: string) {
     }),
   ]);
   const used = new Set(roles.map((r) => r.contactId));
-  return { roles, contacts: contacts.filter((c) => !used.has(c.id)) };
+  // 联系人的隐藏字段按字段权限去掉 / the contacts' hidden fields are removed per field-level security
+  return { roles: roles.map((r) => withContact(ctx, r)), contacts: maskRecords(ctx, 'CONTACT', contacts.filter((c) => !used.has(c.id))) };
 }
 
 /**
@@ -110,7 +115,7 @@ export async function addContactRole(ctx: AuthContext, dealId: string, input: z.
         include: { contact: { select: contactSelect } },
       });
       await audit(tx, { ...by(ctx), action: 'deal.add_contact_role', entityType: 'deal', entityId: dealId, changes: { contact: contact.name, contactRole: role.role, isPrimary: role.isPrimary } });
-      return role;
+      return withContact(ctx, role);
     });
   } catch (err) {
     conflict(err);
@@ -152,7 +157,7 @@ export async function updateContactRole(ctx: AuthContext, id: string, input: z.i
       if (Object.keys(fields).length) {
         await audit(tx, { ...by(ctx), action: 'deal.update_contact_role', entityType: 'deal', entityId: current.dealId, changes: { contact: current.contact.name, fields } });
       }
-      return role;
+      return withContact(ctx, role);
     });
   } catch (err) {
     conflict(err);

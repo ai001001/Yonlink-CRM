@@ -20,6 +20,7 @@ import type { AuthContext } from '../auth';
 import { prisma } from '../db';
 import { ApiError, notFound } from '../errors';
 import { assertCanDelete, assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
+import { maskRecord } from '../field-security';
 import { containsText, listQuery, optionalText, optionalUuid, requiredText, resolveOwner, type Page } from '../validation';
 import { notifyAssigned } from './notifications';
 import { activePolicy, slaDue, sweepEscalations } from './ticket-sla';
@@ -74,11 +75,12 @@ const include = {
 } satisfies Prisma.TicketInclude;
 
 /**
- * 给工单附加是否逾期。
- * Attach the overdue flag.
+ * 给工单附加是否逾期；联系人的隐藏字段按字段权限去掉。
+ * Attach the overdue flag; the contact's hidden fields are removed per field-level security.
  */
-const withOverdue = <T extends { status: TicketStatus; dueAt: Date | null }>(t: T, now = new Date()) => ({
+const withOverdue = <T extends { status: TicketStatus; dueAt: Date | null; contact: unknown }>(ctx: AuthContext, t: T, now = new Date()) => ({
   ...t,
+  contact: maskRecord(ctx, 'CONTACT', t.contact),
   overdue: !!t.dueAt && t.dueAt < now && OPEN_STATUSES.includes(t.status),
 });
 
@@ -155,7 +157,7 @@ export async function listTickets(ctx: AuthContext, query: z.infer<typeof ticket
   const now = new Date();
   const counts = Object.fromEntries(Object.values(TicketStatus).map((s) => [s, 0])) as Record<string, number>;
   for (const r of byStatus) counts[r.status] = (r._count as { _all: number })._all;
-  return { items: items.map((t) => withOverdue(t, now)), total, page: query.page, pageSize: query.pageSize, counts };
+  return { items: items.map((t) => withOverdue(ctx, t, now)), total, page: query.page, pageSize: query.pageSize, counts };
 }
 
 /**
@@ -166,7 +168,7 @@ export async function getTicket(ctx: AuthContext, id: string) {
   await sweepEscalations(ctx.organizationId);
   const ticket = await prisma.ticket.findFirst({ where: { id, ...visible(ctx) }, include });
   if (!ticket) throw notFound();
-  return withOverdue(ticket);
+  return withOverdue(ctx, ticket);
 }
 
 /**
@@ -192,9 +194,9 @@ export async function createTicket(ctx: AuthContext, input: z.infer<typeof ticke
     await notifyAssigned(tx, ctx, { entity: 'ticket', id: ticket.id }, `${ticket.ticketNumber} ${ticket.subject}`, ticket.ownerId, null);
     // 工作流（工单以“编号 主题”作为名称）/ workflows (tickets use "number subject" as the name)
     if (await runWorkflows(tx, { entity: 'TICKET', before: null, after: { ...ticket, name: `${ticket.ticketNumber} ${ticket.subject}` }, actorId: ctx.userId, meta: ctx.meta })) {
-      return withOverdue(await tx.ticket.findUniqueOrThrow({ where: { id: ticket.id }, include }));
+      return withOverdue(ctx, await tx.ticket.findUniqueOrThrow({ where: { id: ticket.id }, include }));
     }
-    return withOverdue(ticket);
+    return withOverdue(ctx, ticket);
   });
 }
 
@@ -237,9 +239,9 @@ export async function updateTicket(ctx: AuthContext, id: string, input: z.infer<
     if (Object.keys(fields).length) await audit(tx, { ...by(ctx), action: 'ticket.update', entityType: 'ticket', entityId: id, changes: { fields } });
     await notifyAssigned(tx, ctx, { entity: 'ticket', id }, `${ticket.ticketNumber} ${ticket.subject}`, ticket.ownerId, current.ownerId);
     if (await runWorkflows(tx, { entity: 'TICKET', before: current, after: { ...ticket, name: `${ticket.ticketNumber} ${ticket.subject}` }, actorId: ctx.userId, meta: ctx.meta })) {
-      return withOverdue(await tx.ticket.findUniqueOrThrow({ where: { id }, include }));
+      return withOverdue(ctx, await tx.ticket.findUniqueOrThrow({ where: { id }, include }));
     }
-    return withOverdue(ticket);
+    return withOverdue(ctx, ticket);
   });
 }
 

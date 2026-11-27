@@ -13,6 +13,7 @@ import { Alert, App, Button, Card, Empty, Modal, Radio, Segmented, Space, Spin, 
 import { usePermissions } from '@/components/AuthProvider';
 import { t, tEnum, type MessageKey } from '@/i18n';
 import { api, ClientApiError } from '@/lib/api';
+import { fieldHidden, fieldReadOnly } from '@/lib/field-access';
 import { fmtDateTime } from '@/lib/format';
 
 type Entity = 'leads' | 'accounts';
@@ -79,7 +80,9 @@ function MergeModal({ entity, group, onClose, onMerged }: { entity: Entity; grou
   const [masterId, setMasterId] = useState(group.records[0]!.id);
   const [choice, setChoice] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const defs = FIELDS[entity];
+  // 隐藏或只读的字段不能通过合并修改，保留主记录的值 / hidden or read-only fields cannot change through a merge; the master's value is kept
+  const fe = entity === 'leads' ? 'LEAD' : 'ACCOUNT';
+  const defs = FIELDS[entity].filter((d) => !fieldHidden(fe, d.field) && !fieldReadOnly(fe, d.field));
 
   useEffect(() => {
     Promise.all(group.records.map((r) => api<Full>(`/api/${entity}/${r.id}`)))
@@ -265,14 +268,14 @@ export default function DuplicatesPage() {
                     ...(entity === 'leads'
                       ? [
                           { title: t('leads.company'), dataIndex: 'company' },
-                          { title: t('leads.email'), dataIndex: 'email' },
-                          { title: t('leads.mobile'), render: (_: unknown, r: Summary) => r.mobile ?? r.phone },
+                          { title: t('leads.email'), dataIndex: 'email', hidden: fieldHidden('LEAD', 'email') },
+                          { title: t('leads.mobile'), render: (_: unknown, r: Summary) => r.mobile ?? r.phone, hidden: fieldHidden('LEAD', 'mobile') && fieldHidden('LEAD', 'phone') },
                           { title: t('leads.status'), render: (_: unknown, r: Summary) => tEnum('leadStatus', r.status) },
                         ]
                       : [
                           { title: t('accounts.industry'), render: (_: unknown, r: Summary) => tEnum('industry', r.industry) },
-                          { title: t('accounts.phone'), dataIndex: 'phone' },
-                          { title: t('accounts.website'), dataIndex: 'website' },
+                          { title: t('accounts.phone'), dataIndex: 'phone', hidden: fieldHidden('ACCOUNT', 'phone') },
+                          { title: t('accounts.website'), dataIndex: 'website', hidden: fieldHidden('ACCOUNT', 'website') },
                         ]),
                     { title: t('common.owner'), render: (_, r) => r.owner?.name ?? t('common.unassigned') },
                     { title: t('duplicates.related'), render: (_, r) => <Typography.Text type="secondary">{related(r)}</Typography.Text> },

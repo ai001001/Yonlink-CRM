@@ -6,6 +6,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, getToken, setToken, STATIC_PREVIEW } from '@/lib/api';
+import { setFieldAccess, type FieldAccessRules } from '@/lib/field-access';
 
 /** 当前用户 / Current user */
 export interface Me {
@@ -18,6 +19,8 @@ export interface Me {
   isDemo: boolean;
   /** 服务端返回的权限点（仅用于界面显示，服务端仍逐请求校验）/ permissions from the server (UI only) */
   permissions: string[];
+  /** 字段权限（隐藏、只读的字段）/ field-level rules (hidden and read-only fields) */
+  fieldAccess?: FieldAccessRules;
   organization: { id: string; name: string };
 }
 
@@ -44,7 +47,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      setMe(await api<Me>('/api/auth/me'));
+      const next = await api<Me>('/api/auth/me');
+      // 页面渲染前设置字段权限 / field rules are set before pages render
+      setFieldAccess(next.fieldAccess);
+      setMe(next);
     } catch {
       setMe(null);
     } finally {

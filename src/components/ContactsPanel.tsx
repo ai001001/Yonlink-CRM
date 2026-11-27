@@ -13,6 +13,7 @@ import { toFormErrors } from '@/lib/hooks';
 import type { Contact } from '@/lib/types';
 import { EmailLink, PhoneLink } from '@/components/PhoneLink';
 import { CustomFieldItems, useCustomFields } from './CustomFields';
+import { FieldGuard, visibleIn } from './FieldGuard';
 
 interface Props {
   accountId: string;
@@ -21,6 +22,9 @@ interface Props {
   contacts: Contact[];
   onChanged: () => void;
 }
+
+/** 字段权限：字段是否显示 / field permissions: whether a field is shown */
+const show = visibleIn('CONTACT');
 
 export function ContactsPanel({ accountId, editable, contacts, onChanged }: Props) {
   const { message } = App.useApp();
@@ -90,9 +94,9 @@ export function ContactsPanel({ accountId, editable, contacts, onChanged }: Prop
               </Space>
             ),
           },
-          { title: t('contacts.title'), dataIndex: 'title' },
-          { title: t('contacts.phone'), render: (_, r) => <PhoneLink value={r.phone} /> },
-          { title: t('contacts.email'), render: (_, r) => <EmailLink value={r.email} /> },
+          { title: t('contacts.title'), dataIndex: 'title', hidden: !show('title') },
+          { title: t('contacts.phone'), render: (_, r) => <PhoneLink value={r.phone} />, hidden: !show('phone') },
+          { title: t('contacts.email'), render: (_, r) => <EmailLink value={r.email} />, hidden: !show('email') },
           {
             title: t('common.actions'),
             hidden: !editable,
@@ -130,17 +134,23 @@ export function ContactsPanel({ accountId, editable, contacts, onChanged }: Prop
             >
               <Input maxLength={100} />
             </Form.Item>
-            <Form.Item name="title" label={t('contacts.title')}>
-              <Input maxLength={100} />
-            </Form.Item>
+            <FieldGuard entity="CONTACT" field="title">
+              <Form.Item name="title" label={t('contacts.title')}>
+                <Input maxLength={100} />
+              </Form.Item>
+            </FieldGuard>
           </div>
           <div className="form-row">
-            <Form.Item name="phone" label={t('contacts.phone')}>
-              <Input maxLength={50} />
-            </Form.Item>
-            <Form.Item name="email" label={t('contacts.email')} rules={[{ type: 'email', message: t('common.invalidEmail') }]}>
-              <Input maxLength={254} />
-            </Form.Item>
+            <FieldGuard entity="CONTACT" field="phone">
+              <Form.Item name="phone" label={t('contacts.phone')}>
+                <Input maxLength={50} />
+              </Form.Item>
+            </FieldGuard>
+            <FieldGuard entity="CONTACT" field="email">
+              <Form.Item name="email" label={t('contacts.email')} rules={[{ type: 'email', message: t('common.invalidEmail') }]}>
+                <Input maxLength={254} />
+              </Form.Item>
+            </FieldGuard>
           </div>
           <CustomFieldItems defs={customDefs} />
           <Form.Item name="isPrimary" valuePropName="checked">

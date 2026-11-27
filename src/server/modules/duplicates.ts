@@ -17,6 +17,7 @@ import type { Prisma } from '@/generated/prisma/client';
 import { audit, by, diff, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
+import { assertFieldWrites, hiddenFields, maskRecords } from '../field-security';
 import { ApiError } from '../errors';
 import { assertCanUpdate, assertOwnerAssignable, requirePermission, visible } from '../permissions';
 import { notifyAssigned } from './notifications';
@@ -142,12 +143,15 @@ export async function findDuplicates(ctx: AuthContext, query: z.infer<typeof dup
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       take: SCAN_LIMIT,
     });
+    // 隐藏的字段不参与匹配，也不返回 / hidden fields are neither matched nor returned
+    const hidden = hiddenFields(ctx, 'LEAD');
+    const phones = (['mobile', 'phone'] as const).filter((f) => !hidden.includes(f));
     const groups = groupDuplicates(rows, {
-      email: (r) => emailKey(r.email),
-      phone: (r) => [phoneKey(r.mobile), phoneKey(r.phone)],
+      ...(hidden.includes('email') ? {} : { email: (r: (typeof rows)[number]) => emailKey(r.email) }),
+      ...(phones.length ? { phone: (r: (typeof rows)[number]) => phones.map((f) => phoneKey(r[f])) } : {}),
       nameCompany: (r) => (r.company ? `${nameKey(r.name)}|${nameKey(r.company)}` : null),
     });
-    return { entity: query.entity, scanned: rows.length, truncated: rows.length === SCAN_LIMIT, groups };
+    return { entity: query.entity, scanned: rows.length, truncated: rows.length === SCAN_LIMIT, groups: groups.map((g) => ({ ...g, records: maskRecords(ctx, 'LEAD', g.records) })) };
   }
   const rows = await prisma.account.findMany({
     where: { ...visible(ctx) },
@@ -155,12 +159,13 @@ export async function findDuplicates(ctx: AuthContext, query: z.infer<typeof dup
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     take: SCAN_LIMIT,
   });
+  const hidden = hiddenFields(ctx, 'ACCOUNT');
   const groups = groupDuplicates(rows, {
     name: (r) => nameKey(r.name),
-    phone: (r) => phoneKey(r.phone),
-    website: (r) => domainKey(r.website),
+    ...(hidden.includes('phone') ? {} : { phone: (r: (typeof rows)[number]) => phoneKey(r.phone) }),
+    ...(hidden.includes('website') ? {} : { website: (r: (typeof rows)[number]) => domainKey(r.website) }),
   });
-  return { entity: query.entity, scanned: rows.length, truncated: rows.length === SCAN_LIMIT, groups };
+  return { entity: query.entity, scanned: rows.length, truncated: rows.length === SCAN_LIMIT, groups: groups.map((g) => ({ ...g, records: maskRecords(ctx, 'ACCOUNT', g.records) })) };
 }
 
 /** 标签合并（超过上限 400）/ merge tags (400 above the limit) */
@@ -198,6 +203,8 @@ export async function mergeDuplicates(ctx: AuthContext, input: z.infer<typeof me
       if (v !== master[field]) data[field] = v;
     }
     if ('ownerId' in data) assertOwnerAssignable(ctx, (data.ownerId as string | null) ?? null);
+    // 隐藏或只读的字段不能通过合并改变 / hidden or read-only fields cannot change through a merge
+    assertFieldWrites(ctx, input.entity === 'leads' ? 'LEAD' : 'ACCOUNT', data, master);
     // 启用线索蓝图时合并不能改变主线索的状态 / with a lead blueprint a merge cannot change the master's status
     if (input.entity === 'leads' && 'status' in data) await assertNotControlled(org, 'LEAD', tx);
 

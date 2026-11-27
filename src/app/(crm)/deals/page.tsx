@@ -34,6 +34,7 @@ import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
 import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch, useSelection, type PageResult } from '@/lib/hooks';
 import type { Deal } from '@/lib/types';
 import { CustomFieldItems, CustomFieldValues, useCustomFields } from '@/components/CustomFields';
+import { FieldGuard, visibleIn } from '@/components/FieldGuard';
 import { TerritoryFilter, useTerritoryOptions } from '@/components/Territories';
 import { MacroRunner } from '@/components/Macros';
 import { BlueprintPanel, useBlueprintStatus } from '@/components/Blueprint';
@@ -53,6 +54,9 @@ const currencyOptions = ['CNY', 'USD', 'EUR', 'HKD', 'JPY'].map((v) => ({ value:
 interface FormValues extends Omit<Partial<Deal>, 'expectedCloseDate'> {
   expectedCloseDate?: Dayjs | null;
 }
+
+/** 字段权限：字段是否显示 / field permissions: whether a field is shown */
+const show = visibleIn('DEAL');
 
 export default function DealsPage() {
   const { message } = App.useApp();
@@ -329,9 +333,11 @@ export default function DealsPage() {
             <CampaignSelect key={editing && editing !== 'new' ? editing.id : 'new'} />
           </Form.Item>
           <CustomFieldItems defs={customDefs} />
-          <Form.Item name="description" label={t('common.description')}>
-            <Input.TextArea rows={3} maxLength={5000} />
-          </Form.Item>
+          <FieldGuard entity="DEAL" field="description">
+            <Form.Item name="description" label={t('common.description')}>
+              <Input.TextArea rows={3} maxLength={5000} />
+            </Form.Item>
+          </FieldGuard>
         </Form>
       </Modal>
 
@@ -407,9 +413,11 @@ export default function DealsPage() {
                       <Descriptions.Item label={t('tags.title')} span={2}>
                         <TagEditor key={`tags-${detail.id}`} path="/api/deals" record={detail} onChanged={() => refresh()} />
                       </Descriptions.Item>
-                      <Descriptions.Item label={t('common.description')} span={2}>
-                        {detail.description}
-                      </Descriptions.Item>
+                      {show('description') && (
+                        <Descriptions.Item label={t('common.description')} span={2}>
+                          {detail.description}
+                        </Descriptions.Item>
+                      )}
                     </Descriptions>
                     <CustomFieldValues defs={customDefs} values={detail.custom} />
                   </>

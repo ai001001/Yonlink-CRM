@@ -87,6 +87,7 @@ model Organization {
   picklistValues       PicklistValue[]
   customReports        CustomReport[]
   customRoles          CustomRole[]
+  fieldPermissions     FieldPermission[]
   productStocks        ProductStock[]
   cadenceEnrollments   CadenceEnrollment[]
   territoryMembers     TerritoryMember[]
@@ -2603,7 +2604,38 @@ model CustomRole {
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   users          User[]
+  fieldPermissions FieldPermission[]
 
   @@unique([organizationId, id])
   @@map("custom_roles")
+}
+
+/// 字段访问级别（未配置即可编辑）/ field access level (no row means editable)
+enum FieldAccess {
+  HIDDEN
+  READ_ONLY
+
+  @@map("field_access")
+}
+
+/// 字段级权限：按系统角色或自定义角色把某个字段设为隐藏或只读（系统管理员不受限）
+/// Field-level security: a field is hidden or read-only for a system role or a custom role (administrators are never restricted)
+model FieldPermission {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  entity         CustomEntity
+  /// 标准字段名，或 custom.<自定义字段键> / a standard field name, or custom.<custom field key>
+  field          String       @db.VarChar(40)
+  /// 系统角色（与 customRoleId 二选一）/ a system role (exclusive with customRoleId)
+  role           UserRole?
+  customRoleId   String?      @map("custom_role_id") @db.Uuid
+  access         FieldAccess
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customRole     CustomRole?  @relation(fields: [organizationId, customRoleId], references: [organizationId, id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId, role])
+  @@index([organizationId, customRoleId])
+  @@map("field_permissions")
 }

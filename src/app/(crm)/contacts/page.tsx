@@ -21,9 +21,13 @@ import { fmtDateTime } from '@/lib/format';
 import { toFormErrors, useOpenFromUrl, useOwners, usePagedList, useSearch } from '@/lib/hooks';
 import type { ContactRow } from '@/lib/types';
 import { CustomFieldItems, CustomFieldValues, useCustomFields } from '@/components/CustomFields';
+import { FieldGuard, visibleIn } from '@/components/FieldGuard';
 import { ContactPortal } from '@/components/ContactPortal';
 
 type Primary = 'true' | 'false';
+
+/** 字段权限：字段是否显示 / field permissions: whether a field is shown */
+const show = visibleIn('CONTACT');
 
 export default function ContactsPage() {
   const { message } = App.useApp();
@@ -163,9 +167,9 @@ export default function ContactsPage() {
               </Space>
             ),
           },
-          { title: t('contacts.title'), dataIndex: 'title' },
-          { title: t('contacts.phone'), render: (_, r) => <PhoneLink value={r.phone} /> },
-          { title: t('contacts.email'), render: (_, r) => <EmailLink value={r.email} /> },
+          { title: t('contacts.title'), dataIndex: 'title', hidden: !show('title') },
+          { title: t('contacts.phone'), render: (_, r) => <PhoneLink value={r.phone} />, hidden: !show('phone') },
+          { title: t('contacts.email'), render: (_, r) => <EmailLink value={r.email} />, hidden: !show('email') },
           { title: t('contacts.account'), render: (_, r) => <Link href={`/accounts?id=${r.account.id}`}>{r.account.name}</Link> },
           { title: t('common.owner'), render: (_, r) => r.account.owner?.name ?? t('common.unassigned') },
           { title: t('scoring.score'), dataIndex: 'score', render: (v: number) => <ScoreTag score={v} config={scoring.config} /> },
@@ -204,13 +208,17 @@ export default function ContactsPage() {
                   {detail.isPrimary && <Tag color="gold">{t('contacts.isPrimary')}</Tag>}
                 </Space>
               </Descriptions.Item>
-              <Descriptions.Item label={t('contacts.title')}>{detail.title}</Descriptions.Item>
-              <Descriptions.Item label={t('contacts.phone')}>
-                <PhoneLink value={detail.phone} />
-              </Descriptions.Item>
-              <Descriptions.Item label={t('contacts.email')}>
-                <EmailLink value={detail.email} />
-              </Descriptions.Item>
+              {show('title') && <Descriptions.Item label={t('contacts.title')}>{detail.title}</Descriptions.Item>}
+              {show('phone') && (
+                <Descriptions.Item label={t('contacts.phone')}>
+                  <PhoneLink value={detail.phone} />
+                </Descriptions.Item>
+              )}
+              {show('email') && (
+                <Descriptions.Item label={t('contacts.email')}>
+                  <EmailLink value={detail.email} />
+                </Descriptions.Item>
+              )}
               <Descriptions.Item label={t('contacts.account')}>
                 <Link href={`/accounts?id=${detail.account.id}`}>{detail.account.name}</Link>
               </Descriptions.Item>
@@ -254,15 +262,21 @@ export default function ContactsPage() {
           <Form.Item name="name" label={t('contacts.name')} rules={[{ required: true, whitespace: true, message: t('common.required', { field: t('contacts.name') }) }]}>
             <Input maxLength={100} />
           </Form.Item>
-          <Form.Item name="title" label={t('contacts.title')}>
-            <Input maxLength={100} />
-          </Form.Item>
-          <Form.Item name="phone" label={t('contacts.phone')}>
-            <Input maxLength={50} />
-          </Form.Item>
-          <Form.Item name="email" label={t('contacts.email')} rules={[{ type: 'email', message: t('error.VALIDATION_ERROR') }]}>
-            <Input maxLength={254} />
-          </Form.Item>
+          <FieldGuard entity="CONTACT" field="title">
+            <Form.Item name="title" label={t('contacts.title')}>
+              <Input maxLength={100} />
+            </Form.Item>
+          </FieldGuard>
+          <FieldGuard entity="CONTACT" field="phone">
+            <Form.Item name="phone" label={t('contacts.phone')}>
+              <Input maxLength={50} />
+            </Form.Item>
+          </FieldGuard>
+          <FieldGuard entity="CONTACT" field="email">
+            <Form.Item name="email" label={t('contacts.email')} rules={[{ type: 'email', message: t('error.VALIDATION_ERROR') }]}>
+              <Input maxLength={254} />
+            </Form.Item>
+          </FieldGuard>
           <CustomFieldItems defs={customDefs} />
           <Form.Item name="isPrimary" valuePropName="checked">
             <Checkbox>{t('contacts.isPrimary')}</Checkbox>

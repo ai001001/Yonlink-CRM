@@ -22,6 +22,7 @@ import { audit, by } from '../audit';
 import type { AuthContext } from '../auth';
 import { toCsv } from '../csv';
 import { prisma } from '../db';
+import { hiddenFields } from '../field-security';
 import { ApiError, notFound } from '../errors';
 import { can, requirePermission, visible } from '../permissions';
 import { toXlsx, type Cell } from '../xlsx';
@@ -400,8 +401,23 @@ async function runDetail(d: ReportDefinition, where: object, page: number, pageS
  * Run a report definition (a preview or a saved report).
  */
 export async function runDefinition(ctx: AuthContext, d: ReportDefinition, query: z.infer<typeof runQuerySchema>, now = new Date()): Promise<ReportResult> {
+  assertReportFields(ctx, d);
   const where = await reportWhere(ctx, d, now);
   return d.groupBy ? runSummary(ctx, d, where) : runDetail(d, where, query.page, query.pageSize);
+}
+
+/**
+ * 报表用到的字段（列、筛选、分组、汇总、排序）不能有对当前用户隐藏的字段（字段权限）。
+ * A report must not use fields hidden from the current user (columns, filters, grouping, measures, sort).
+ * @throws ApiError 403 字段级错误 field_hidden / field errors field_hidden
+ */
+function assertReportFields(ctx: AuthContext, d: Pick<ReportDefinition, 'entity' | 'columns' | 'filters' | 'groupBy' | 'measures' | 'sort'>): void {
+  const entity = d.entity === 'ACTIVITY' ? null : d.entity;
+  if (!entity) return;
+  const hidden = hiddenFields(ctx, entity);
+  const used = new Set([...d.columns, ...d.filters.map((f) => f.field), d.groupBy?.field, ...d.measures.map((m) => m.field), d.sort?.field].filter((f): f is string => !!f));
+  const bad = [...used].filter((f) => hidden.includes(f));
+  if (bad.length) throw new ApiError(403, 'FORBIDDEN', 'The report uses hidden fields', Object.fromEntries(bad.map((f) => [f, ['field_hidden']])));
 }
 
 const select = {
@@ -474,6 +490,7 @@ export async function getReport(ctx: AuthContext, id: string): Promise<Saved> {
  */
 export async function createReport(ctx: AuthContext, input: z.infer<typeof reportCreateSchema>) {
   if (input.shared) requirePermission(ctx, 'view.share');
+  assertReportFields(ctx, input);
   try {
     return await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT 1 AS ok FROM pg_advisory_xact_lock(hashtextextended(${`report:${ctx.organizationId}:${ctx.userId}`}, 0))`;
@@ -507,6 +524,7 @@ export async function updateReport(ctx: AuthContext, id: string, input: z.infer<
   if (current.ownerId !== ctx.userId) throw new ApiError(403, 'FORBIDDEN', 'Only the creator can edit this report', { report: ['creator_only'] });
   if (input.entity !== current.entity) throw new ApiError(400, 'VALIDATION_ERROR', 'Entity cannot change', { entity: ['immutable'] });
   if (input.shared && !current.shared) requirePermission(ctx, 'view.share');
+  assertReportFields(ctx, input);
   try {
     return await prisma.$transaction(async (tx) => {
       const r = await tx.customReport.update({
@@ -559,6 +577,7 @@ export async function exportReport(ctx: AuthContext, id: string, query: z.infer<
   requirePermission(ctx, 'data.export');
   const r = await getReport(ctx, id);
   const d = definitionOf(r);
+  assertReportFields(ctx, d);
   const locale: Locale = query.lang ?? DEFAULT_LOCALE;
   const t = (key: MessageKey) => translate(locale, key);
   const tEnum = await withOptionLabels(ctx.organizationId, (prefix, value) => tEnumIn(locale, prefix, value));
@@ -610,9 +629,15 @@ export async function exportReport(ctx: AuthContext, id: string, query: z.infer<
 }
 
 /**
- * 字段目录（前端构建器使用）。
- * The field catalogue used by the builder.
+ * 字段目录（前端构建器使用；不含对当前用户隐藏的字段）。
+ * The field catalogue used by the builder (without fields hidden from the current user).
  */
-export function reportCatalog() {
-  return { fields: REPORT_FIELDS, ops: REPORT_OPS, groupable: [...GROUPABLE], measurable: [...MEASURABLE], sortable: [...SORTABLE], limits: { summary: SUMMARY_MAX, export: REPORT_EXPORT_MAX, reports: MAX_REPORTS } };
+export function reportCatalog(ctx: AuthContext) {
+  const fields = Object.fromEntries(
+    (Object.entries(REPORT_FIELDS) as [ReportEntity, Record<string, ReportField>][]).map(([e, list]) => {
+      const hidden = e === 'ACTIVITY' ? [] : hiddenFields(ctx, e);
+      return [e, Object.fromEntries(Object.entries(list).filter(([f]) => !hidden.includes(f)))];
+    }),
+  ) as typeof REPORT_FIELDS;
+  return { fields, ops: REPORT_OPS, groupable: [...GROUPABLE], measurable: [...MEASURABLE], sortable: [...SORTABLE], limits: { summary: SUMMARY_MAX, export: REPORT_EXPORT_MAX, reports: MAX_REPORTS } };
 }

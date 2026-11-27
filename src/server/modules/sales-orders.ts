@@ -17,6 +17,7 @@ import { QuoteStatus, SalesOrderStatus } from '@/generated/prisma/enums';
 import { audit, by, diff, REDACTED, snapshot } from '../audit';
 import type { AuthContext } from '../auth';
 import { prisma } from '../db';
+import { accessOf, maskRecord } from '../field-security';
 import { ApiError, notFound } from '../errors';
 import { assertCanUpdate, visible } from '../permissions';
 import { containsText, listQuery, optionalText, requiredText, type Page } from '../validation';
@@ -126,7 +127,8 @@ export async function listOrders(ctx: AuthContext, query: z.infer<typeof orderLi
 export async function getOrder(ctx: AuthContext, id: string) {
   const order = await prisma.salesOrder.findFirst({ where: { id, organizationId: ctx.organizationId, deal: visible(ctx) }, include: detailInclude });
   if (!order) throw notFound();
-  return order;
+  // 客户的隐藏字段（电话、地址）按字段权限去掉 / the account's hidden fields (phone, address) are removed per field-level security
+  return { ...order, deal: { ...order.deal, account: maskRecord(ctx, 'ACCOUNT', order.deal.account) } };
 }
 
 /**
@@ -160,7 +162,8 @@ export async function createOrder(ctx: AuthContext, input: z.infer<typeof orderC
           taxAmount: quote.taxAmount,
           total: quote.total,
           expectedDelivery: input.expectedDelivery,
-          shippingAddress: input.shippingAddress === undefined ? (quote.deal.account?.address?.slice(0, 500) ?? null) : input.shippingAddress,
+          // 客户地址对当前用户隐藏时不带入 / not copied when the account address is hidden from the user
+          shippingAddress: input.shippingAddress === undefined ? (accessOf(ctx, 'ACCOUNT', 'address') === 'HIDDEN' ? null : (quote.deal.account?.address?.slice(0, 500) ?? null)) : input.shippingAddress,
           notes: input.notes,
           createdById: ctx.userId,
         },
